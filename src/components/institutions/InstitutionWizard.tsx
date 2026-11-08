@@ -183,6 +183,21 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
               <Form.Item label={t('institutions.fields.swift')} name="swiftCode">
                 <Input placeholder={t('institutions.placeholder.swift')} />
               </Form.Item>
+              <Form.Item
+                label={t('institutions.fields.upiId')}
+                name="upiId"
+                rules={[
+                  {
+                    validator: async (_, value: string) => {
+                      if (!value?.trim()) return;
+                      if (/^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/.test(value.trim())) return;
+                      throw new Error(t('institutions.validation.upiIdInvalid'));
+                    },
+                  },
+                ]}
+              >
+                <Input placeholder={t('institutions.placeholder.upiId')} />
+              </Form.Item>
             </div>
           )}
 
@@ -266,7 +281,13 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
                 label={t('institutions.fields.upiId')}
                 name="upiId"
                 rules={[
-                  { pattern: /^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/, message: t('institutions.validation.upiIdInvalid') },
+                  {
+                    validator: async (_, value: string) => {
+                      if (!value?.trim()) return;
+                      if (/^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/.test(value.trim())) return;
+                      throw new Error(t('institutions.validation.upiIdInvalid'));
+                    },
+                  },
                 ]}
               >
                 <Input placeholder={t('institutions.placeholder.upiId')} />

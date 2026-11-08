@@ -88,6 +88,44 @@ export default function FinancialInstitutionDetailPage() {
     { key: 'nickname', label: t('institutions.fields.nickname'), children: val(record.nickname) },
   ];
 
+  const renderUpiId = (upiIdRaw?: string | null): ReactNode => {
+    const upiId = upiIdRaw?.trim();
+    if (!upiId) return val(undefined);
+    const upiQrValue = `upi://pay?pa=${encodeURIComponent(upiId)}`;
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="font-mono text-[13px]">{upiId}</span>
+        <Popover
+          trigger="click"
+          placement="bottomLeft"
+          overlayInnerStyle={{ padding: 12, maxWidth: 280 }}
+          content={
+            <div className="space-y-3">
+              <Alert
+                type="warning"
+                showIcon
+                className="folio-message-strip folio-message-strip-warning !text-[11px]"
+                title={t('institutions.upi.qrWarning')}
+              />
+              <div className="flex justify-center rounded-lg bg-white p-2">
+                <QRCodeSVG value={upiQrValue} size={160} includeMargin={false} />
+              </div>
+              <p className="text-center font-mono text-[12px] font-medium text-folio-ink dark:text-[#F3F4F6] break-all">{upiId}</p>
+            </div>
+          }
+        >
+          <Button
+            type="text"
+            size="small"
+            aria-label={t('institutions.upi.qrAction')}
+            icon={<QrCode size={15} className="text-folio-primary dark:text-folio-accent" />}
+            className="!inline-flex !h-7 !w-7 !min-w-0 items-center justify-center !p-0"
+          />
+        </Popover>
+      </span>
+    );
+  };
+
   let accountItems: DescriptionsProps['items'] = [];
   if (category === 'savings-account' || category === 'current-account') {
     accountItems = [
@@ -96,6 +134,7 @@ export default function FinancialInstitutionDetailPage() {
       { key: 'cif', label: t('institutions.fields.cif'), children: val(record.cifNumber) },
       { key: 'branch', label: t('institutions.fields.branch'), children: val(record.branchName) },
       { key: 'swift', label: t('institutions.fields.swift'), children: val(record.swiftCode) },
+      { key: 'upiId', label: t('institutions.fields.upiId'), children: renderUpiId(record.upiId) },
     ];
   } else if (category === 'credit-card-issuer') {
     accountItems = [
@@ -119,46 +158,9 @@ export default function FinancialInstitutionDetailPage() {
       },
     ];
   } else if (category === 'digital-wallet') {
-    const upiId = record.upiId?.trim();
-    const upiQrValue = upiId ? `upi://pay?pa=${encodeURIComponent(upiId)}` : '';
     accountItems = [
       { key: 'linkedMobile', label: t('institutions.fields.linkedMobile'), children: val(record.linkedMobile) },
-      {
-        key: 'upiId',
-        label: t('institutions.fields.upiId'),
-        children: upiId ? (
-          <span className="inline-flex items-center gap-2">
-            <span className="font-mono text-[13px]">{upiId}</span>
-            <Popover
-              trigger="click"
-              placement="bottomLeft"
-              overlayInnerStyle={{ padding: 12, maxWidth: 280 }}
-              content={
-                <div className="space-y-3">
-                  <Alert
-                    type="warning"
-                    showIcon
-                    className="folio-message-strip folio-message-strip-warning !text-[11px]"
-                    title={t('institutions.upi.qrWarning')}
-                  />
-                  <div className="flex justify-center rounded-lg bg-white p-2">
-                    <QRCodeSVG value={upiQrValue} size={160} includeMargin={false} />
-                  </div>
-                  <p className="text-center font-mono text-[12px] font-medium text-folio-ink dark:text-[#F3F4F6] break-all">{upiId}</p>
-                </div>
-              }
-            >
-              <Button
-                type="text"
-                size="small"
-                aria-label={t('institutions.upi.qrAction')}
-                icon={<QrCode size={15} className="text-folio-primary dark:text-folio-accent" />}
-                className="!inline-flex !h-7 !w-7 !min-w-0 items-center justify-center !p-0"
-              />
-            </Popover>
-          </span>
-        ) : val(undefined),
-      },
+      { key: 'upiId', label: t('institutions.fields.upiId'), children: renderUpiId(record.upiId) },
     ];
   }
 

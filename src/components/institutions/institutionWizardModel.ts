@@ -113,7 +113,7 @@ export function toInstitutionInput(values: InstitutionWizardValues): FinancialIn
 export function stepFields(step: WizardStep, category: FinancialInstitutionCategory): Array<keyof InstitutionWizardValues> {
   if (step === 0) return ['name', 'category', 'nickname'];
   if (step === 2) return ['operationMode', 'contactPerson', 'contactEmail', 'contactPhone', 'address'];
-  if (category === 'savings-account' || category === 'current-account') return ['accountNumber', 'ifscCode', 'cifNumber', 'branchName', 'swiftCode'];
+  if (category === 'savings-account' || category === 'current-account') return ['accountNumber', 'ifscCode', 'cifNumber', 'branchName', 'swiftCode', 'upiId'];
   if (category === 'credit-card-issuer') return ['cardNumber', 'cardNetwork', 'creditLimit', 'billingCycleDay'];
   if (category === 'investment-brokerage') return ['dematAccountNumber', 'uniqueClientCode', 'dpId', 'segments'];
   return ['linkedMobile', 'upiId']; // digital-wallet
