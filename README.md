@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="public/folio-horizontal-inverse.svg">
   <source media="(prefers-color-scheme: light)" srcset="public/folio-horizontal-color.svg">
-  <img src="public/folio-horizontal-color.svg" width="300" alt="Folio Logo" style="background-color: #0d1117; padding: 10px; border-radius: 6px;">
+  <img src="public/folio-horizontal-color.svg" width="300" alt="Folio Logo">
 </picture>
 
 
