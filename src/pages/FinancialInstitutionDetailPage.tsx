@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Button, Descriptions, Spin, Tag } from 'antd';
+import { Alert, Button, Descriptions, Popover, Spin, Tag } from 'antd';
+import { QRCodeSVG } from 'qrcode.react';
 import { FOLIO_TAG_CLASS } from '../components/deposits/DepositStatusTag';
 import type { DescriptionsProps } from 'antd';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Pencil, QrCode } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { FinancialInstitution } from '../types';
 import { useI18n } from '../i18n';
@@ -118,9 +119,46 @@ export default function FinancialInstitutionDetailPage() {
       },
     ];
   } else if (category === 'digital-wallet') {
+    const upiId = record.upiId?.trim();
+    const upiQrValue = upiId ? `upi://pay?pa=${encodeURIComponent(upiId)}` : '';
     accountItems = [
       { key: 'linkedMobile', label: t('institutions.fields.linkedMobile'), children: val(record.linkedMobile) },
-      { key: 'upiId', label: t('institutions.fields.upiId'), children: val(record.upiId) },
+      {
+        key: 'upiId',
+        label: t('institutions.fields.upiId'),
+        children: upiId ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="font-mono text-[13px]">{upiId}</span>
+            <Popover
+              trigger="click"
+              placement="bottomLeft"
+              overlayInnerStyle={{ padding: 12, maxWidth: 280 }}
+              content={
+                <div className="space-y-3">
+                  <Alert
+                    type="warning"
+                    showIcon
+                    className="folio-message-strip folio-message-strip-warning !text-[11px]"
+                    title={t('institutions.upi.qrWarning')}
+                  />
+                  <div className="flex justify-center rounded-lg bg-white p-2">
+                    <QRCodeSVG value={upiQrValue} size={160} includeMargin={false} />
+                  </div>
+                  <p className="text-center font-mono text-[12px] font-medium text-folio-ink dark:text-[#F3F4F6] break-all">{upiId}</p>
+                </div>
+              }
+            >
+              <Button
+                type="text"
+                size="small"
+                aria-label={t('institutions.upi.qrAction')}
+                icon={<QrCode size={15} className="text-folio-primary dark:text-folio-accent" />}
+                className="!inline-flex !h-7 !w-7 !min-w-0 items-center justify-center !p-0"
+              />
+            </Popover>
+          </span>
+        ) : val(undefined),
+      },
     ];
   }
 

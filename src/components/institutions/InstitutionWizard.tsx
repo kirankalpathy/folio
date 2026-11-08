@@ -262,7 +262,13 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
               <Form.Item label={t('institutions.fields.linkedMobile')} name="linkedMobile" rules={[{ required: true, whitespace: true, message: t('institutions.validation.linkedMobileRequired') }]}>
                 <Input placeholder={t('institutions.placeholder.linkedMobile')} />
               </Form.Item>
-              <Form.Item label={t('institutions.fields.upiId')} name="upiId">
+              <Form.Item
+                label={t('institutions.fields.upiId')}
+                name="upiId"
+                rules={[
+                  { pattern: /^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/, message: t('institutions.validation.upiIdInvalid') },
+                ]}
+              >
                 <Input placeholder={t('institutions.placeholder.upiId')} />
               </Form.Item>
             </div>
