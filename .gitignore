@@ -1,0 +1,33 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.vite
+*.tsbuildinfo
+
+# Local/sensitive app data and exports
+passkey.json
+folio-backup-*.json
+*.pem
+*.key
+*.p12
+
+# Local database files
+data.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# Local JSON data
+data/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/

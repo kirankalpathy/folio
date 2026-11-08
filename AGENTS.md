@@ -1,0 +1,87 @@
+# AGENTS.md — Folio Project Guidelines
+
+This document summarizes the engineering and product conventions established for **Folio**. Any human or AI agent working in this repository should follow these rules to keep the codebase consistent, maintainable, and safe to evolve.
+
+## 1. Project context
+
+- **App**: Folio is a **local-first personal finance desktop app** (Tauri + React + TypeScript + Vite), focused on tracking assets/liabilities in INR with data stored on the user’s device.
+- **Primary stack**: React 19, TypeScript (strict), Vite, Tauri 2, Ant Design, Tailwind CSS, Lucide icons, dayjs.
+- **Native/storage**: Desktop app uses **native SQLite** via `@tauri-apps/plugin-sql` (Tauri-only runtime behavior). Use Tauri plugins for native capabilities (e.g., dialog/fs for backups/exports) where applicable.
+- **Working directory**: project root is `folio/` (e.g., `/Users/kirankalpathy/Desktop/projects/folio`).
+
+## 2. Core engineering principles
+
+### DRY (Don’t Repeat Yourself)
+- Reuse shared logic, types, utilities, and UI patterns instead of duplicating behavior.
+- Extract common formatting/calculation/display logic into `src/utils/*`, services, hooks, or shared components.
+- When you see repeated validation, mapping, or status/label logic, centralize it (while keeping domain boundaries clear).
+
+### No dead code
+- Do not leave unused components, files, exports, hooks, services, types, or dependencies.
+- Remove legacy paths only when it is safe and intentional; if migration/compatibility code is required (e.g., data migration), keep it clearly scoped and documented in code/comments/commit context.
+- Prefer fixing root causes over adding parallel “temporary” implementations.
+
+### Modular, maintainable structure
+- Keep responsibilities separated:
+  - **`src/pages/`**: route-level composition.
+  - **`src/components/`**: presentational/feature UI, grouped by domain.
+  - **`src/hooks/`**: data access/state hooks.
+  - **`src/services/`**: persistence/business operations (SQLite/Tauri/native integrations).
+  - **`src/utils/`**: pure helpers (finance, dates, deposits, validation/schema helpers, etc.).
+  - **`src/types/`**: shared domain types/interfaces.
+  - **`src/i18n/`**: localization/messages/translation helpers.
+  - **`src/config/`**: navigation and app-level configuration/metadata.
+  - **`src/theme/`** and **`src/index.css`**: theming/design tokens.
+- UI components should not access storage/native APIs directly; go through hooks/services.
+- Keep files focused. As a guideline, keep `.tsx` components reasonably small and split complex screens/wizards into step/section components.
+
+### Configurability over hardcoding
+- Prefer named constants, shared config, theme tokens, and utilities over magic numbers/strings.
+- Validation limits, date bounds, status mappings, format options, feature toggles, and app-level labels/behavior should be easy to find and change.
+- Reuse centralized formatters (`src/utils/finance.ts`, `src/utils/date.ts`) and settings-driven behavior where the app supports it.
+
+## 3. TypeScript and code quality
+
+- **Strict TypeScript**: follow the repo’s strict settings (`tsconfig.app.json` includes `strict`, `noUnusedLocals`, `noUnusedParameters`, etc.).
+- **No `any`**. Use precise types, generics, unions, and `unknown` + narrowing when needed.
+- Prefer type-safe domain modeling (e.g., lifecycle/status unions, typed IDs/inputs, discriminated patterns where helpful).
+- Keep imports/exports clean; avoid unused symbols (the compiler/config enforces this).
+- **Quality gate**: run `npm run typecheck` after meaningful changes.
+
+## 4. UI/UX and design system conventions
+
+- **Consistent patterns**: match existing layout, naming, spacing, labels-above-values detail views, and wizard/list/detail patterns.
+- **Theming**: support light/dark (and system where implemented) using existing theme providers/tokens.
+- **Semantic colors**: use the semantic color system (CSS variables in `src/index.css`, Tailwind semantic mappings, and AntD theme alignment) for info/success/warning/error states (including status tags, alerts, and semantic surfaces). Do not introduce ad-hoc semantic colors when a semantic token exists.
+- **Accessibility/interaction**: follow established UX rules (e.g., global text selection limited to editable/text-entry contexts; consistent focus/contrast; clear validation messages).
+- **Icons and components**: use existing libraries/patterns (Lucide icons, AntD components) consistently.
+
+## 5. Internationalization (i18n)
+
+- User-facing text should use **i18n** (`t()` in React via `useI18n`, `translate()` in non-React/service contexts as appropriate).
+- Do not hardcode user-facing labels, placeholders, validation messages, toasts, titles, button text, or accessibility labels when they belong in i18n.
+- Add keys to `src/i18n/messages/en.ts` (and keep key naming structured by domain: `common.*`, `deposit.*`, `institutions.*`, `settings.*`, `errors.*`, etc.).
+- **Avoid i18n duplication**: before adding a new key, check for an existing key with the same meaning. Reuse shared keys when semantics truly match; if multiple keys have identical/similar text, prefer consolidating or propose a clear generalization (especially for `common.*` patterns).
+- Keep copy clear, consistent, and user-friendly.
+
+## 6. Data, domain, and business rules
+
+- Preserve established domain behavior unless the change request explicitly updates it.
+- **Deposits** (key conventions implemented): wizard-based create/edit, read-only detail view, ID-based linkage to Financial Institutions (`financialInstitutionId`), lifecycle/status rules (including lien/pre-closure behavior), validations (e.g., required fields, principal/rate/date constraints, nominee rules), and export/backup compatibility considerations.
+- **Financial Institutions**: category-specific fields/validation, migration/normalization for legacy data where present, and safeguards (e.g., prevent deletion when linked records exist).
+- **Backups/restore/exports**: use Tauri dialog/fs flows where applicable; keep data portable and schema-compatible; handle cancel/no-op cases gracefully.
+- When changing stored data shape, consider **backward compatibility**, normalization, migration, backup schema validation, and UI/export impacts.
+
+## 7. Testing/verification and change discipline
+
+- Run `npm run typecheck` for TypeScript changes.
+- Rust/Tauri native runtime verification (`npm run tauri:dev` / `npm run tauri:build`) may require a local Rust toolchain; if unavailable, state what was not verified.
+- Make minimal, targeted changes that fit existing patterns.
+- Do not introduce secrets, destructive behavior, or hidden data loss. For risky operations (clear/delete/restore/overwrite), follow existing confirmation/safeguard patterns.
+- Update documentation (`README.md`, and this file when conventions evolve) when behavior or workflows change.
+
+## 8. When unsure
+
+- Inspect existing implementations before adding new patterns.
+- Prefer consistency with the current codebase over novel abstractions.
+- If a rule conflicts with a new product requirement, implement the requirement clearly and update this `AGENTS.md` to reflect the new decision.

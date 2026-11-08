@@ -1,0 +1,245 @@
+import { Alert, Checkbox, DatePicker, Form, Input, InputNumber, Select } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
+import { Globe, WifiOff } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
+import { useI18n } from '../../i18n';
+import { formatINR } from '../../utils/finance';
+import { calculateDepositValues, formatDepositTenure, type DepositLifecycleStatus } from '../../utils/deposits';
+import type { DepositFormValues } from './depositFormModel';
+import DepositStatusTag from './DepositStatusTag';
+
+const DATE_MIN = dayjs('1950-01-01').startOf('day');
+const DATE_MAX = dayjs('2070-12-31').endOf('day');
+
+function isDateOutOfRange(date: Dayjs): boolean {
+  return date.isBefore(DATE_MIN, 'day') || date.isAfter(DATE_MAX, 'day');
+}
+
+function isPreClosedDateDisabled(date: Dayjs): boolean {
+  return date.isBefore(DATE_MIN, 'day') || date.isAfter(dayjs(), 'day');
+}
+
+function renderDateCell(current: string | number | Dayjs, info: { type: string; originNode: ReactNode }): ReactNode {
+  if (info.type !== 'date') return info.originNode;
+  const d = dayjs.isDayjs(current) ? current : dayjs(current);
+  if (!d.isSame(dayjs(), 'day')) return info.originNode;
+  return <div className="rounded-md ring-2 ring-folio-primary/60 dark:ring-folio-accent/70 font-semibold">{info.originNode}</div>;
+}
+
+function boldStatus(template: string, statusLabel: string): ReactNode {
+  const parts = template.split('{status}');
+  if (parts.length === 1) return template;
+  return <>{parts[0]}<strong>{statusLabel}</strong>{parts[1]}</>;
+}
+
+export default function DepositWizardStepInvestment({ activeLocked = false, terminalLocked = false, lienEditable = false, isEdit = false }: { activeLocked?: boolean; terminalLocked?: boolean; lienEditable?: boolean; isEdit?: boolean }) {
+  const { t } = useI18n();
+  const form = Form.useFormInstance<DepositFormValues>();
+  const principal = Form.useWatch('principal', form) ?? 0;
+  const interestRate = Form.useWatch('interestRate', form) ?? 0;
+  const startDate = Form.useWatch('startDate', form) as Dayjs | undefined;
+  const maturityDate = Form.useWatch('maturityDate', form) as Dayjs | undefined;
+  const compoundingFrequency = Form.useWatch('compoundingFrequency', form);
+  const cumulative = Form.useWatch('cumulativeInterest', form) ?? false;
+  const preClosed = Form.useWatch('preClosed', form) ?? false;
+  const preClosureCreditedValue = Form.useWatch('preClosureCreditedValue', form);
+  const markedAsLien = Form.useWatch('markedAsLien', form) ?? false;
+  const fullyLocked = terminalLocked;
+  const locked = fullyLocked || activeLocked;
+  const lienLocked = fullyLocked || (activeLocked && !lienEditable);
+  const required = t('validation.required');
+  const isPlanned = startDate?.isValid() ? startDate.isAfter(dayjs().startOf('day')) : false;
+  const showPreClosure = isEdit && !activeLocked && !isPlanned;
+
+  const computed = useMemo(
+    () => calculateDepositValues({
+      principal, interestRate,
+      startDate: startDate?.format('YYYY-MM-DD') ?? '',
+      maturityDate: maturityDate?.format('YYYY-MM-DD') ?? '',
+      cumulativeInterest: cumulative, compoundingFrequency,
+    }),
+    [principal, interestRate, startDate, maturityDate, cumulative, compoundingFrequency],
+  );
+  const tenure = formatDepositTenure(startDate?.format('YYYY-MM-DD'), maturityDate?.format('YYYY-MM-DD'));
+
+  const statusInfo = useMemo((): { status: DepositLifecycleStatus; message: ReactNode } | null => {
+    if (!startDate?.isValid() || !maturityDate?.isValid()) return null;
+    if (markedAsLien) {
+      const label = t('deposit.lifecycle.inLien');
+      return { status: 'in-lien', message: boldStatus(t('deposit.status.message.inLien'), label) };
+    }
+    if (isEdit && preClosed) {
+      const label = t('deposit.lifecycle.preClosed');
+      return { status: 'pre-closed', message: boldStatus(t('deposit.status.message.preClosed'), label) };
+    }
+    const today = dayjs().startOf('day');
+    if (maturityDate.isBefore(today, 'day')) {
+      const label = t('deposit.lifecycle.matured');
+      return { status: 'matured', message: boldStatus(t('deposit.status.message.matured'), label) };
+    }
+    if (startDate.isAfter(today, 'day')) {
+      const label = t('deposit.lifecycle.planned');
+      return { status: 'planned', message: boldStatus(t('deposit.status.message.planned'), label) };
+    }
+    const label = t('deposit.lifecycle.active');
+    return { status: 'active', message: boldStatus(t('deposit.status.message.active'), label) };
+  }, [startDate, maturityDate, preClosed, isEdit, markedAsLien, t]);
+
+  return (
+    <div className="grid gap-x-4 sm:grid-cols-2">
+      <Form.Item
+        label={t('deposit.fields.principal')}
+        name="principal"
+        rules={[
+          { required: true, message: required },
+          { type: 'number', min: 1000.01, message: t('deposit.validation.principalMin') },
+        ]}
+      >
+        <InputNumber
+          disabled={locked}
+          className="w-full"
+          min={0}
+          precision={2}
+          controls={false}
+          stringMode={false}
+          inputMode="decimal"
+          prefix="₹"
+          placeholder={t('deposit.placeholder.principal')}
+        />
+      </Form.Item>
+      <Form.Item
+        label={t('deposit.fields.interestRate')}
+        name="interestRate"
+        rules={[
+          { required: true, message: required },
+          { type: 'number', min: 1.0001, message: t('deposit.validation.rateMin') },
+        ]}
+      >
+        <InputNumber
+          disabled={locked}
+          className="w-full"
+          min={0}
+          max={100}
+          precision={2}
+          controls={false}
+          inputMode="decimal"
+          suffix={t('deposit.suffix.rate')}
+          placeholder={t('deposit.placeholder.rate')}
+        />
+      </Form.Item>
+      <Form.Item
+        label={t('deposit.fields.startDate')}
+        name="startDate"
+        rules={[
+          { required: true, message: required },
+          { validator: async (_, value?: Dayjs) => { if (!value || !isDateOutOfRange(value)) return; throw new Error(t('deposit.validation.dateRange')); } },
+        ]}
+      >
+        <DatePicker disabled={locked} className="w-full" format="DD MMM YYYY" disabledDate={isDateOutOfRange} cellRender={renderDateCell} />
+      </Form.Item>
+      <Form.Item
+        label={t('deposit.fields.maturityDate')}
+        name="maturityDate"
+        dependencies={['startDate']}
+        rules={[
+          { required: true, message: required },
+          { validator: async (_, value?: Dayjs) => { if (!value || !isDateOutOfRange(value)) return; throw new Error(t('deposit.validation.dateRange')); } },
+          ({ getFieldValue }) => ({
+            validator(_rule, value: Dayjs | undefined) {
+              const start = getFieldValue('startDate') as Dayjs | undefined;
+              if (!value || !start || value.isAfter(start, 'day')) return Promise.resolve();
+              return Promise.reject(new Error(t('deposit.validation.maturityAfterStart')));
+            },
+          }),
+        ]}
+      >
+        <DatePicker disabled={locked} className="w-full" format="DD MMM YYYY" disabledDate={isDateOutOfRange} cellRender={renderDateCell} />
+      </Form.Item>
+      <Form.Item label={t('deposit.fields.operationMode')} name="operationMode" initialValue="online" rules={[{ required: true, message: required }]}>
+        <Select
+          disabled={locked}
+          optionLabelProp="label"
+          options={[
+            { value: 'online', label: <span className="inline-flex items-center gap-2"><Globe size={15} className="text-sky-600 dark:text-sky-400" /><span>{t('institutions.operation.online')}</span></span> },
+            { value: 'offline', label: <span className="inline-flex items-center gap-2"><WifiOff size={15} className="text-folio-ink/55 dark:text-white/50" /><span>{t('institutions.operation.offline')}</span></span> },
+          ]}
+        />
+      </Form.Item>
+      {(tenure || statusInfo) && (
+        <Alert
+          className="folio-message-strip folio-message-strip-info sm:col-span-2 -mt-1 mb-2"
+          showIcon type="info"
+          title={
+            <div className="space-y-0.5">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                {tenure && <span><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.tenure')}: </span><span className="font-mono font-semibold tabular-nums">{tenure}</span></span>}
+                {statusInfo && <span className="inline-flex items-center gap-1.5"><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.lifecycle')}:</span><DepositStatusTag status={statusInfo.status} /></span>}
+              </div>
+              {statusInfo && <div className="text-[11px] text-folio-ink/60 dark:text-white/55">{statusInfo.message}</div>}
+            </div>
+          }
+        />
+      )}
+      <Form.Item name="markedAsLien" valuePropName="checked" className="sm:col-span-2 mb-0">
+        <Checkbox
+          className="folio-checkbox"
+          disabled={lienLocked}
+          onChange={(e) => {
+            if (!e.target.checked) form.setFieldsValue({ lienReason: '' });
+            else void form.validateFields(['lienReason']).catch(() => undefined);
+          }}
+        >
+          {t('deposit.fields.markedAsLien')}
+        </Checkbox>
+      </Form.Item>
+      {markedAsLien && (
+        <Form.Item
+          label={t('deposit.fields.lienReason')}
+          name="lienReason"
+          className="sm:col-span-2"
+          rules={[{ required: true, whitespace: true, message: t('deposit.validation.lienReasonRequired') }]}
+        >
+          <Input disabled={lienLocked} placeholder={t('deposit.placeholder.lienReason')} maxLength={200} />
+        </Form.Item>
+      )}
+      {showPreClosure && (
+        <Form.Item name="preClosed" valuePropName="checked" className="sm:col-span-2 mt-1 mb-0">
+          <Checkbox
+            className="folio-checkbox"
+            disabled={fullyLocked || activeLocked}
+            onChange={(e) => {
+              if (e.target.checked && !form.getFieldValue('preClosedDate')) form.setFieldsValue({ preClosedDate: dayjs() });
+              if (!e.target.checked) form.setFieldsValue({ preClosedDate: undefined, preClosureCreditedValue: undefined });
+            }}
+          >{t('deposit.fields.preClosed')}</Checkbox>
+        </Form.Item>
+      )}
+      {showPreClosure && preClosed && (
+        <div className="sm:col-span-2 mt-2 rounded-xl border border-folio-ink/[0.06] bg-folio-paper/40 p-3 dark:border-white/[0.06] dark:bg-white/[0.02]">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.preClosure')}</p>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            <Form.Item
+              label={t('deposit.fields.preClosedDate')}
+              name="preClosedDate"
+              rules={[
+                { required: true, message: required },
+                { validator: async (_, value?: Dayjs) => { if (!value || !value.isAfter(dayjs(), 'day')) return; throw new Error(t('deposit.validation.preClosedDateNotFuture')); } },
+              ]}
+            >
+              <DatePicker disabled={fullyLocked || activeLocked} className="w-full" format="DD MMM YYYY" disabledDate={isPreClosedDateDisabled} cellRender={renderDateCell} />
+            </Form.Item>
+            <Form.Item label={t('deposit.fields.creditedValue')} name="preClosureCreditedValue" rules={[{ required: true, message: required }]}><InputNumber disabled={fullyLocked || activeLocked} className="w-full" min={0} precision={2} prefix="₹" placeholder={t('deposit.placeholder.creditedValue')} /></Form.Item>
+          </div>
+          {Number.isFinite(preClosureCreditedValue) && (
+            <Alert className="folio-message-strip folio-message-strip-warning mt-1" showIcon type="warning" title={
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.loss')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(Math.max(0, computed.realizedValue - (preClosureCreditedValue ?? 0)), { decimals: 2 })}</span></span>
+                {computed.realizedValue - (preClosureCreditedValue ?? 0) < 0 && <span className="text-[11px] text-emerald-700 dark:text-emerald-400">{t('deposit.preClosure.noLoss')}</span>}
+              </div>
+            } />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
