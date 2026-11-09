@@ -31,3 +31,7 @@ data/
 # Tauri
 src-tauri/target/
 src-tauri/gen/
+
+# Local implementation plans (not committed)
+plans/
+
