@@ -13,7 +13,7 @@ export default defineConfig({
     target: process.env.TAURI_ENV_PLATFORM
       ? process.env.TAURI_ENV_PLATFORM === 'windows'
         ? 'chrome105'
-        : 'safari13'
+        : 'safari15'
       : 'es2022',
     minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,

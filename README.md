@@ -10,11 +10,10 @@
 ## Table of Contents
 
 - [Project Description](#project-description)
-- [Modules / What’s inside](#modules--whats-inside)
-- [Planned Features](#planned-features)
-- [To-do](#to-do)
 - [Installation & Setup](#installation--setup)
 - [Usage Examples](#usage-examples)
+- [Modules / What’s inside](#modules--whats-inside)
+- [To-do](#to-do)
 - [Contributing & License](#contributing--license)
 
 ## Project Description
@@ -30,6 +29,98 @@
 ### How it’s built (high level)
 
 Folio is a desktop app built with modern web technologies (React and TypeScript) and packaged as a desktop application using Tauri. You don’t need to know the technical details to use it — the sections below focus on what you can do in the app.
+
+## Installation & Setup
+
+### Before you start (prerequisites)
+
+- **Node.js** — a recent version installed on your computer.
+- **Rust toolchain** (stable) — required to run or build the Folio desktop app (Tauri uses Rust behind the scenes).
+  - Install from [rustup.rs](https://rustup.rs/), then restart your terminal.
+- **Platform build tools** (for `tauri:build` / installers):
+  - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+  - **Windows**: Visual Studio C++ Build Tools (Desktop development with C++) and WebView2 Runtime (usually present on Windows 10/11)
+
+Tauri prerequisites: https://v2.tauri.app/start/prerequisites/
+
+### Get the app running locally
+
+Open a terminal in the project folder (`folio/`) and run:
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+- `npm install` downloads the app’s dependencies.
+- `npm run tauri:dev` starts the Folio desktop app in development mode.
+
+### Build the app (frontend)
+
+To create a production build of the frontend:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+### Build desktop installers (Tauri)
+
+Builds are **platform-native**: build macOS installers on macOS, and Windows installers on Windows.
+
+```bash
+npm install
+npm run typecheck
+npm run tauri:build
+```
+
+`tauri:build` runs the frontend build and produces bundled artifacts under:
+
+```text
+folio/src-tauri/target/release/bundle/
+```
+
+Typical outputs:
+- **macOS**: `bundle/dmg/*.dmg` and/or `bundle/macos/Folio.app`
+- **Windows**: `bundle/msi/*.msi` and/or `bundle/nsis/*-setup.exe` (depending on available targets/tooling)
+
+**Notes:**
+- **Windows `.msi` cannot be generated on macOS** with the standard Tauri setup. To produce Windows installers, build on a Windows machine/VM or use CI (e.g., GitHub Actions with `windows-latest` and `macos-latest` runners). Tauri pipelines: https://v2.tauri.app/distribute/pipelines/github/
+- **macOS Gatekeeper**: unsigned/unnotarized builds may show warnings for other users. For early/front-runner testing they can right-click → **Open**; for smoother distribution use [macOS signing + notarization](https://v2.tauri.app/distribute/sign/macos/).
+- **Windows SmartScreen**: unsigned installers may warn; for wider release use [Windows signing](https://v2.tauri.app/distribute/sign/windows/).
+- Keep `version`/`identifier` aligned in `src-tauri/tauri.conf.json` (and related package metadata) before sharing builds.
+
+## Usage Examples
+
+### Start Folio on your computer
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+### Run a quick check (helpful for contributors)
+
+```bash
+npm run typecheck
+```
+
+### Build a desktop installer (current platform)
+
+```bash
+npm run tauri:build
+```
+
+Then check `src-tauri/target/release/bundle/` for the generated `.dmg` (macOS) or `.msi`/NSIS installer (Windows).
+
+### Common things you’ll do inside the app
+
+- **Add an account**: go to *Financial Institutions* and use the guided form to add a bank, wallet, issuer, or platform.
+- **Track a deposit**: open *Deposits*, create a new deposit, and follow the 4-step wizard.
+- **Export deposits**: in the *Deposits* list, use the export option to save your list as **Excel, CSV, or PDF**.
+- **Back up your data**: open *Settings → Backup & Restore* and create a local backup file.
+- **Restore from a backup**: in *Settings → Backup & Restore*, choose a backup file to restore (review prompts carefully).
+- **Adjust appearance or formats**: open *Settings* to change theme, header ticker, and regional number/date formats.
 
 ## Modules / What’s inside
 
@@ -64,9 +155,9 @@ What you can do:
 
 Manage the banks, issuers, wallets, and platforms connected to your records:
 
-- **Add and manage institutions** using a guided **3-step form**.
+- **Add and manage institutions** using a guided **3-step form**, with filters (Search, Category, Operation Mode), stats, and **Excel/CSV/PDF export**.
 - **Categories supported** include Savings Account, Current Account, Credit Card Issuer, Digital Wallet, and Investment & Brokerage Platform.
-- **View details** for each institution.
+- **View details** for each institution (including UPI QR support where applicable).
 - **Safety check before deletion** — an institution can’t be deleted if it’s linked to financial entries or deposits.
 
 ### Profile & Security
@@ -101,74 +192,16 @@ Folio’s navigation also includes areas for other parts of your portfolio (such
 - Local-first privacy (your data stays on your device)
 - Clear in-app wording, with a foundation for multiple languages
 
-## Planned Features
+## To-do
 
-These features are planned for future updates (implemented work may be in progress but not yet shown in the app):
+### Planned features
 
 - **UPI QR Generator** — generate a UPI payment QR code by entering a UPI address or mobile number, along with amount, payee name, and a note, so you can quickly share or scan payment details.
 
-## To-do
+### Upcoming improvements
 
 - **Deposit account types** — implement additional account types incrementally (currently only Fixed Deposit is enabled): Recurring Deposit, Tax Saving Deposit, and Other.
 - **Tables (resizable columns)** — add adjustable column widths in data tables (Deposits, Financial Institutions, and other tables). Users should be able to drag to increase a column’s width, with a minimum width equal to the column’s default/current width.
-
-## Installation & Setup
-
-### Before you start (prerequisites)
-
-- **Node.js** — a recent version installed on your computer.
-- **Rust toolchain** — required to run or build the Folio desktop app (Tauri uses Rust behind the scenes).
-  - If you don’t have Rust yet, install it from the official Rust website, then restart your terminal.
-
-### Get the app running locally
-
-Open a terminal in the project folder and run:
-
-```bash
-npm install
-npm run tauri:dev
-```
-
-- `npm install` downloads the app’s dependencies.
-- `npm run tauri:dev` starts the Folio desktop app in development mode.
-
-### Build the app
-
-To create a production build of the frontend:
-
-```bash
-npm run build
-```
-
-To build/package the desktop app:
-
-```bash
-npm run tauri:build
-```
-
-## Usage Examples
-
-### Start Folio on your computer
-
-```bash
-npm install
-npm run tauri:dev
-```
-
-### Run a quick check (helpful for contributors)
-
-```bash
-npm run typecheck
-```
-
-### Common things you’ll do inside the app
-
-- **Add an account**: go to *Financial Institutions* and use the guided form to add a bank, wallet, issuer, or platform.
-- **Track a deposit**: open *Deposits*, create a new deposit, and follow the 4-step wizard.
-- **Export deposits**: in the *Deposits* list, use the export option to save your list as **Excel, CSV, or PDF**.
-- **Back up your data**: open *Settings → Backup & Restore* and create a local backup file.
-- **Restore from a backup**: in *Settings → Backup & Restore*, choose a backup file to restore (review prompts carefully).
-- **Adjust appearance or formats**: open *Settings* to change theme, header ticker, and regional number/date formats.
 
 ## Contributing & License
 
