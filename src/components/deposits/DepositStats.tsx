@@ -14,9 +14,13 @@ const MATURITY_WINDOWS = [10, 15, 30, 90, 180, 365];
 export default function DepositStats({
   summary,
   deposits,
+  onMaturingClick,
+  onStatusClick,
 }: {
   summary: DepositSummary;
   deposits: DepositHolding[];
+  onMaturingClick?: (days: number) => void;
+  onStatusClick?: (status: DepositLifecycleStatus) => void;
 }) {
   const { t } = useI18n();
   const [maturityDays, setMaturityDays] = useState<number>(90);
@@ -24,6 +28,7 @@ export default function DepositStats({
   const maturingCount = useMemo(() => {
     const asOf = new Date();
     return deposits.filter((item) => {
+      if (getDepositLifecycleStatus(item) !== 'active') return false;
       const days = daysUntil(item.maturityDate, asOf);
       return Number.isFinite(days) && days >= 0 && days <= maturityDays;
     }).length;
@@ -60,16 +65,34 @@ export default function DepositStats({
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
-        label={t('deposit.stats.accounts')}
-        value={String(summary.count)}
+        label={t('deposit.stats.accountsCount', { count: summary.count })}
         icon={<Hash size={16} strokeWidth={1.6} />}
-        hint={
+        value={
           <span className="flex flex-wrap gap-1.5">
             {statusMeta.map(({ key, label }) => {
               const count = statusCounts[key] ?? 0;
               if (count === 0) return null;
               return (
-                <Tag key={key} bordered={false} style={semanticTagStyle(DEPOSIT_STATUS_SEMANTIC[key])} className="!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]">
+                <Tag
+                  key={key}
+                  bordered={false}
+                  style={semanticTagStyle(DEPOSIT_STATUS_SEMANTIC[key])}
+                  className={`!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]${onStatusClick ? ' cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                  onClick={onStatusClick ? () => onStatusClick(key) : undefined}
+                  tabIndex={onStatusClick ? 0 : undefined}
+                  role={onStatusClick ? 'button' : undefined}
+                  onKeyDown={
+                    onStatusClick
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onStatusClick(key);
+                          }
+                        }
+                      : undefined
+                  }
+                  aria-label={onStatusClick ? `${label}: ${count}` : undefined}
+                >
                   {label} - {count}
                 </Tag>
               );
@@ -90,9 +113,11 @@ export default function DepositStats({
         icon={<Percent size={16} strokeWidth={1.6} />}
       />
       <StatCard
-        label={
+        label={t('deposit.stats.maturingDeposits')}
+        value={String(maturingCount)}
+        hint={
           <span className="flex flex-wrap items-center gap-1.5">
-            <span>{t('deposit.stats.maturingInNext')}</span>
+            <span>{t('deposit.stats.inNext')}</span>
             <AutoComplete
               size="small"
               value={maturityInput}
@@ -114,10 +139,10 @@ export default function DepositStats({
             <span>{t('deposit.stats.daysSuffix')}</span>
           </span>
         }
-        value={String(maturingCount)}
-        hint={t('deposit.stats.maturingWindowHint', { days: maturityDays })}
         tone="accent"
         icon={<CalendarClock size={16} strokeWidth={1.6} />}
+        onValueClick={onMaturingClick ? () => onMaturingClick(maturityDays) : undefined}
+        valueAriaLabel={`${t('deposit.stats.maturingDeposits')} ${t('deposit.stats.inNext')} ${maturityDays} ${t('deposit.stats.daysSuffix')}`}
       />
     </div>
   );

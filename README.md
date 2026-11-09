@@ -12,6 +12,7 @@
 - [Project Description](#project-description)
 - [Modules / What’s inside](#modules--whats-inside)
 - [Planned Features](#planned-features)
+- [To-do](#to-do)
 - [Installation & Setup](#installation--setup)
 - [Usage Examples](#usage-examples)
 - [Contributing & License](#contributing--license)
@@ -47,11 +48,12 @@ A detailed area for tracking fixed and recurring-style deposits, with a guided *
 
 What you can do:
 
-- **Create, view, and edit deposits** with clear validations (for example, amount/rate/date rules and pre-closure dates that can’t be in the future).
-- **Choose account types** such as Fixed Deposit, Recurring Deposit, Tax Saving Deposit, or Other.
+- **Create, view, and edit deposits** with clear step-by-step validations (including unique deposit numbers, amount/rate/date rules, and pre-closure dates that can’t be in the future).
+- **Choose account type** (currently Fixed Deposit; other account types are planned — see [To-do](#to-do)).
+- **Set operation type** (Single, Joint, Either (or) Survivor, Former (or) Survivor) and add joint holders when applicable (up to 2), with share details and a clear primary-holder share summary.
 - **Link a deposit to an eligible Financial Institution** (Savings/Current accounts) when relevant.
 - **Track status** with clear lifecycle labels: Planned, Active, Matured, Pre-closed, and In Lien (shown with easy-to-read coloring).
-- **Set mode of operation** (Online or Offline).
+- **Set mode of operation** (Online or Offline) and capture **PAN linked** / **tax exempt** details with helpful warnings where relevant.
 - **Mark a lien** when needed, with a required reason.
 - **Add nominees** (optional) — names must be unique, and when you use nominees, total share must add up to 100%. Folio can suggest nominees you’ve used before.
 - **Handle maturity and rollover options**, plus pre-closure details (editing rules may depend on the deposit’s status).
@@ -104,6 +106,10 @@ Folio’s navigation also includes areas for other parts of your portfolio (such
 These features are planned for future updates (implemented work may be in progress but not yet shown in the app):
 
 - **UPI QR Generator** — generate a UPI payment QR code by entering a UPI address or mobile number, along with amount, payee name, and a note, so you can quickly share or scan payment details.
+
+## To-do
+
+- **Deposit account types** — implement additional account types incrementally (currently only Fixed Deposit is enabled): Recurring Deposit, Tax Saving Deposit, and Other.
 
 ## Installation & Setup
 

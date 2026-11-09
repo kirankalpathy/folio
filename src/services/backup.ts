@@ -2,7 +2,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import type { ApplicationBackupSchema, BackupRecordCounts, FinancialInstitution, RestoreResult } from '../types';
 import { parseBackup } from '../utils/backupSchema';
-import { allRecords, clearTableSilent, putRecordSilent, withTransaction } from './sqlite';
+import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
 
 const FINANCIAL_TABLES = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
 const ALL_TABLES = [...FINANCIAL_TABLES, 'profile', 'credentials'] as const;
@@ -57,22 +57,62 @@ export function serializeBackup(backup: ApplicationBackupSchema): string {
   return JSON.stringify(backup, null, 2);
 }
 
+function errorDetails(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === 'string') return error;
+  try { return JSON.stringify(error); } catch { return String(error); }
+}
+
+function isDatabaseLockedError(error: unknown): boolean {
+  const msg = errorDetails(error);
+  return /database is locked|SQLITE_BUSY|database is busy|code\s*[:=]?\s*5\b/i.test(msg);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   const parsed = typeof source === 'string' ? JSON.parse(source) : source;
+  // Validate the entire file first; only import when fully valid (no mid-way import).
   const backup = parseBackup(parsed);
   const counts = countRecords(backup);
   const institutions = backup.data.financialInstitutions ?? [];
-  await withTransaction(async (db) => {
-    for (const table of FINANCIAL_TABLES) await clearTableSilent(db, table);
-    for (const row of backup.data.stocks) await putRecordSilent(db, 'stocks', row.id, row, { updatedAt: row.updatedAt });
-    for (const row of backup.data.bonds) await putRecordSilent(db, 'bonds', row.id, row, { updatedAt: row.updatedAt });
-    for (const row of backup.data.pfAccounts) await putRecordSilent(db, 'pfAccounts', row.id, row, { updatedAt: row.updatedAt });
-    for (const row of backup.data.deposits) await putRecordSilent(db, 'deposits', row.id, row, { maturityDate: row.maturityDate, updatedAt: row.updatedAt });
-    for (const row of backup.data.commodities) await putRecordSilent(db, 'commodities', row.id, row, { updatedAt: row.updatedAt });
-    for (const row of backup.data.debts) await putRecordSilent(db, 'debts', row.id, row, { updatedAt: row.updatedAt });
-    for (const row of institutions) await putRecordSilent(db, 'financialInstitutions', row.id, row, { updatedAt: row.updatedAt });
-  });
-  return { counts, total: totalRecords(counts) };
+
+  const maxAttempts = 6;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await withTransaction(async (db) => {
+        try { await db.execute('PRAGMA busy_timeout = 8000'); } catch { /* ignore */ }
+        for (const table of FINANCIAL_TABLES) await clearTableSilent(db, table);
+        await bulkPutRecordsSilent(db, 'stocks', backup.data.stocks);
+        await bulkPutRecordsSilent(db, 'bonds', backup.data.bonds);
+        await bulkPutRecordsSilent(db, 'pfAccounts', backup.data.pfAccounts);
+        await bulkPutRecordsSilent(db, 'deposits', backup.data.deposits);
+        await bulkPutRecordsSilent(db, 'commodities', backup.data.commodities);
+        await bulkPutRecordsSilent(db, 'debts', backup.data.debts);
+        await bulkPutRecordsSilent(db, 'financialInstitutions', institutions);
+      });
+      console.info('[folio/backup] restore complete', { counts, institutions: institutions.length, attempt });
+      return { counts, total: totalRecords(counts) };
+    } catch (error) {
+      lastError = error;
+      console.warn('[folio/backup] restore attempt failed', { attempt, maxAttempts, locked: isDatabaseLockedError(error), error: errorDetails(error) });
+      if (isDatabaseLockedError(error) && attempt < maxAttempts) {
+        await delay(350 * attempt);
+        continue;
+      }
+      if (isDatabaseLockedError(error)) {
+        throw new Error(
+          `Database is busy/locked after ${maxAttempts} attempts. Close other Folio windows or processes using folio.db, fully restart the app, then try again. (${errorDetails(error)})`,
+        );
+      }
+      throw error instanceof Error ? error : new Error(errorDetails(error));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Could not restore that backup.');
 }
 
 export async function clearFinancialRecords(): Promise<void> {

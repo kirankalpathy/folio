@@ -2,6 +2,7 @@ import { isTauri } from '@tauri-apps/api/core';
 import type { PortfolioSnapshot } from '../types';
 import {
   allRecords as allRecordsTauri,
+  bulkPutRecordsSilent as bulkPutRecordsSilentTauri,
   clearTableSilent as clearTableSilentTauri,
   deleteRecord as deleteRecordTauri,
   getDb as getDbTauri,
@@ -65,6 +66,10 @@ export async function putRecordSilent(db: SqliteDb, table: string, id: string, d
 
 export async function clearTableSilent(db: SqliteDb, table: string): Promise<void> {
   return clearTableSilentTauri(db, table);
+}
+
+export async function bulkPutRecordsSilent(db: SqliteDb, table: string, rows: unknown[]): Promise<void> {
+  return bulkPutRecordsSilentTauri(db, table, rows);
 }
 
 export async function resetLocalLedgerData(): Promise<void> {

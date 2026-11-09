@@ -15,7 +15,28 @@ export interface SqliteDb {
 
 type TableName = 'stocks' | 'bonds' | 'pfAccounts' | 'deposits' | 'commodities' | 'debts' | 'profile' | 'credentials' | 'financialInstitutions';
 const DATA_TABLES: TableName[] = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'profile', 'credentials', 'financialInstitutions'];
-let dbPromise: Promise<SqliteDb> | null = null;
+type FolioSqliteGlobal = typeof globalThis & {
+  __folioDbPromise?: Promise<SqliteDb> | null;
+  __folioTxQueue?: Promise<void>;
+};
+const g = globalThis as FolioSqliteGlobal;
+let dbPromise: Promise<SqliteDb> | null = g.__folioDbPromise ?? null;
+let txQueue: Promise<void> = g.__folioTxQueue ?? Promise.resolve();
+
+function setDbPromise(value: Promise<SqliteDb> | null): void {
+  dbPromise = value;
+  g.__folioDbPromise = value;
+}
+function setTxQueue(value: Promise<void>): void {
+  txQueue = value;
+  g.__folioTxQueue = value;
+}
+
+function runSerialized<T>(fn: () => Promise<T>): Promise<T> {
+  const next = txQueue.then(fn, fn);
+  setTxQueue(next.then(() => undefined, () => undefined));
+  return next;
+}
 
 function parseJson<T>(value: SqlValue | undefined): T | null {
   if (typeof value !== 'string') return null;
@@ -31,11 +52,14 @@ async function openDb(): Promise<SqliteDb> {
 }
 
 export function getDb(): Promise<SqliteDb> {
-  if (!dbPromise) dbPromise = openDb().catch((e) => { dbPromise = null; throw e; });
-  return dbPromise;
+  if (!dbPromise) setDbPromise(openDb().catch((e) => { setDbPromise(null); throw e; }));
+  return dbPromise!;
 }
 
 async function initSchema(db: SqliteDb): Promise<void> {
+  try { await db.execute('PRAGMA busy_timeout = 8000'); } catch { /* ignore if unsupported */ }
+  try { await db.execute('PRAGMA journal_mode = WAL'); } catch { /* ignore if unsupported */ }
+  try { await db.execute('PRAGMA synchronous = NORMAL'); } catch { /* ignore if unsupported */ }
   await db.execute(`CREATE TABLE IF NOT EXISTS stocks (id TEXT PRIMARY KEY, updatedAt TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS bonds (id TEXT PRIMARY KEY, updatedAt TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS pfAccounts (id TEXT PRIMARY KEY, updatedAt TEXT, data TEXT NOT NULL)`);
@@ -106,25 +130,57 @@ async function migrateFromDexieIfNeeded(db: SqliteDb): Promise<void> {
 }
 
 export async function allRecords<T>(table: string, orderBy?: string): Promise<T[]> {
-  const db = await getDb();
-  const sql = orderBy ? `SELECT data FROM ${table} ORDER BY ${orderBy} ASC` : `SELECT data FROM ${table}`;
-  const rows = await db.select<{ data: string }>(sql);
-  return rows.map((r) => parseJson<T>(r.data)).filter((v): v is T => v !== null);
+  return runSerialized(async () => {
+    const db = await getDb();
+    const sql = orderBy ? `SELECT data FROM ${table} ORDER BY ${orderBy} ASC` : `SELECT data FROM ${table}`;
+    const rows = await db.select<{ data: string }>(sql);
+    return rows.map((r) => parseJson<T>(r.data)).filter((v): v is T => v !== null);
+  });
 }
 export async function getRecord<T>(table: string, id: string): Promise<T | null> {
-  const db = await getDb();
-  const rows = await db.select<{ data: string }>(`SELECT data FROM ${table} WHERE id = $1 LIMIT 1`, [id]);
-  return parseJson<T>(rows[0]?.data);
+  return runSerialized(async () => {
+    const db = await getDb();
+    const rows = await db.select<{ data: string }>(`SELECT data FROM ${table} WHERE id = $1 LIMIT 1`, [id]);
+    return parseJson<T>(rows[0]?.data);
+  });
 }
 export async function putRecord(table: string, id: string, data: unknown, extra?: Record<string, SqlValue>): Promise<void> {
-  const db = await getDb(); await putJson(db, table, id, data, extra); emitDbChange();
+  return runSerialized(async () => {
+    const db = await getDb();
+    await putJson(db, table, id, data, extra);
+    emitDbChange();
+  });
 }
 export async function deleteRecord(table: string, id: string): Promise<void> {
-  const db = await getDb(); await db.execute(`DELETE FROM ${table} WHERE id = $1`, [id]); emitDbChange();
+  return runSerialized(async () => {
+    const db = await getDb();
+    await db.execute(`DELETE FROM ${table} WHERE id = $1`, [id]);
+    emitDbChange();
+  });
 }
 export async function withTransaction(fn: (db: SqliteDb) => void | Promise<void>): Promise<void> {
-  const db = await getDb(); await db.execute('BEGIN');
-  try { await fn(db); await db.execute('COMMIT'); emitDbChange(); } catch (e) { try { await db.execute('ROLLBACK'); } catch { /* ignore */ } throw e; }
+  return runSerialized(async () => {
+    const db = await getDb();
+    try {
+      await db.execute('BEGIN IMMEDIATE');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e ?? '');
+      if (/within a transaction/i.test(msg)) {
+        try { await db.execute('ROLLBACK'); } catch { /* ignore */ }
+        await db.execute('BEGIN IMMEDIATE');
+      } else {
+        throw e;
+      }
+    }
+    try {
+      await fn(db);
+      await db.execute('COMMIT');
+      emitDbChange();
+    } catch (e) {
+      try { await db.execute('ROLLBACK'); } catch { /* ignore */ }
+      throw e;
+    }
+  });
 }
 export async function loadPortfolioSnapshotSqlite(): Promise<PortfolioSnapshot> {
   const [stocks, bonds, pfAccounts, deposits, commodities, debts] = await Promise.all([
@@ -136,10 +192,40 @@ export async function loadPortfolioSnapshotSqlite(): Promise<PortfolioSnapshot> 
 export async function putRecordSilent(db: SqliteDb, table: string, id: string, data: unknown, extra?: Record<string, SqlValue>): Promise<void> { await putJson(db, table, id, data, extra); }
 export async function clearTableSilent(db: SqliteDb, table: string): Promise<void> { await db.execute(`DELETE FROM ${table}`); }
 
+export async function bulkPutRecordsSilent(db: SqliteDb, table: string, rows: unknown[]): Promise<void> {
+  if (rows.length === 0) return;
+  const json = JSON.stringify(rows);
+  if (table === 'deposits') {
+    await db.execute(
+      `INSERT OR REPLACE INTO deposits (id, maturityDate, updatedAt, data)
+       SELECT json_extract(value, '$.id'), json_extract(value, '$.maturityDate'), json_extract(value, '$.updatedAt'), value
+       FROM json_each($1)`,
+      [json],
+    );
+    return;
+  }
+  if (table === 'profile' || table === 'credentials' || table === 'settings') {
+    await db.execute(
+      `INSERT OR REPLACE INTO ${table} (id, data)
+       SELECT json_extract(value, '$.id'), value
+       FROM json_each($1)`,
+      [json],
+    );
+    return;
+  }
+  await db.execute(
+    `INSERT OR REPLACE INTO ${table} (id, updatedAt, data)
+     SELECT json_extract(value, '$.id'), json_extract(value, '$.updatedAt'), value
+     FROM json_each($1)`,
+    [json],
+  );
+}
+
 export async function resetLocalLedgerData(): Promise<void> {
   const db = await getDb();
   for (const t of DATA_TABLES) await db.execute(`DELETE FROM ${t}`);
   try { sessionStorage.clear(); } catch { /* ignore */ }
   try { await new Promise<void>((resolve) => { const req = indexedDB.deleteDatabase(DEXIE_NAME); req.onsuccess = () => resolve(); req.onerror = () => resolve(); req.onblocked = () => resolve(); }); } catch { /* ignore */ }
-  dbPromise = null;
+  setDbPromise(null);
+  setTxQueue(Promise.resolve());
 }

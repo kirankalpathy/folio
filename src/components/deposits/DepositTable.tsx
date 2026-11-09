@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import type { TableProps } from 'antd';
-import { Table } from 'antd';
+import { AutoComplete, Table } from 'antd';
 import type { DepositHolding } from '../../types';
 import { daysUntil, formatDate } from '../../utils/date';
 import { calculateReturnsPercentage, formatINR, formatPercent } from '../../utils/finance';
@@ -40,6 +41,35 @@ export default function DepositTable({
   const totalPrincipal = deposits.reduce((sum, d) => sum + (d.principal || 0), 0);
   const totalCurrentValue = deposits.reduce((sum, d) => sum + (d.currentValue || 0), 0);
   const weightedRate = totalPrincipal > 0 ? deposits.reduce((sum, d) => sum + (d.principal || 0) * (d.interestRate || 0), 0) / totalPrincipal : 0;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [pageSizeInput, setPageSizeInput] = useState('10');
+  const pageSizeOptions = [5, 10, 15, 20, 25, 30, 50, 100].map((n) => ({ value: String(n), label: String(n) }));
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deposits]);
+
+  useEffect(() => {
+    setPageSizeInput(String(pageSize));
+  }, [pageSize]);
+
+  const commitPageSize = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      setPageSizeInput(String(pageSize));
+      return;
+    }
+    const n = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(n) || n < 1) {
+      setPageSizeInput(String(pageSize));
+      return;
+    }
+    const clamped = Math.min(100, n);
+    setPageSize(clamped);
+    setPageSizeInput(String(clamped));
+    setCurrentPage(1);
+  };
   const columns: TableProps<DepositHolding>['columns'] = [
     {
       title: t('deposit.table.deposit'),
@@ -150,7 +180,43 @@ export default function DepositTable({
       columns={columns}
       dataSource={deposits}
       loading={loading}
-      pagination={false}
+      pagination={{
+        current: currentPage,
+        pageSize,
+        showSizeChanger: false,
+        align: 'center',
+        showTotal: (total, range) => (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-folio-ink/55 dark:text-white/50">
+              <AutoComplete
+                size="small"
+                value={pageSizeInput}
+                options={pageSizeOptions}
+                onSelect={(value) => commitPageSize(value)}
+                onChange={(value) => setPageSizeInput(value.replace(/[^\d]/g, ''))}
+                onBlur={() => commitPageSize(pageSizeInput)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitPageSize(pageSizeInput);
+                    (e.currentTarget as HTMLElement).blur();
+                  }
+                }}
+                style={{ width: 64 }}
+                popupMatchSelectWidth={64}
+                filterOption={(input, option) => (option?.value ?? '').includes(input)}
+              />
+              <span>items</span>
+            </span>
+            <span className="text-[12px] text-folio-ink/55 dark:text-white/50">
+              {total > 0 ? `${range[0]}-${range[1]} of ${total}` : `0 of ${total}`}
+            </span>
+          </>
+        ),
+        onChange: (page) => {
+          setCurrentPage(page);
+        },
+      }}
       size="middle"
       scroll={{ x: 860 }}
       showSorterTooltip={{ title: t('deposit.table.sortTip') }}

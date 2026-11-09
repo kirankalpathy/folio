@@ -4,7 +4,9 @@ import type {
   CompoundingFrequency,
   DepositHolding,
   DepositInput,
+  DepositJointHolder,
   DepositNominee,
+  DepositOperationType,
   DepositPayoutFrequency,
   DepositRollover,
   DepositType,
@@ -19,13 +21,20 @@ export interface DepositNomineeFormValue {
   share: number;
 }
 
+export interface DepositJointHolderFormValue {
+  name: string;
+  dateOfBirth?: Dayjs;
+  share?: number;
+}
+
 export interface DepositFormValues {
   depositNumber: string;
   name: string;
   financialInstitutionId?: string;
   bankName: string;
-  accountNumber?: string;
   accountType: DepositType;
+  operationType: DepositOperationType;
+  jointHolders: DepositJointHolderFormValue[];
   principal: number;
   interestRate: number;
   compoundingFrequency: CompoundingFrequency;
@@ -33,6 +42,8 @@ export interface DepositFormValues {
   payoutFrequency: DepositPayoutFrequency;
   rollover: DepositRollover;
   operationMode: OperationMode;
+  isPanLinked: boolean;
+  isTaxExempt: boolean;
   markedAsLien: boolean;
   lienReason?: string;
   preClosed: boolean;
@@ -46,9 +57,10 @@ export interface DepositFormValues {
 
 export const ACCOUNT_OPTIONS: Array<{ value: DepositType; label: MessageKey }> = [
   { value: 'fd', label: 'deposit.account.fd' },
-  { value: 'rd', label: 'deposit.account.rd' },
-  { value: 'tax-saving', label: 'deposit.account.taxSaving' },
-  { value: 'other', label: 'deposit.account.other' },
+  // TODO: implement incrementally
+  // { value: 'rd', label: 'deposit.account.rd' },
+  // { value: 'tax-saving', label: 'deposit.account.taxSaving' },
+  // { value: 'other', label: 'deposit.account.other' },
 ];
 
 export const FREQUENCY_OPTIONS: Array<{
@@ -82,6 +94,41 @@ export const NOMINEE_RELATIONSHIP_OPTIONS: Array<{ value: NomineeRelationship; l
   { value: 'other', label: 'deposit.relationship.other' },
 ];
 
+export const OPERATION_TYPE_OPTIONS: Array<{ value: DepositOperationType; label: MessageKey }> = [
+  { value: 'single', label: 'deposit.operationType.single' },
+  { value: 'joint', label: 'deposit.operationType.joint' },
+  { value: 'either-or-survivor', label: 'deposit.operationType.eitherOrSurvivor' },
+  { value: 'former-or-survivor', label: 'deposit.operationType.formerOrSurvivor' },
+];
+
+export const newNominee = (): DepositNomineeFormValue => ({
+  name: '',
+  relationship: 'spouse',
+  share: 100,
+});
+
+export const newJointHolder = (): DepositJointHolderFormValue => ({
+  name: '',
+  share: undefined,
+});
+
+function jointHolderKey(h: Pick<DepositJointHolder, 'name'>): string {
+  return h.name.trim().toLowerCase();
+}
+
+export function buildJointHolderSuggestions(deposits: DepositHolding[], excludeId?: string): DepositJointHolder[] {
+  const byKey = new Map<string, DepositJointHolder>();
+  for (const d of deposits) {
+    if (excludeId && d.id === excludeId) continue;
+    for (const h of d.jointHolders ?? []) {
+      const key = jointHolderKey(h);
+      if (!key || byKey.has(key)) continue;
+      byKey.set(key, { name: h.name, dateOfBirth: h.dateOfBirth, share: h.share });
+    }
+  }
+  return Array.from(byKey.values());
+}
+
 export function defaultDepositValues(): DepositFormValues {
   const start = dayjs().startOf('day');
   return {
@@ -89,8 +136,9 @@ export function defaultDepositValues(): DepositFormValues {
     name: '',
     financialInstitutionId: undefined,
     bankName: '',
-    accountNumber: '',
     accountType: 'fd',
+    operationType: 'single',
+    jointHolders: [],
     principal: 0,
     interestRate: 0,
     compoundingFrequency: 'quarterly',
@@ -98,6 +146,8 @@ export function defaultDepositValues(): DepositFormValues {
     payoutFrequency: 'annual',
     rollover: 'none',
     operationMode: 'online',
+    isPanLinked: true,
+    isTaxExempt: false,
     markedAsLien: false,
     lienReason: '',
     preClosed: false,
@@ -116,8 +166,13 @@ export function toFormValues(deposit: DepositHolding): DepositFormValues {
     name: deposit.name,
     financialInstitutionId: deposit.financialInstitutionId,
     bankName: deposit.bankName,
-    accountNumber: deposit.accountNumber ?? '',
     accountType: deposit.accountType,
+    operationType: deposit.operationType ?? 'single',
+    jointHolders: (deposit.jointHolders ?? []).map((h) => ({
+      name: h.name ?? '',
+      dateOfBirth: h.dateOfBirth ? dayjs(h.dateOfBirth) : undefined,
+      share: Number.isFinite(h.share) ? h.share : undefined,
+    })),
     principal: deposit.principal,
     interestRate: deposit.interestRate,
     compoundingFrequency: deposit.compoundingFrequency ?? 'quarterly',
@@ -125,6 +180,8 @@ export function toFormValues(deposit: DepositHolding): DepositFormValues {
     payoutFrequency: deposit.payoutFrequency ?? 'annual',
     rollover: deposit.rollover ?? 'none',
     operationMode: deposit.operationMode ?? 'online',
+    isPanLinked: deposit.isPanLinked ?? true,
+    isTaxExempt: deposit.isTaxExempt ?? false,
     markedAsLien: Boolean(deposit.markedAsLien),
     lienReason: deposit.lienReason ?? '',
     preClosed: Boolean(deposit.preClosedDate),
@@ -153,15 +210,31 @@ function toNomineeInput(n: DepositNomineeFormValue): DepositNominee | null {
   };
 }
 
+function toJointHolderInput(h: DepositJointHolderFormValue): DepositJointHolder | null {
+  const name = h?.name?.trim();
+  const share = typeof h?.share === 'number' ? h.share : Number(h?.share);
+  if (!name || !h.dateOfBirth || !Number.isFinite(share)) return null;
+  return {
+    name,
+    dateOfBirth: h.dateOfBirth.format('YYYY-MM-DD'),
+    share: Math.max(0, Math.min(100, share)),
+  };
+}
+
 export function toDepositInput(values: DepositFormValues, computedCurrentValue: number): DepositInput {
   const nominees = (values.nominees ?? []).map(toNomineeInput).filter((n): n is DepositNominee => Boolean(n));
+  const operationType = values.operationType ?? 'single';
+  const jointHolders = operationType === 'single'
+    ? []
+    : (values.jointHolders ?? []).map(toJointHolderInput).filter((h): h is DepositJointHolder => Boolean(h));
   return {
-    depositNumber: values.depositNumber.trim(),
+    depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, ''),
     name: values.name.trim(),
     bankName: values.bankName.trim(),
-    accountNumber: values.accountNumber?.trim() || undefined,
     financialInstitutionId: values.financialInstitutionId || undefined,
     accountType: values.accountType,
+    operationType,
+    jointHolders: jointHolders.length ? jointHolders : undefined,
     principal: values.principal,
     currentValue: computedCurrentValue,
     interestRate: values.interestRate,
@@ -170,6 +243,8 @@ export function toDepositInput(values: DepositFormValues, computedCurrentValue: 
     payoutFrequency: values.cumulativeInterest ? undefined : values.payoutFrequency,
     rollover: values.rollover,
     operationMode: values.operationMode ?? 'online',
+    isPanLinked: Boolean(values.isPanLinked),
+    isTaxExempt: Boolean(values.isTaxExempt),
     markedAsLien: Boolean(values.markedAsLien),
     lienReason: values.markedAsLien ? (values.lienReason?.trim() || undefined) : undefined,
     preClosedDate: values.preClosed ? (values.preClosedDate?.format('YYYY-MM-DD') ?? dayjs().format('YYYY-MM-DD')) : undefined,

@@ -1,15 +1,54 @@
 import ExcelJS from 'exceljs';
+import dayjs from 'dayjs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { DepositHolding, FinancialInstitution } from '../types';
-import { daysUntil, formatDate } from '../utils/date';
+import { formatDate, getDateFormatId } from '../utils/date';
 import { calculateDepositValues, formatDepositTenure, getDepositLifecycleStatus } from '../utils/deposits';
 import { formatNumber, formatPercent, getNumberFormat } from '../utils/finance';
 import { listFinancialInstitutions } from './financialInstitutions';
 
 export type DepositExportFormat = 'xlsx' | 'csv' | 'pdf';
+
+export type PdfSemanticColor = 'info' | 'success' | 'warning' | 'error' | 'neutral';
+
+export interface DepositPdfFilterTag {
+  label: string;
+  color?: PdfSemanticColor;
+}
+
+export interface DepositPdfFilter {
+  type: 'text' | 'tags' | 'date-op';
+  label: string;
+  value?: string;
+  tags?: DepositPdfFilterTag[];
+  op?: '==' | '<>' | '<' | '>' | '<=' | '>=';
+  date?: string;
+}
+
+export interface DepositExportOptions {
+  /** Applied filters for PDF rendering. Omit or pass empty to hide the Filters section. */
+  filters?: DepositPdfFilter[];
+}
+
+const SEMANTIC_RGB: Record<PdfSemanticColor, { bg: [number, number, number]; border: [number, number, number]; text: [number, number, number] }> = {
+  info: { bg: [239, 246, 255], border: [147, 197, 253], text: [29, 78, 216] },
+  success: { bg: [240, 253, 244], border: [134, 239, 172], text: [21, 128, 61] },
+  warning: { bg: [254, 252, 232], border: [253, 224, 71], text: [161, 98, 7] },
+  error: { bg: [254, 242, 242], border: [252, 165, 165], text: [185, 28, 28] },
+  neutral: { bg: [248, 245, 242], border: [220, 210, 202], text: [72, 58, 52] },
+};
+
+const OP_RGB: Record<NonNullable<DepositPdfFilter['op']>, [number, number, number]> = {
+  '==': [2, 132, 199],
+  '<>': [217, 119, 6],
+  '<': [124, 58, 237],
+  '>': [5, 150, 105],
+  '<=': [124, 58, 237],
+  '>=': [5, 150, 105],
+};
 
 function lifecycleLabel(status: ReturnType<typeof getDepositLifecycleStatus>): string {
   switch (status) {
@@ -189,68 +228,327 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
 const STATUS_RGB: Record<string, [number, number, number]> = {
   Planned: [59, 130, 246],
   Active: [34, 197, 94],
+  'In Lien': [239, 68, 68],
   Matured: [234, 179, 8],
   'Pre-closed': [239, 68, 68],
 };
 
-async function exportPdf(deposits: DepositHolding[], byId: Map<string, FinancialInstitution>): Promise<boolean> {
+async function loadLogoDataUrl(url: string): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const svgText = await res.text();
+    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('logo load failed'));
+        image.src = objectUrl;
+      });
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return { dataUrl: canvas.toDataURL('image/png'), width: img.naturalWidth || canvas.width / scale, height: img.naturalHeight || canvas.height / scale };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch {
+    return null;
+  }
+}
+
+function exportDateTimeLabel(): string {
+  const now = dayjs();
+  return `${now.format(getDateFormatId())} - ${now.format('hh:mm:ss A')}`;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+let interFontsPromise: Promise<{ regular: string; bold: string } | null> | null = null;
+
+async function loadInterFonts(): Promise<{ regular: string; bold: string } | null> {
+  if (!interFontsPromise) {
+    interFontsPromise = (async () => {
+      try {
+        const [regRes, boldRes] = await Promise.all([
+          fetch('/fonts/inter/Inter-Regular.ttf'),
+          fetch('/fonts/inter/Inter-SemiBold.ttf'),
+        ]);
+        if (!regRes.ok || !boldRes.ok) return null;
+        const [regBuf, boldBuf] = await Promise.all([regRes.arrayBuffer(), boldRes.arrayBuffer()]);
+        return { regular: arrayBufferToBase64(regBuf), bold: arrayBufferToBase64(boldBuf) };
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return interFontsPromise;
+}
+
+async function registerInterFont(doc: jsPDF): Promise<string> {
+  const fonts = await loadInterFonts();
+  if (!fonts) return 'helvetica';
+  doc.addFileToVFS('Inter-Regular.ttf', fonts.regular);
+  doc.addFont('Inter-Regular.ttf', 'Inter', 'normal');
+  doc.addFileToVFS('Inter-SemiBold.ttf', fonts.bold);
+  doc.addFont('Inter-SemiBold.ttf', 'Inter', 'bold');
+  return 'Inter';
+}
+
+function drawRoundedRect(doc: jsPDF, x: number, y: number, w: number, h: number, r: number, fill: [number, number, number], stroke?: [number, number, number]) {
+  doc.setFillColor(...fill);
+  if (stroke) doc.setDrawColor(...stroke);
+  else doc.setDrawColor(...fill);
+  doc.setLineWidth(stroke ? 0.6 : 0);
+  // jsPDF roundedRect: (x, y, w, h, rx, ry, style)
+  doc.roundedRect(x, y, w, h, r, r, stroke ? 'FD' : 'F');
+}
+
+function drawTagPill(doc: jsPDF, font: string, text: string, x: number, yTop: number, color: PdfSemanticColor): number {
+  const c = SEMANTIC_RGB[color];
+  doc.setFont(font, 'normal');
+  doc.setFontSize(7);
+  const padX = 5;
+  const h = 14;
+  const textW = doc.getTextWidth(text);
+  const w = textW + padX * 2;
+  drawRoundedRect(doc, x, yTop, w, h, 4, c.bg, c.border);
+  doc.setTextColor(...c.text);
+  doc.text(text, x + padX, yTop + 9.5);
+  return w;
+}
+
+function drawOpBadge(doc: jsPDF, font: string, op: NonNullable<DepositPdfFilter['op']>, x: number, yTop: number): number {
+  const rgb = OP_RGB[op];
+  doc.setFont(font, 'bold');
+  doc.setFontSize(8);
+  const padX = 4;
+  const h = 14;
+  const textW = doc.getTextWidth(op);
+  const w = Math.max(18, textW + padX * 2);
+  drawRoundedRect(doc, x, yTop, w, h, 4, [255, 255, 255], rgb);
+  doc.setTextColor(...rgb);
+  doc.text(op, x + w / 2, yTop + 9.8, { align: 'center' });
+  return w;
+}
+
+async function exportPdf(
+  deposits: DepositHolding[],
+  byId: Map<string, FinancialInstitution>,
+  options?: DepositExportOptions,
+): Promise<boolean> {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  doc.setFont('helvetica', 'bold');
+  const font = await registerInterFont(doc);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const centerX = pageWidth / 2;
+  let y = 24;
+
+  const tableW = 760;
+  const marginX = Math.max(16, (pageWidth - tableW) / 2);
+  const dateTime = exportDateTimeLabel();
+  const totalPagesExp = '{total_pages_count_string}';
+
+  // Header
+  const logo = await loadLogoDataUrl('/folio-horizontal-color.svg');
+  if (logo) {
+    const targetH = 38;
+    const ratio = logo.width > 0 && logo.height > 0 ? logo.width / logo.height : 3.2;
+    const w = targetH * ratio;
+    doc.addImage(logo.dataUrl, 'PNG', centerX - w / 2, y, w, targetH);
+    y += targetH + 10;
+  } else {
+    doc.setFont(font, 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(42, 26, 20);
+    doc.text('Folio', centerX, y + 16, { align: 'center' });
+    y += 28;
+  }
+
+  doc.setFont(font, 'bold');
   doc.setFontSize(14);
   doc.setTextColor(42, 26, 20);
-  doc.text('Folio — Deposit Summary', 40, 38);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(120, 110, 105);
-  doc.text(`Exported ${new Date().toLocaleString('en-IN')} · ${deposits.length} record${deposits.length === 1 ? '' : 's'}`, 40, 54);
+  doc.text('Deposit Summary', centerX, y, { align: 'center' });
+  y += 16;
+
+  // Filters (colorful tags + icons), only when applied
+  const filters = (options?.filters ?? []).filter((f) => {
+    if (f.type === 'text') return !!f.value?.trim();
+    if (f.type === 'tags') return (f.tags?.length ?? 0) > 0;
+    return !!f.date && !!f.op;
+  });
+  if (filters.length > 0) {
+    doc.setFont(font, 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(42, 26, 20);
+    doc.text('Filters:', marginX, y);
+    y += 4;
+
+    const rowH = 18;
+    let fx = marginX;
+    let fy = y;
+    const maxX = marginX + tableW;
+    const gap = 6;
+    const groupGap = 12;
+
+    const newFilterRow = () => {
+      fx = marginX;
+      fy += rowH;
+    };
+
+    for (const f of filters) {
+      doc.setFont(font, 'bold');
+      doc.setFontSize(7.5);
+      const labelText = `${f.label}:`;
+      const labelW = doc.getTextWidth(labelText) + 4;
+      if (fx !== marginX && fx + labelW > maxX) newFilterRow();
+      doc.setTextColor(90, 80, 75);
+      doc.text(labelText, fx, fy + 10);
+      fx += labelW;
+
+      if (f.type === 'text' && f.value) {
+        const w = drawTagPill(doc, font, f.value, fx, fy, 'neutral');
+        fx += w + groupGap;
+      } else if (f.type === 'tags' && f.tags) {
+        for (const tag of f.tags) {
+          doc.setFont(font, 'normal');
+          doc.setFontSize(7);
+          const estW = doc.getTextWidth(tag.label) + 14;
+          if (fx !== marginX && fx + estW > maxX) newFilterRow();
+          const w = drawTagPill(doc, font, tag.label, fx, fy, tag.color ?? 'neutral');
+          fx += w + gap;
+        }
+        fx += groupGap - gap;
+      } else if (f.type === 'date-op' && f.op && f.date) {
+        const opW = drawOpBadge(doc, font, f.op, fx, fy);
+        fx += opW + gap;
+        const dW = drawTagPill(doc, font, f.date, fx, fy, 'neutral');
+        fx += dW + groupGap;
+      }
+    }
+    y = fy + rowH + 6;
+  }
+
+  const drawPageChrome = (data?: { pageNumber: number }) => {
+    const page = data?.pageNumber ?? (doc as unknown as { internal: { getCurrentPageInfo: () => { pageNumber: number } } }).internal.getCurrentPageInfo().pageNumber;
+    doc.setFont(font, 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(120, 110, 105);
+    // Date & time in header (right-aligned, all pages)
+    doc.text(dateTime, pageWidth - marginX, 18, { align: 'right' });
+    // Page number in footer (centered, all pages)
+    doc.text(`Page ${page} of ${totalPagesExp}`, pageWidth / 2, pageHeight - 16, { align: 'center' });
+  };
 
   const body = deposits.map((d) => {
+    const computed = calculateDepositValues({
+      principal: d.principal,
+      interestRate: d.interestRate,
+      startDate: d.startDate,
+      maturityDate: d.maturityDate,
+      cumulativeInterest: d.cumulativeInterest ?? false,
+      compoundingFrequency: d.compoundingFrequency,
+    });
     const lifecycle = lifecycleLabel(getDepositLifecycleStatus(d));
-    const days = daysUntil(d.maturityDate);
-    const maturityText = `${formatDate(d.maturityDate)}${Number.isFinite(days) ? (days < 0 ? ` (${Math.abs(days)}d past)` : days === 0 ? ' (Today)' : ` (${days}d left)`) : ''}`;
     const inst = institutionFullName(d, byId);
-    const freq = frequencyLabel(d.cumulativeInterest === false ? d.payoutFrequency : d.compoundingFrequency);
     return [
-      `${d.name}\n${accountTypeLabel(d.accountType)} · ${inst}`,
+      d.depositNumber ?? '',
+      d.name,
+      accountTypeLabel(d.accountType),
+      inst,
       lifecycle,
-      `Rs. ${formatNumber(d.principal, 0)}`,
-      `Rs. ${formatNumber(d.currentValue, 0)}`,
-      `${formatPercent(d.interestRate, 2)}${freq ? `\n${freq}` : ''}`,
-      maturityText,
+      formatNumber(d.principal, 0),
+      formatPercent(d.interestRate, 2),
+      d.startDate ? formatDate(d.startDate) : '',
+      d.maturityDate ? formatDate(d.maturityDate) : '',
+      formatNumber(d.currentValue || computed.realizedValue, 0),
     ];
   });
 
   autoTable(doc, {
-    startY: 68,
-    head: [['Deposit', 'Status', 'Principal', 'Current Value', 'Rate', 'Maturity']],
+    startY: y,
+    head: [[
+      'Deposit Number',
+      'Purpose/Name',
+      'Account Type',
+      'Bank',
+      'Status',
+      'Principal',
+      'Rate of Interest',
+      'Start Date',
+      'Maturity Date',
+      'Maturity Value',
+    ]],
     body,
     theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: { top: 4, right: 4, bottom: 4, left: 4 }, overflow: 'linebreak', textColor: [42, 26, 20], lineColor: [232, 224, 218], lineWidth: 0.5, valign: 'middle' },
-    headStyles: { fillColor: [200, 80, 45], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8, overflow: 'linebreak' },
+    styles: { font, fontSize: 7.5, cellPadding: { top: 4, right: 3, bottom: 4, left: 3 }, overflow: 'linebreak', textColor: [42, 26, 20], lineColor: [232, 224, 218], lineWidth: 0.5, valign: 'middle' },
+    headStyles: { fillColor: [200, 80, 45], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, overflow: 'linebreak', halign: 'center' },
     alternateRowStyles: { fillColor: [250, 246, 243] },
     columnStyles: {
-      0: { cellWidth: 155, overflow: 'linebreak' },
-      1: { cellWidth: 56, halign: 'center' },
-      2: { cellWidth: 132, halign: 'right', cellPadding: { top: 4, right: 4, bottom: 4, left: 2 }, fontSize: 7.5 },
-      3: { cellWidth: 136, halign: 'right', cellPadding: { top: 4, right: 4, bottom: 4, left: 2 }, fontSize: 7.5 },
-      4: { cellWidth: 76, halign: 'right' },
-      5: { cellWidth: 96, overflow: 'linebreak' },
+      0: { cellWidth: 58, overflow: 'linebreak' },  // Deposit Number
+      1: { cellWidth: 105, overflow: 'linebreak' }, // Purpose/Name
+      2: { cellWidth: 72, overflow: 'linebreak' },  // Account Type
+      3: { cellWidth: 96, overflow: 'linebreak' },  // Bank
+      4: { cellWidth: 54, halign: 'center' },       // Status
+      5: { cellWidth: 84, halign: 'right' },        // Principal (accounting: currency left, value right)
+      6: { cellWidth: 58, halign: 'right' },        // Rate of Interest
+      7: { cellWidth: 62, halign: 'center' },       // Start Date
+      8: { cellWidth: 62, halign: 'center' },       // Maturity Date
+      9: { cellWidth: 84, halign: 'right' },        // Maturity Value (accounting)
     },
-    margin: { left: 20, right: 20 },
-    tableWidth: 'wrap',
+    margin: { left: marginX, right: marginX, top: 28, bottom: 28 },
+    tableWidth: tableW,
+    didDrawPage: (data) => drawPageChrome({ pageNumber: data.pageNumber }),
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 1) {
+      if (data.section === 'body' && data.column.index === 4) {
         const status = String(data.cell.raw || '');
         const rgb = STATUS_RGB[status];
         if (rgb) {
           data.cell.styles.fillColor = rgb;
           data.cell.styles.textColor = [255, 255, 255];
           data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fontSize = 7.5;
+          data.cell.styles.fontSize = 7;
         }
+      }
+      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 9)) {
+        // Accounting style drawn in didDrawCell (currency left, value right)
+        data.cell.text = [''];
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 9)) {
+        const raw = String((data.row.raw as unknown[] | undefined)?.[data.column.index] ?? data.cell.raw ?? '');
+        if (!raw) return;
+        const { x, y: cy, width, height } = data.cell;
+        const padL = 3;
+        const padR = 3;
+        doc.setFont(font, 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(42, 26, 20);
+        const textY = cy + height / 2 + 2.5;
+        doc.text('Rs.', x + padL, textY, { align: 'left' });
+        doc.text(raw, x + width - padR, textY, { align: 'right' });
       }
     },
   });
+
+  if (typeof (doc as unknown as { putTotalPages?: (s: string) => void }).putTotalPages === 'function') {
+    (doc as unknown as { putTotalPages: (s: string) => void }).putTotalPages(totalPagesExp);
+  }
 
   const path = await save({ title: 'Export deposits', defaultPath: stampName('pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
   if (!path) return false;
@@ -259,10 +557,14 @@ async function exportPdf(deposits: DepositHolding[], byId: Map<string, Financial
   return true;
 }
 
-export async function exportDeposits(deposits: DepositHolding[], format: DepositExportFormat): Promise<boolean> {
+export async function exportDeposits(
+  deposits: DepositHolding[],
+  format: DepositExportFormat,
+  options?: DepositExportOptions,
+): Promise<boolean> {
   const institutions = await listFinancialInstitutions();
   const byId = new Map(institutions.map((fi) => [fi.id, fi]));
-  if (format === 'pdf') return exportPdf(deposits, byId);
+  if (format === 'pdf') return exportPdf(deposits, byId, options);
   const rows = buildRows(deposits, byId);
   return format === 'csv' ? exportCsv(rows) : exportXlsx(rows);
 }

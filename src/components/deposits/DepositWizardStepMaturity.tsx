@@ -1,10 +1,25 @@
 import { Alert, Checkbox, Form, Select } from 'antd';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { Dayjs } from 'dayjs';
+import { Ban, Calendar, CalendarClock, CalendarDays, CalendarRange, Coins, RefreshCw } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { formatINR } from '../../utils/finance';
 import { calculateDepositValues } from '../../utils/deposits';
 import { PAYOUT_OPTIONS, ROLLOVER_OPTIONS, type DepositFormValues } from './depositFormModel';
+import type { DepositRollover, DepositPayoutFrequency } from '../../types';
+
+const rolloverIcons: Record<DepositRollover, ReactNode> = {
+  none: <Ban size={15} className="text-folio-ink/45 dark:text-white/45" />,
+  principal: <RefreshCw size={15} className="text-sky-600 dark:text-sky-400" />,
+  'principal-interest': <Coins size={15} className="text-emerald-600 dark:text-emerald-400" />,
+};
+
+const payoutIcons: Record<DepositPayoutFrequency, ReactNode> = {
+  monthly: <CalendarDays size={15} className="text-sky-600 dark:text-sky-400" />,
+  quarterly: <CalendarClock size={15} className="text-violet-600 dark:text-violet-400" />,
+  'semi-annual': <CalendarRange size={15} className="text-amber-600 dark:text-amber-400" />,
+  annual: <Calendar size={15} className="text-emerald-600 dark:text-emerald-400" />,
+};
 
 export default function DepositWizardStepMaturity({ activeLocked = false, terminalLocked = false }: { activeLocked?: boolean; terminalLocked?: boolean }) {
   const { t } = useI18n();
@@ -35,12 +50,38 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
           <Checkbox disabled={locked} className="folio-checkbox">{t('deposit.fields.cumulativeInterest')}</Checkbox>
         </Form.Item>
 
-        <Form.Item label={t('deposit.fields.rollover')} name="rollover" rules={[{ required: true, message: required }]}>
-          <Select disabled={locked} options={ROLLOVER_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))} />
+        <Form.Item label={t('deposit.fields.rollover')} name="rollover" required rules={[{ required: true, message: required }]}>
+          <Select
+            disabled={locked}
+            optionLabelProp="label"
+            options={ROLLOVER_OPTIONS.map((o) => {
+              const text = t(o.label);
+              return {
+                value: o.value,
+                label: text,
+                search: text,
+                children: <span className="inline-flex items-center gap-2">{rolloverIcons[o.value]}<span>{text}</span></span>,
+              };
+            })}
+            optionRender={(option) => option.data.children as ReactNode}
+          />
         </Form.Item>
         {!cumulative && (
-          <Form.Item label={t('deposit.fields.payoutFrequency')} name="payoutFrequency" rules={[{ required: true, message: required }]}>
-            <Select disabled={locked} options={PAYOUT_OPTIONS.map((o) => ({ value: o.value, label: `${t(o.label)}` }))} />
+          <Form.Item label={t('deposit.fields.payoutFrequency')} name="payoutFrequency" required rules={[{ required: true, message: required }]}>
+            <Select
+              disabled={locked}
+              optionLabelProp="label"
+              options={PAYOUT_OPTIONS.map((o) => {
+                const text = t(o.label);
+                return {
+                  value: o.value,
+                  label: text,
+                  search: text,
+                  children: <span className="inline-flex items-center gap-2">{payoutIcons[o.value]}<span>{text}</span></span>,
+                };
+              })}
+              optionRender={(option) => option.data.children as ReactNode}
+            />
           </Form.Item>
         )}
       </div>

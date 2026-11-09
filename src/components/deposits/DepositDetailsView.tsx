@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Descriptions } from 'antd';
+import { Alert, Descriptions } from 'antd';
 import type { DescriptionsProps } from 'antd';
-import type { DepositHolding } from '../../types';
+import { CircleEllipsis, Landmark, Repeat, ShieldCheck, User, UserCheck, Users } from 'lucide-react';
+import type { DepositHolding, DepositOperationType, DepositType } from '../../types';
 import { useI18n, type MessageKey } from '../../i18n';
 import { formatDate } from '../../utils/date';
 import { formatINR, formatPercent } from '../../utils/finance';
@@ -9,11 +10,30 @@ import { calculateDepositValues, formatDepositTenure, getDepositLifecycleStatus 
 import DepositStatusTag from './DepositStatusTag';
 import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../../services/financialInstitutions';
-import { ACCOUNT_OPTIONS, COMPOUNDING_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, PAYOUT_OPTIONS, ROLLOVER_OPTIONS } from './depositFormModel';
+import { ACCOUNT_OPTIONS, COMPOUNDING_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, OPERATION_TYPE_OPTIONS, PAYOUT_OPTIONS, ROLLOVER_OPTIONS } from './depositFormModel';
 
 function val(v?: string | number | null): ReactNode {
   if (v === undefined || v === null || v === '') return <span className="text-folio-ink/35 dark:text-white/30">—</span>;
   return String(v);
+}
+
+function accountTypeIcon(type: DepositType): ReactNode {
+  const icons: Partial<Record<DepositType, ReactNode>> = {
+    fd: <Landmark size={15} className="text-emerald-600 dark:text-emerald-400" />,
+    rd: <Repeat size={15} className="text-sky-600 dark:text-sky-400" />,
+    'tax-saving': <ShieldCheck size={15} className="text-violet-600 dark:text-violet-400" />,
+    savings: <Landmark size={15} className="text-folio-ink/55 dark:text-white/55" />,
+    nsc: <ShieldCheck size={15} className="text-folio-ink/55 dark:text-white/55" />,
+    other: <CircleEllipsis size={15} className="text-folio-ink/55 dark:text-white/55" />,
+  };
+  return icons[type] ?? <CircleEllipsis size={15} className="text-folio-ink/55 dark:text-white/55" />;
+}
+
+function operationTypeIcon(type: DepositOperationType): ReactNode {
+  if (type === 'single') return <User size={15} className="text-folio-info dark:text-folio-info" />;
+  if (type === 'joint') return <Users size={15} className="text-folio-info dark:text-folio-info" />;
+  if (type === 'either-or-survivor') return <Users size={15} className="text-violet-600 dark:text-violet-400" />;
+  return <UserCheck size={15} className="text-emerald-600 dark:text-emerald-400" />;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -46,6 +66,8 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
   const legacyAccountKeys: Partial<Record<string, MessageKey>> = { savings: 'deposit.account.savings', nsc: 'deposit.account.nsc', 'tax-saving': 'deposit.account.taxSaving' };
   const legacyKey = legacyAccountKeys[record.accountType];
   const accountText = accountOpt ? t(accountOpt.label) : legacyKey ? t(legacyKey) : record.accountType;
+  const operationType = record.operationType ?? 'single';
+  const operationTypeLabel = OPERATION_TYPE_OPTIONS.find((o) => o.value === operationType)?.label;
   const rolloverLabel = ROLLOVER_OPTIONS.find((o) => o.value === (record.rollover ?? 'none'))?.label;
   const freqLabel = (record.cumulativeInterest === false ? PAYOUT_OPTIONS : COMPOUNDING_OPTIONS)
     .find((o) => o.value === (record.cumulativeInterest === false ? record.payoutFrequency : record.compoundingFrequency))?.label;
@@ -61,10 +83,41 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
           { key: 'depositNumber', label: t('deposit.fields.depositNumber'), children: val(record.depositNumber) },
           { key: 'name', label: t('deposit.fields.name'), children: val(record.name) },
           { key: 'institution', label: t('deposit.fields.institution'), children: val(institutionName) },
-          { key: 'accountType', label: t('deposit.fields.accountType'), children: val(accountText) },
-          { key: 'accountNumber', label: t('deposit.fields.accountNumber'), children: val(record.accountNumber) },
+          { key: 'accountType', label: t('deposit.fields.accountType'), children: <span className="inline-flex items-center gap-2">{accountTypeIcon(record.accountType)}<span>{accountText}</span></span> },
+          { key: 'operationType', label: t('deposit.fields.operationType'), children: <span className="inline-flex items-center gap-2">{operationTypeIcon(operationType)}<span>{operationTypeLabel ? t(operationTypeLabel) : operationType}</span></span> },
         ]} />
+        {operationType !== 'single' && record.jointHolders?.length ? (
+          <div className="mt-4 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.jointHolders')}</h3>
+            <div className="space-y-2">
+              {record.jointHolders.map((h, i) => (
+                <div key={`${h.name}-${i}`} className="rounded-xl border border-folio-ink/[0.07] bg-folio-paper/30 p-3 dark:border-white/[0.07] dark:bg-white/[0.02]">
+                  <Descriptions {...dp} items={[
+                    { key: 'name', label: t('deposit.fields.jointHolderName'), children: val(h.name) },
+                    { key: 'dob', label: t('deposit.fields.jointHolderDob'), children: val(h.dateOfBirth ? formatDate(h.dateOfBirth) : undefined) },
+                    { key: 'share', label: t('deposit.fields.jointHolderShare'), children: val(`${h.share}%`) },
+                  ]} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </Section>
+      {record.preClosedDate ? (
+        <Alert
+          className="folio-message-strip folio-message-strip-warning"
+          showIcon
+          type="warning"
+          title={
+            <span>
+              <span className="font-semibold">{t('deposit.fields.loss')}:</span>{' '}
+              <span className="font-mono font-semibold tabular-nums">
+                {formatINR(Math.max(0, computed.realizedValue - (record.preClosureCreditedValue ?? 0)), { decimals: 2 })}
+              </span>
+            </span>
+          }
+        />
+      ) : null}
       <Section title={t('deposit.section.investment')}>
         <Descriptions {...dp} items={[
           { key: 'principal', label: t('deposit.fields.principal'), children: val(formatINR(record.principal)) },
@@ -73,6 +126,8 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
           { key: 'maturity', label: t('deposit.fields.maturityDate'), children: val(record.maturityDate ? formatDate(record.maturityDate) : undefined) },
           { key: 'tenure', label: t('deposit.fields.tenure'), children: val(tenure) },
           { key: 'operationMode', label: t('deposit.fields.operationMode'), children: val(record.operationMode === 'offline' ? t('institutions.operation.offline') : t('institutions.operation.online')) },
+          { key: 'isPanLinked', label: t('deposit.fields.isPanLinked'), children: val(record.isPanLinked ? t('common.yes') : t('common.no')) },
+          { key: 'isTaxExempt', label: t('deposit.fields.isTaxExempt'), children: val(record.isTaxExempt ? t('common.yes') : t('common.no')) },
           { key: 'markedAsLien', label: t('deposit.fields.markedAsLien'), children: val(record.markedAsLien ? t('common.yes') : t('common.no')) },
           ...(record.markedAsLien && record.lienReason ? [{ key: 'lienReason', label: t('deposit.fields.lienReason'), children: val(record.lienReason) }] : []),
           ...(record.preClosedDate ? [

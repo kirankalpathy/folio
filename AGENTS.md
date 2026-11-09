@@ -51,6 +51,8 @@ This document summarizes the engineering and product conventions established for
 ## 4. UI/UX and design system conventions
 
 - **Consistent patterns**: match existing layout, naming, spacing, labels-above-values detail views, and wizard/list/detail patterns.
+- **Wizards (step validation)**: validate the fields in the **current step before moving to the next step**. Do not defer validation to the final submit for fields that belong to earlier steps. Show validation messages **within the same step** and prevent progression until that step’s fields are valid.
+- **Date pickers**: whenever a `DatePicker` (or date-entry field) is introduced, it **must follow the user-configured date format** (use the shared date format utilities/settings, e.g. `getDateFormatId()`/date helpers in `src/utils/date.ts`), not a hardcoded display format.
 - **Theming**: support light/dark (and system where implemented) using existing theme providers/tokens.
 - **Semantic colors**: use the semantic color system (CSS variables in `src/index.css`, Tailwind semantic mappings, and AntD theme alignment) for info/success/warning/error states (including status tags, alerts, and semantic surfaces). Do not introduce ad-hoc semantic colors when a semantic token exists.
 - **Accessibility/interaction**: follow established UX rules (e.g., global text selection limited to editable/text-entry contexts; consistent focus/contrast; clear validation messages).
@@ -71,6 +73,7 @@ This document summarizes the engineering and product conventions established for
 - **Financial Institutions**: category-specific fields/validation, migration/normalization for legacy data where present, and safeguards (e.g., prevent deletion when linked records exist).
 - **Backups/restore/exports**: use Tauri dialog/fs flows where applicable; keep data portable and schema-compatible; handle cancel/no-op cases gracefully.
 - When changing stored data shape, consider **backward compatibility**, normalization, migration, backup schema validation, and UI/export impacts.
+- **Schema/backup discipline**: whenever fields/record structure change for persisted domain data, **update the backup schema validation** (`src/utils/backupSchema.ts` and related types/rules) and **update backup/restore engines** (`src/services/backup.ts` and any normalization/migration paths) accordingly. **Ensure backup/restore functionality is not broken** (validate end-to-end behavior for affected data). Keep legacy backups restorable where practical (optional/tolerant validation, safe defaults/normalization).
 
 ## 7. Testing/verification and change discipline
 

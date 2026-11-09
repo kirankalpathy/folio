@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Button, Form, Input, InputNumber, Segmented, Select, Steps } from 'antd';
-import { ArrowLeft, ArrowRight, Building2, CreditCard, Landmark, LineChart, MapPin, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, CopyCheck, CreditCard, Landmark, LineChart, MapPin, Users, Wallet } from 'lucide-react';
 import type { CardNetwork, FinancialInstitution, FinancialInstitutionCategory, FinancialInstitutionInput, InvestmentSegment } from '../../types';
 import { useI18n } from '../../i18n';
+import { listFinancialInstitutions } from '../../services/financialInstitutions';
 import { UPI_ID_REGEX } from '../../utils/upi';
 import {
   defaultInstitutionValues,
@@ -137,7 +138,22 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
       <Form<InstitutionWizardValues> form={form} layout="vertical" requiredMark initialValues={defaultInstitutionValues()} autoComplete="off">
         <div style={{ display: step === 0 ? 'block' : 'none' }}>
           <div className="grid gap-x-4 sm:grid-cols-2">
-            <Form.Item label={t('institutions.fields.name')} name="name" rules={[{ required: true, whitespace: true, message: t('institutions.validation.nameRequired') }]}>
+            <Form.Item
+              label={t('institutions.fields.name')}
+              name="name"
+              rules={[
+                { required: true, whitespace: true, message: t('institutions.validation.nameRequired') },
+                {
+                  validator: async (_, value: string) => {
+                    const name = (value ?? '').trim().toLowerCase();
+                    if (!name) return;
+                    const all = await listFinancialInstitutions();
+                    const dup = all.some((fi) => fi.id !== institution?.id && (fi.name ?? '').trim().toLowerCase() === name);
+                    if (dup) throw new Error(t('institutions.validation.nameDuplicate'));
+                  },
+                },
+              ]}
+            >
               <Input placeholder={t('institutions.placeholder.name')} />
             </Form.Item>
             <Form.Item label={t('institutions.fields.category')} name="category" rules={[{ required: true, message: t('institutions.validation.categoryRequired') }]}>
@@ -263,6 +279,7 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
               <Form.Item label={t('institutions.fields.segments')} name="segments" className="sm:col-span-2" rules={[{ required: true, type: 'array', min: 1, message: t('institutions.validation.segmentsRequired') }]}>
                 <Select
                   mode="multiple"
+                  suffixIcon={<CopyCheck size={14} className="text-folio-ink/40 dark:text-white/35" />}
                   placeholder={t('institutions.validation.segmentsRequired')}
                   options={(['cash-equity-mf', 'equity-fo', 'commodities', 'debt'] as InvestmentSegment[]).map((s) => ({
                     value: s,

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Form, Steps } from 'antd';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useI18n } from '../../i18n';
@@ -26,6 +26,7 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const [step, setStep] = useState<DepositWizardStep>(0);
   const [showError, setShowError] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const stepItems = useMemo(() => ([
     { title: t('deposit.section.overview') },
@@ -36,10 +37,32 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  useEffect(() => {
+    const container = stepRefs.current[step];
+    if (!container) return;
+    const id = window.requestAnimationFrame(() => {
+      const focusable = container.querySelector<HTMLElement>(
+        'input:not([type="checkbox"]):not([type="radio"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"])'
+      );
+      focusable?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [step]);
+
   const goNext = async () => {
     setShowError(false);
     try {
-      await form.validateFields(depositStepFields(step));
+      const fields: Array<string | number | (string | number)[]> = [...depositStepFields(step)];
+      if (step === 0) {
+        const op = form.getFieldValue('operationType');
+        if (op && op !== 'single') {
+          const holders = (form.getFieldValue('jointHolders') ?? []) as unknown[];
+          for (let i = 0; i < holders.length; i++) {
+            fields.push(['jointHolders', i, 'name'], ['jointHolders', i, 'dateOfBirth'], ['jointHolders', i, 'share']);
+          }
+        }
+      }
+      await form.validateFields(fields);
       setStep((s) => (Math.min(3, s + 1) as DepositWizardStep));
       scrollTop();
     } catch {
@@ -85,10 +108,10 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
         }}
       />
       {showError && <Alert type="error" showIcon title={t('deposit.validation.resolveErrors')} className="mb-4" />}
-      <div style={{ display: step === 0 ? 'block' : 'none' }}><DepositWizardStepOverview activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
-      <div style={{ display: step === 1 ? 'block' : 'none' }}><DepositWizardStepInvestment activeLocked={activeLocked} terminalLocked={terminalLocked} lienEditable={lienEditable} isEdit={isEdit} /></div>
-      <div style={{ display: step === 2 ? 'block' : 'none' }}><DepositWizardStepMaturity activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
-      <div style={{ display: step === 3 ? 'block' : 'none' }}><DepositWizardStepAdditional activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
+      <div ref={(el) => { stepRefs.current[0] = el; }} style={{ display: step === 0 ? 'block' : 'none' }}><DepositWizardStepOverview activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
+      <div ref={(el) => { stepRefs.current[1] = el; }} style={{ display: step === 1 ? 'block' : 'none' }}><DepositWizardStepInvestment activeLocked={activeLocked} terminalLocked={terminalLocked} lienEditable={lienEditable} isEdit={isEdit} /></div>
+      <div ref={(el) => { stepRefs.current[2] = el; }} style={{ display: step === 2 ? 'block' : 'none' }}><DepositWizardStepMaturity activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
+      <div ref={(el) => { stepRefs.current[3] = el; }} style={{ display: step === 3 ? 'block' : 'none' }}><DepositWizardStepAdditional activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
 
       {!terminalLocked && (
         <div className="mt-5 flex items-center justify-between gap-2 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">

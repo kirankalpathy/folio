@@ -2,7 +2,11 @@ import type { ApplicationBackupSchema } from '../types';
 import { translate } from '../i18n';
 
 type FieldKind = 'string' | 'number' | 'date' | 'boolean';
-type FieldRule = readonly [key: string, kind: FieldKind, extra?: 'optional' | readonly string[]];
+type FieldExtra =
+  | 'optional'
+  | readonly string[]
+  | { optional?: boolean; enum?: readonly string[] };
+type FieldRule = readonly [key: string, kind: FieldKind, extra?: FieldExtra];
 
 const EXCHANGES = ['NSE', 'BSE', 'NASDAQ', 'NYSE', 'OTHER'] as const;
 const STOCK_INSTRUMENTS = ['equity', 'etf', 'reit', 'invit'] as const;
@@ -11,6 +15,10 @@ const COUPON_FREQUENCIES = ['annual', 'semi-annual', 'quarterly', 'monthly', 'ze
 const PF_TYPES = ['EPF', 'PPF', 'VPF', 'NPS', 'OTHER'] as const;
 const DEPOSIT_TYPES = ['fd', 'rd', 'tax-saving', 'savings', 'nsc', 'other'] as const;
 const COMPOUNDING = ['annual', 'semi-annual', 'quarterly', 'monthly'] as const;
+const PAYOUT_FREQUENCIES = COMPOUNDING;
+const ROLLOVERS = ['none', 'principal', 'principal-interest'] as const;
+const OPERATION_MODES = ['online', 'offline'] as const;
+const DEPOSIT_OPERATION_TYPES = ['single', 'joint', 'either-or-survivor', 'former-or-survivor'] as const;
 const COMMODITY_FORMS = ['physical', 'etf', 'sgb', 'digital'] as const;
 const COMMODITY_UNITS = ['gram', 'kilogram', 'ounce', 'unit'] as const;
 const DEBT_TYPES = [
@@ -82,11 +90,14 @@ const DEPOSIT_FIELDS: FieldRule[] = [
   ['principal', 'number'],
   ['currentValue', 'number'],
   ['interestRate', 'number'],
-  ['compoundingFrequency', 'string', COMPOUNDING],
+  ['compoundingFrequency', 'string', { optional: true, enum: COMPOUNDING }],
   ['cumulativeInterest', 'boolean', 'optional'],
-  ['payoutFrequency', 'string', 'optional'],
-  ['rollover', 'string', 'optional'],
-  ['operationMode', 'string', 'optional'],
+  ['payoutFrequency', 'string', { optional: true, enum: PAYOUT_FREQUENCIES }],
+  ['rollover', 'string', { optional: true, enum: ROLLOVERS }],
+  ['operationMode', 'string', { optional: true, enum: OPERATION_MODES }],
+  ['operationType', 'string', { optional: true, enum: DEPOSIT_OPERATION_TYPES }],
+  ['isPanLinked', 'boolean', 'optional'],
+  ['isTaxExempt', 'boolean', 'optional'],
   ['markedAsLien', 'boolean', 'optional'],
   ['lienReason', 'string', 'optional'],
   ['preClosedDate', 'date', 'optional'],
@@ -130,7 +141,7 @@ const FINANCIAL_INSTITUTION_FIELDS: FieldRule[] = [
   ['ifscCode', 'string', 'optional'],
   ['branchName', 'string', 'optional'],
   ['swiftCode', 'string', 'optional'],
-  ['operationMode', 'string', 'optional'],
+  ['operationMode', 'string', { optional: true, enum: OPERATION_MODES }],
   ['cardNumber', 'string', 'optional'],
   ['cardNetwork', 'string', 'optional'],
   ['creditLimit', 'number', 'optional'],
@@ -171,34 +182,149 @@ function fail(message: string): never {
   throw new Error(message);
 }
 
-function validateField(record: Record<string, unknown>, rule: FieldRule): boolean {
-  const [key, kind, extra] = rule;
-  const value = record[key];
+const INVESTMENT_SEGMENTS = ['cash-equity-mf', 'equity-fo', 'commodities', 'debt'] as const;
 
-  if (value === undefined) return extra === 'optional';
-  if (kind === 'number') return typeof value === 'number' && Number.isFinite(value);
-  if (kind === 'boolean') return typeof value === 'boolean';
-  if (typeof value !== 'string') return false;
-  if (kind === 'date' && Number.isNaN(Date.parse(value))) return false;
-  if (Array.isArray(extra) && !extra.includes(value)) return false;
-  return true;
+function fieldMeta(extra: FieldExtra | undefined): { optional: boolean; enumValues?: readonly string[] } {
+  if (extra === undefined) return { optional: false };
+  if (extra === 'optional') return { optional: true };
+  if (Array.isArray(extra)) return { optional: false, enumValues: extra };
+  const obj = extra as { optional?: boolean; enum?: readonly string[] };
+  return { optional: !!obj.optional, enumValues: obj.enum };
 }
 
-function validateCollection(value: unknown, fields: FieldRule[]): void {
-  if (!Array.isArray(value)) fail(translate('errors.backup.record'));
+function validateField(record: Record<string, unknown>, rule: FieldRule): string | null {
+  const [key, kind, extra] = rule;
+  const value = record[key];
+  const meta = fieldMeta(extra);
+
+  if (value === undefined) return meta.optional ? null : `missing required "${key}"`;
+  if (kind === 'number') return typeof value === 'number' && Number.isFinite(value) ? null : `"${key}" must be a valid number`;
+  if (kind === 'boolean') return typeof value === 'boolean' ? null : `"${key}" must be true or false`;
+  if (typeof value !== 'string') return `"${key}" must be text`;
+  if (kind === 'date' && Number.isNaN(Date.parse(value))) return `"${key}" must be a valid date`;
+  if (meta.enumValues && !meta.enumValues.includes(value)) return `"${key}" has an unsupported value "${value}"`;
+  return null;
+}
+
+function validateDepositNominees(record: Record<string, unknown>): string | null {
+  const nominees = record.nominees;
+  if (nominees === undefined) return null;
+  if (!Array.isArray(nominees)) return '"nominees" must be a list';
+  for (let i = 0; i < nominees.length; i++) {
+    const n = nominees[i];
+    if (!isRecord(n)) return `nominees[${i + 1}] is invalid`;
+    if (typeof n.name !== 'string' || n.name.trim().length === 0) return `nominees[${i + 1}] name is required`;
+    if (typeof n.relationship !== 'string' || n.relationship.trim().length === 0) return `nominees[${i + 1}] relationship is required`;
+    if (typeof n.share !== 'number' || !Number.isFinite(n.share) || n.share < 0) return `nominees[${i + 1}] share must be a valid number`;
+    if (n.dateOfBirth !== undefined && (typeof n.dateOfBirth !== 'string' || Number.isNaN(Date.parse(n.dateOfBirth)))) {
+      return `nominees[${i + 1}] date of birth must be a valid date`;
+    }
+  }
+  return null;
+}
+
+function validateDepositJointHolders(record: Record<string, unknown>): string | null {
+  const holders = record.jointHolders;
+  if (holders === undefined) return null;
+  if (!Array.isArray(holders)) return '"jointHolders" must be a list';
+  for (let i = 0; i < holders.length; i++) {
+    const h = holders[i];
+    if (!isRecord(h)) return `jointHolders[${i + 1}] is invalid`;
+    if (typeof h.name !== 'string' || h.name.trim().length === 0) return `jointHolders[${i + 1}] name is required`;
+    if (typeof h.dateOfBirth !== 'string' || Number.isNaN(Date.parse(h.dateOfBirth))) return `jointHolders[${i + 1}] date of birth must be a valid date`;
+    if (typeof h.share !== 'number' || !Number.isFinite(h.share) || h.share < 0 || h.share > 100) return `jointHolders[${i + 1}] share must be a valid number between 0 and 100`;
+  }
+  const op = record.operationType;
+  if (typeof op === 'string' && op !== 'single' && holders.length === 0) {
+    return '"jointHolders" must include at least one holder when operation type is not single';
+  }
+  if (holders.length > 2) return '"jointHolders" allows at most 2 holders';
+  return null;
+}
+
+function validateFinancialInstitutionExtras(record: Record<string, unknown>): string | null {
+  const segments = record.segments;
+  if (segments === undefined) return null;
+  if (!Array.isArray(segments)) return '"segments" must be a list';
+  for (const s of segments) {
+    if (typeof s !== 'string' || !(INVESTMENT_SEGMENTS as readonly string[]).includes(s)) return `"segments" has an unsupported value "${String(s)}"`;
+  }
+  return null;
+}
+
+function recordRef(item: Record<string, unknown>, index: number): string {
+  const id = typeof item.id === 'string' && item.id ? item.id : null;
+  const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : null;
+  const label = name ? `"${name}"` : id ? id : `#${index + 1}`;
+  return `record ${index + 1} (${label})`;
+}
+
+function pushIssue(issues: string[], name: string, item: Record<string, unknown>, index: number, reason: string): void {
+  issues.push(`${name} ${recordRef(item, index)}: ${reason}.`);
+}
+
+function validateCollection(name: string, value: unknown, fields: FieldRule[], issues: string[]): void {
+  if (!Array.isArray(value)) {
+    issues.push(`${name}: must be a list.`);
+    return;
+  }
 
   const ids = new Set<string>();
-  value.forEach((item) => {
-    if (!isRecord(item)) fail(translate('errors.backup.record'));
+  value.forEach((item, index) => {
+    if (!isRecord(item)) {
+      issues.push(`${name} ${recordRef({}, index)}: not a valid object.`);
+      return;
+    }
+    let recordHasIssue = false;
     for (const field of fields) {
-      if (!validateField(item, field)) fail(translate('errors.backup.record'));
+      const reason = validateField(item, field);
+      if (reason) {
+        pushIssue(issues, name, item, index, reason);
+        recordHasIssue = true;
+      }
+    }
+    if (fields === DEPOSIT_FIELDS) {
+      const reason = validateDepositNominees(item);
+      if (reason) {
+        pushIssue(issues, name, item, index, reason);
+        recordHasIssue = true;
+      }
+      const jointReason = validateDepositJointHolders(item);
+      if (jointReason) {
+        pushIssue(issues, name, item, index, jointReason);
+        recordHasIssue = true;
+      }
+    }
+    if (fields === FINANCIAL_INSTITUTION_FIELDS) {
+      const reason = validateFinancialInstitutionExtras(item);
+      if (reason) {
+        pushIssue(issues, name, item, index, reason);
+        recordHasIssue = true;
+      }
     }
 
     const id = item.id;
-    if (typeof id !== 'string' || id.length === 0) fail(translate('errors.backup.record'));
-    if (ids.has(id)) fail(translate('errors.backup.duplicate'));
-    ids.add(id);
+    if (typeof id !== 'string' || id.length === 0) {
+      pushIssue(issues, name, item, index, 'missing id');
+      recordHasIssue = true;
+    } else if (ids.has(id)) {
+      pushIssue(issues, name, item, index, 'has a duplicate id');
+      recordHasIssue = true;
+    } else {
+      ids.add(id);
+    }
+    void recordHasIssue;
   });
+}
+
+function formatValidationIssues(issues: string[]): string {
+  const max = 12;
+  const shown = issues.slice(0, max);
+  const more = issues.length - shown.length;
+  const header = translate(issues.length === 1 ? 'errors.backup.record' : 'errors.backup.record');
+  const lines = shown.map((s) => `• ${s}`);
+  if (more > 0) lines.push(`• …and ${more} more issue${more === 1 ? '' : 's'}.`);
+  return `${header} Found ${issues.length} issue${issues.length === 1 ? '' : 's'}:\n${lines.join('\n')}`;
 }
 
 export function parseBackup(input: unknown): ApplicationBackupSchema {
@@ -211,15 +337,17 @@ export function parseBackup(input: unknown): ApplicationBackupSchema {
   }
   if (!isRecord(input.data)) fail(translate('errors.backup.noData'));
 
+  const issues: string[] = [];
   for (const [name, fields] of COLLECTIONS) {
-    validateCollection(input.data[name], fields);
-    void name;
+    validateCollection(name, input.data[name], fields, issues);
   }
   if (input.data.financialInstitutions !== undefined) {
-    validateCollection(input.data.financialInstitutions, FINANCIAL_INSTITUTION_FIELDS);
+    validateCollection('financialInstitutions', input.data.financialInstitutions, FINANCIAL_INSTITUTION_FIELDS, issues);
   } else {
     input.data.financialInstitutions = [];
   }
+
+  if (issues.length > 0) fail(formatValidationIssues(issues));
 
   return input as unknown as ApplicationBackupSchema;
 }

@@ -86,6 +86,7 @@ export function useBackup(): BackupActions {
         }
 
         const result = await restoreBackup(parsed);
+        console.info('[folio/backup] restore result', result);
         setState({
           phase: 'success',
           message: t(
@@ -94,10 +95,12 @@ export function useBackup(): BackupActions {
           ),
         });
       } catch (error) {
-        setState({
-          phase: 'error',
-          message: error instanceof Error ? error.message : t('backup.restoreError'),
-        });
+        console.error('[folio/backup] restore failed', error);
+        const message =
+          error instanceof Error ? (error.message || t('backup.restoreError')) :
+          typeof error === 'string' ? error :
+          t('backup.restoreError');
+        setState({ phase: 'error', message });
       }
     },
     [t],

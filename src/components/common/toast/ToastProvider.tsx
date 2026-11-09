@@ -36,7 +36,7 @@ const STYLES: Record<ToastType, { bg: string; Icon: typeof CheckCircle2 }> = {
 function ToastViewport({ items }: { items: ToastItem[] }) {
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-[72px] z-[2000] flex flex-col items-center gap-2 px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-6 z-[2000] flex flex-col items-center gap-2 px-4"
       aria-live="polite"
       aria-atomic="false"
     >
@@ -47,14 +47,14 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
             key={item.id}
             role="status"
             className={cn(
-              'pointer-events-auto inline-flex max-w-[min(420px,calc(100vw-32px))] items-center gap-2.5 rounded-[14px] px-4 py-3 text-white',
+              'pointer-events-auto flex w-[min(260px,calc(100vw-32px))] min-w-[min(140px,calc(100vw-32px))] max-w-[min(260px,calc(100vw-32px))] items-center gap-2 rounded-[14px] px-3 py-2.5 text-white',
               'shadow-[0_18px_40px_-18px_rgba(42,26,20,0.35),0_8px_18px_-10px_rgba(42,26,20,0.2)]',
               'animate-fade-in',
             )}
             style={{ backgroundColor: bg, fontFamily: '"Inter Variable", Inter, system-ui, sans-serif' }}
           >
             <Icon size={18} strokeWidth={2.25} className="shrink-0" aria-hidden="true" />
-            <span className="text-[13px] font-semibold leading-[1.35]">{item.text}</span>
+            <span className="max-h-[96px] min-w-0 flex-1 overflow-y-auto text-[13px] font-semibold leading-[1.35]">{item.text}</span>
           </div>
         );
       })}

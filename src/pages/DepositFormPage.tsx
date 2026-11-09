@@ -158,7 +158,12 @@ export default function DepositFormPage() {
           <Form<DepositFormValues>
             form={form}
             layout="vertical"
-            requiredMark={false}
+            requiredMark={(labelNode, { required }) => (
+              <>
+                {labelNode}
+                {required ? <span className="ml-0.5 text-red-500">*</span> : null}
+              </>
+            )}
             disabled={isTerminalLocked}
             initialValues={defaultDepositValues()}
             onFinish={handleFinish}

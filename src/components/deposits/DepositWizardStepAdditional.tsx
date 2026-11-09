@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { listDeposits } from '../../services/deposits';
+import { getDateFormatId } from '../../utils/date';
 import type { DepositNominee } from '../../types';
 import { NOMINEE_RELATIONSHIP_OPTIONS, type DepositFormValues } from './depositFormModel';
 
@@ -80,12 +81,11 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
           rules={[{
             validator: async (_, value) => {
               const list = (value ?? []) as Array<{ name?: string; share?: number }>;
-              const active = list.filter((n) => n?.name?.trim());
-              if (active.length === 0) return;
-              const keys = active.map((n) => (n.name ?? '').trim().toLowerCase());
-              if (new Set(keys).size !== keys.length) throw new Error(t('deposit.validation.nomineeUnique'));
-              const total = active.reduce((s, n) => s + (Number.isFinite(n.share) ? Number(n.share) : 0), 0);
-              if (Math.abs(total - 100) > 0.001) throw new Error(t('deposit.validation.nomineeShareTotal'));
+              if (list.length === 0) return;
+              const keys = list.map((n) => (n?.name ?? '').trim().toLowerCase()).filter(Boolean);
+              if (keys.length > 0 && new Set(keys).size !== keys.length) throw new Error(t('deposit.validation.nomineeUnique'));
+              const total = list.reduce((s, n) => s + (Number.isFinite(n?.share) ? Number(n.share ?? 0) : 0), 0);
+              if (list.length > 0 && Math.abs(total - 100) > 0.001) throw new Error(t('deposit.validation.nomineeShareTotal'));
             },
           }]}
         >
@@ -104,7 +104,7 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
               {fields.map((field) => (
                 <div key={field.key} className="rounded-xl border border-folio-ink/[0.07] bg-folio-paper/30 p-3 dark:border-white/[0.07] dark:bg-white/[0.02]">
                   <div className="grid gap-x-3 sm:grid-cols-2">
-                    <Form.Item {...field} label={t('deposit.fields.nomineeName')} name={[field.name, 'name']} rules={[{ required: true, whitespace: true, message: required }]}>
+                    <Form.Item {...field} label={t('deposit.fields.nomineeName')} name={[field.name, 'name']} required rules={[{ required: true, whitespace: true, message: t('deposit.validation.nomineeNameRequired') }]}>
                       <AutoComplete
                         disabled={locked}
                         options={suggestionOptions}
@@ -116,14 +116,14 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
                         onSelect={(value) => applySuggestion(field.name, String(value))}
                       />
                     </Form.Item>
-                    <Form.Item {...field} label={t('deposit.fields.nomineeRelationship')} name={[field.name, 'relationship']} rules={[{ required: true, message: required }]}>
+                    <Form.Item {...field} label={t('deposit.fields.nomineeRelationship')} name={[field.name, 'relationship']} required rules={[{ required: true, message: required }]}>
                       <Select disabled={locked} placeholder={t('deposit.placeholder.nomineeRelationship')} options={NOMINEE_RELATIONSHIP_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))} />
                     </Form.Item>
-                    <Form.Item {...field} label={t('deposit.fields.nomineeDob')} name={[field.name, 'dateOfBirth']}>
-                      <DatePicker disabled={locked} className="w-full" format="DD MMM YYYY" />
+                    <Form.Item {...field} label={t('deposit.fields.nomineeDob')} name={[field.name, 'dateOfBirth']} required rules={[{ required: true, message: t('deposit.validation.nomineeDobRequired') }]}>
+                      <DatePicker disabled={locked} className="w-full" format={getDateFormatId()} />
                     </Form.Item>
-                    <Form.Item {...field} label={t('deposit.fields.nomineeShare')} name={[field.name, 'share']} rules={[{ required: true, message: required }, { type: 'number', min: 0, max: 100, message: t('deposit.validation.nomineeShareMax') }]}>
-                      <InputNumber disabled={locked} className="w-full" min={0} max={100} precision={2} suffix="%" />
+                    <Form.Item {...field} label={t('deposit.fields.nomineeShare')} name={[field.name, 'share']} required rules={[{ required: true, message: required }, { type: 'number', min: 1, max: 100, message: t('deposit.validation.nomineeShareMax') }]}>
+                      <InputNumber disabled={locked} className="w-full" min={1} max={100} precision={2} suffix="%" />
                     </Form.Item>
                   </div>
                   {!locked && (

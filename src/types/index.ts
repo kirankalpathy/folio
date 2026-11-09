@@ -208,11 +208,19 @@ export type NomineeRelationship =
   | 'sister'
   | 'other';
 
+export type DepositOperationType = 'single' | 'joint' | 'either-or-survivor' | 'former-or-survivor';
+
 export interface DepositNominee {
   name: string;
   relationship: NomineeRelationship | string;
   dateOfBirth?: string;
   share: number;
+}
+
+export interface DepositJointHolder {
+  name: string;
+  dateOfBirth: string;
+  share: number; // allocated to this holder; remainder allocated to primary holder
 }
 
 export interface DepositHolding extends BaseRecord {
@@ -230,6 +238,10 @@ export interface DepositHolding extends BaseRecord {
   payoutFrequency?: DepositPayoutFrequency;
   rollover?: DepositRollover;
   operationMode?: OperationMode;
+  operationType?: DepositOperationType;
+  jointHolders?: DepositJointHolder[];
+  isPanLinked?: boolean;
+  isTaxExempt?: boolean;
   markedAsLien?: boolean;
   lienReason?: string;
   preClosedDate?: string;
