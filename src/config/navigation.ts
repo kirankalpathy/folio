@@ -1,7 +1,7 @@
 import {
   Landmark,
   LayoutGrid,
-  QrCode,
+  // QrCode, // Planned: Transact / UPI QR Generator
   Settings,
   UserRound,
   type LucideIcon,
@@ -75,17 +75,18 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
-  {
-    label: 'nav.group.transactions',
-    items: [
-      {
-        path: '/transactions/upi',
-        label: 'nav.transactions.upi',
-        description: 'nav.transactions.upi.description',
-        icon: QrCode,
-      },
-    ],
-  },
+  // Planned feature: Transact / UPI QR Generator (implementation kept in UpiTransactionPage)
+  // {
+  //   label: 'nav.group.transactions',
+  //   items: [
+  //     {
+  //       path: '/transactions/upi',
+  //       label: 'nav.transactions.upi',
+  //       description: 'nav.transactions.upi.description',
+  //       icon: QrCode,
+  //     },
+  //   ],
+  // },
   {
     label: 'nav.group.system',
     items: [

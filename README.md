@@ -11,6 +11,7 @@
 
 - [Project Description](#project-description)
 - [Modules / What’s inside](#modules--whats-inside)
+- [Planned Features](#planned-features)
 - [Installation & Setup](#installation--setup)
 - [Usage Examples](#usage-examples)
 - [Contributing & License](#contributing--license)
@@ -97,6 +98,12 @@ Folio’s navigation also includes areas for other parts of your portfolio (such
 - Light and dark themes
 - Local-first privacy (your data stays on your device)
 - Clear in-app wording, with a foundation for multiple languages
+
+## Planned Features
+
+These features are planned for future updates (implemented work may be in progress but not yet shown in the app):
+
+- **UPI QR Generator** — generate a UPI payment QR code by entering a UPI address or mobile number, along with amount, payee name, and a note, so you can quickly share or scan payment details.
 
 ## Installation & Setup
 
