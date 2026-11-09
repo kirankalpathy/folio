@@ -1,16 +1,19 @@
 import { Alert, Checkbox, DatePicker, Form, Input, InputNumber, Select } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { Globe, WifiOff } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n';
 import { getDateFormatId } from '../../utils/date';
+import { DATE_PICKER_MIN, isDateOutsidePickerBounds } from '../../config/validationConfig';
 import { formatINR, formatNumber, getNumberFormat } from '../../utils/finance';
 import { calculateDepositValues, formatDepositTenure, type DepositLifecycleStatus } from '../../utils/deposits';
-import type { DepositFormValues } from './depositFormModel';
+import {
+  InterestPayoutOption,
+  deriveCumulativeInterest,
+  derivePeriodicPayoutFrequency,
+  type DepositFormValues,
+} from './depositFormModel';
 import DepositStatusTag from './DepositStatusTag';
-
-const DATE_MIN = dayjs('1950-01-01').startOf('day');
-const DATE_MAX = dayjs('2070-12-31').endOf('day');
 
 function parseFormattedNumber(input: string): number {
   const raw = (input ?? '').trim();
@@ -23,11 +26,11 @@ function parseFormattedNumber(input: string): number {
 }
 
 function isDateOutOfRange(date: Dayjs): boolean {
-  return date.isBefore(DATE_MIN, 'day') || date.isAfter(DATE_MAX, 'day');
+  return isDateOutsidePickerBounds(date);
 }
 
 function isPreClosedDateDisabled(date: Dayjs): boolean {
-  return date.isBefore(DATE_MIN, 'day') || date.isAfter(dayjs(), 'day');
+  return date.isBefore(DATE_PICKER_MIN, 'day') || date.isAfter(dayjs(), 'day');
 }
 
 function boldStatus(template: string, statusLabel: string): ReactNode {
@@ -36,16 +39,31 @@ function boldStatus(template: string, statusLabel: string): ReactNode {
   return <>{parts[0]}<strong>{statusLabel}</strong>{parts[1]}</>;
 }
 
-export default function DepositWizardStepInvestment({ activeLocked = false, terminalLocked = false, lienEditable: _lienEditable = false, isEdit = false }: { activeLocked?: boolean; terminalLocked?: boolean; lienEditable?: boolean; isEdit?: boolean }) {
+export default function DepositWizardStepInvestment({
+  activeLocked = false,
+  terminalLocked = false,
+  lienEditable: _lienEditable = false,
+  isEdit = false,
+}: {
+  activeLocked?: boolean;
+  terminalLocked?: boolean;
+  lienEditable?: boolean;
+  isEdit?: boolean;
+}) {
   void _lienEditable;
   const { t } = useI18n();
   const form = Form.useFormInstance<DepositFormValues>();
+  const accountType = Form.useWatch('accountType', form);
+  const isRd = accountType === 'rd';
   const principal = Form.useWatch('principal', form) ?? 0;
+  const recurringAmount = Form.useWatch('recurringAmount', form) ?? 0;
   const interestRate = Form.useWatch('interestRate', form) ?? 0;
   const startDate = Form.useWatch('startDate', form) as Dayjs | undefined;
   const maturityDate = Form.useWatch('maturityDate', form) as Dayjs | undefined;
   const compoundingFrequency = Form.useWatch('compoundingFrequency', form);
-  const cumulative = Form.useWatch('cumulativeInterest', form) ?? false;
+  const interestPayoutOption = (Form.useWatch('interestPayoutOption', form) ?? InterestPayoutOption.Cumulative) as InterestPayoutOption;
+  const cumulative = deriveCumulativeInterest(accountType, interestPayoutOption);
+  const payoutFrequency = derivePeriodicPayoutFrequency(accountType, interestPayoutOption);
   const preClosed = Form.useWatch('preClosed', form) ?? false;
   const preClosureCreditedValue = Form.useWatch('preClosureCreditedValue', form);
   const markedAsLien = Form.useWatch('markedAsLien', form) ?? false;
@@ -55,25 +73,42 @@ export default function DepositWizardStepInvestment({ activeLocked = false, term
   const locked = fullyLocked || activeLocked;
   const lienLocked = fullyLocked;
   const dateFormat = getDateFormatId();
-  const [focusedNumber, setFocusedNumber] = useState<'principal' | 'rate' | null>(null);
+  const [focusedNumber, setFocusedNumber] = useState<'principal' | 'rate' | 'recurringAmount' | null>(null);
   const required = t('validation.required');
   const isPlanned = startDate?.isValid() ? startDate.isAfter(dayjs().startOf('day')) : false;
   const showPreClosure = isEdit && !activeLocked && !isPlanned;
 
+  useEffect(() => {
+    if (isRd) {
+      form.setFieldsValue({
+        markedAsLien: false,
+        lienReason: '',
+        interestPayoutOption: InterestPayoutOption.Cumulative,
+        cumulativeInterest: true,
+        payoutFrequency: 'annual',
+      } as Partial<DepositFormValues>);
+    }
+  }, [isRd, form]);
+
   const computed = useMemo(
     () => calculateDepositValues({
-      principal, interestRate,
+      accountType,
+      principal,
+      recurringAmount,
+      interestRate,
       startDate: startDate?.format('YYYY-MM-DD') ?? '',
       maturityDate: maturityDate?.format('YYYY-MM-DD') ?? '',
-      cumulativeInterest: cumulative, compoundingFrequency,
+      cumulativeInterest: isRd ? true : cumulative,
+      compoundingFrequency,
+      payoutFrequency,
     }),
-    [principal, interestRate, startDate, maturityDate, cumulative, compoundingFrequency],
+    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, payoutFrequency, isRd],
   );
   const tenure = formatDepositTenure(startDate?.format('YYYY-MM-DD'), maturityDate?.format('YYYY-MM-DD'));
 
   const statusInfo = useMemo((): { status: DepositLifecycleStatus; message: ReactNode } | null => {
     if (!startDate?.isValid() || !maturityDate?.isValid()) return null;
-    if (markedAsLien) {
+    if (!isRd && markedAsLien) {
       const label = t('deposit.lifecycle.inLien');
       return { status: 'in-lien', message: boldStatus(t('deposit.status.message.inLien'), label) };
     }
@@ -92,45 +127,75 @@ export default function DepositWizardStepInvestment({ activeLocked = false, term
     }
     const label = t('deposit.lifecycle.active');
     return { status: 'active', message: boldStatus(t('deposit.status.message.active'), label) };
-  }, [startDate, maturityDate, preClosed, isEdit, markedAsLien, t]);
+  }, [startDate, maturityDate, preClosed, isEdit, markedAsLien, isRd, t]);
+
+  const amountFormatter = (field: 'principal' | 'recurringAmount') => (value: unknown, info?: { input?: string }) => {
+    if (focusedNumber === field) return info?.input ?? (value == null ? '' : String(value));
+    const v = value as number | string | undefined | null;
+    if (v === undefined || v === null || v === '') return '';
+    const n = Number(v);
+    if (!Number.isFinite(n) || n === 0) return '';
+    return formatNumber(Math.round(n * 100) / 100, 2);
+  };
+  const amountParser = ((value?: string) => {
+    const n = parseFormattedNumber(value ?? '');
+    if (!Number.isFinite(n)) return '' as unknown as 0;
+    return Math.round(n * 100) / 100;
+  }) as unknown as (displayValue: string | undefined) => 0;
 
   return (
     <div className="grid gap-x-4 sm:grid-cols-2">
-      <Form.Item
-        label={t('deposit.fields.principal')}
-        name="principal"
-        required
-        rules={[
-          { required: true, message: required },
-          { type: 'number', min: 1000.01, message: t('deposit.validation.principalMin') },
-        ]}
-      >
-        <InputNumber
-          disabled={locked}
-          className="!w-full"
-          style={{ width: '100%' }}
-          min={0}
-          controls={false}
-          inputMode="decimal"
-          addonBefore="₹"
-          placeholder={t('deposit.placeholder.principal')}
-          formatter={(value, info) => {
-            if (focusedNumber === 'principal') return info?.input ?? (value == null ? '' : String(value));
-            const v = value as number | string | undefined | null;
-            if (v === undefined || v === null || v === '') return '';
-            const n = Number(v);
-            if (!Number.isFinite(n) || n === 0) return '';
-            return formatNumber(Math.round(n * 100) / 100, 2);
-          }}
-          parser={((value?: string) => {
-            const n = parseFormattedNumber(value ?? '');
-            if (!Number.isFinite(n)) return '' as unknown as 0;
-            return Math.round(n * 100) / 100;
-          }) as unknown as (displayValue: string | undefined) => 0}
-          onFocus={() => setFocusedNumber('principal')}
-          onBlur={() => setFocusedNumber(null)}
-        />
-      </Form.Item>
+      {isRd ? (
+        <Form.Item
+          label={t('deposit.fields.recurringAmount')}
+          name="recurringAmount"
+          required
+          rules={[
+            { required: true, message: required },
+            { type: 'number', min: 0.01, message: t('deposit.validation.recurringAmountMin') },
+          ]}
+        >
+          <InputNumber
+            disabled={locked}
+            className="!w-full"
+            style={{ width: '100%' }}
+            min={0}
+            controls={false}
+            inputMode="decimal"
+            addonBefore="₹"
+            placeholder={t('deposit.placeholder.recurringAmount')}
+            formatter={amountFormatter('recurringAmount')}
+            parser={amountParser}
+            onFocus={() => setFocusedNumber('recurringAmount')}
+            onBlur={() => setFocusedNumber(null)}
+          />
+        </Form.Item>
+      ) : (
+        <Form.Item
+          label={t('deposit.fields.principal')}
+          name="principal"
+          required
+          rules={[
+            { required: true, message: required },
+            { type: 'number', min: 1000.01, message: t('deposit.validation.principalMin') },
+          ]}
+        >
+          <InputNumber
+            disabled={locked}
+            className="!w-full"
+            style={{ width: '100%' }}
+            min={0}
+            controls={false}
+            inputMode="decimal"
+            addonBefore="₹"
+            placeholder={t('deposit.placeholder.principal')}
+            formatter={amountFormatter('principal')}
+            parser={amountParser}
+            onFocus={() => setFocusedNumber('principal')}
+            onBlur={() => setFocusedNumber(null)}
+          />
+        </Form.Item>
+      )}
       <Form.Item
         label={t('deposit.fields.interestRate')}
         name="interestRate"
@@ -159,11 +224,7 @@ export default function DepositWizardStepInvestment({ activeLocked = false, term
             if (!Number.isFinite(n) || n === 0) return '';
             return formatNumber(Math.round(n * 100) / 100, 2);
           }}
-          parser={((value?: string) => {
-            const n = parseFormattedNumber(value ?? '');
-            if (!Number.isFinite(n)) return '' as unknown as 0;
-            return Math.round(n * 100) / 100;
-          }) as unknown as (displayValue: string | undefined) => 0}
+          parser={amountParser}
           onFocus={() => setFocusedNumber('rate')}
           onBlur={() => setFocusedNumber(null)}
         />
@@ -252,28 +313,32 @@ export default function DepositWizardStepInvestment({ activeLocked = false, term
           }
         />
       )}
-      <Form.Item name="markedAsLien" valuePropName="checked" className="sm:col-span-2 mb-0">
-        <Checkbox
-          className="folio-checkbox"
-          disabled={lienLocked}
-          onChange={(e) => {
-            if (!e.target.checked) form.setFieldsValue({ lienReason: '' });
-            else void form.validateFields(['lienReason']).catch(() => undefined);
-          }}
-        >
-          {t('deposit.fields.markedAsLien')}
-        </Checkbox>
-      </Form.Item>
-      {markedAsLien && (
-        <Form.Item
-          label={t('deposit.fields.lienReason')}
-          name="lienReason"
-          required
-          className="sm:col-span-2"
-          rules={[{ required: true, whitespace: true, message: t('deposit.validation.lienReasonRequired') }]}
-        >
-          <Input disabled={lienLocked} maxLength={200} />
-        </Form.Item>
+      {!isRd && (
+        <>
+          <Form.Item name="markedAsLien" valuePropName="checked" className="sm:col-span-2 mb-0">
+            <Checkbox
+              className="folio-checkbox"
+              disabled={lienLocked}
+              onChange={(e) => {
+                if (!e.target.checked) form.setFieldsValue({ lienReason: '' });
+                else void form.validateFields(['lienReason']).catch(() => undefined);
+              }}
+            >
+              {t('deposit.fields.markedAsLien')}
+            </Checkbox>
+          </Form.Item>
+          {markedAsLien && (
+            <Form.Item
+              label={t('deposit.fields.lienReason')}
+              name="lienReason"
+              required
+              className="sm:col-span-2"
+              rules={[{ required: true, whitespace: true, message: t('deposit.validation.lienReasonRequired') }]}
+            >
+              <Input disabled={lienLocked} maxLength={200} />
+            </Form.Item>
+          )}
+        </>
       )}
       {showPreClosure && (
         <Form.Item name="preClosed" valuePropName="checked" className="sm:col-span-2 mt-1 mb-0">

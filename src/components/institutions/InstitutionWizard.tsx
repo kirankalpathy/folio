@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Alert, Button, Form, Input, InputNumber, Segmented, Select, Steps } from 'antd';
-import { ArrowLeft, ArrowRight, Building2, CopyCheck, CreditCard, Landmark, LineChart, MapPin, Users, Wallet } from 'lucide-react';
+import { Alert, Button, Form, Input, InputNumber, Select, Steps } from 'antd';
+import { ArrowLeft, ArrowRight, Building2, CopyCheck, CreditCard, Globe, Landmark, LineChart, MapPin, Users, Wallet, WifiOff } from 'lucide-react';
 import type { CardNetwork, FinancialInstitution, FinancialInstitutionCategory, FinancialInstitutionInput, InvestmentSegment } from '../../types';
 import { useI18n } from '../../i18n';
 import { listFinancialInstitutions } from '../../services/financialInstitutions';
 import { UPI_ID_REGEX } from '../../utils/upi';
+import MobileInput, { mobileInputRules } from '../common/MobileInput';
+import { CARD_NETWORK_COLORS } from '../../theme/palette';
 import {
   defaultInstitutionValues,
   stepFields,
@@ -27,14 +29,15 @@ function formatCardNumberInput(raw: string): string {
 }
 
 function NetworkIcon({ network }: { network: CardNetwork }) {
-  const styles: Record<CardNetwork, string> = {
-    VISA: 'bg-[#1A1F71] text-white',
-    MasterCard: 'bg-[#EB001B] text-white',
-    RuPay: 'bg-[#0B3C6D] text-white',
-    'American Express': 'bg-[#2E77BC] text-white',
-  };
   const short: Record<CardNetwork, string> = { VISA: 'VISA', MasterCard: 'MC', RuPay: 'RuPay', 'American Express': 'AMEX' };
-  return <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${styles[network]}`}>{short[network]}</span>;
+  return (
+    <span
+      className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white"
+      style={{ backgroundColor: CARD_NETWORK_COLORS[network] }}
+    >
+      {short[network]}
+    </span>
+  );
 }
 
 function NetworkOption({ network, label }: { network: CardNetwork; label: string }) {
@@ -292,8 +295,12 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
 
           {category === 'digital-wallet' && (
             <div className="grid gap-x-4 sm:grid-cols-2">
-              <Form.Item label={t('institutions.fields.linkedMobile')} name="linkedMobile" rules={[{ required: true, whitespace: true, message: t('institutions.validation.linkedMobileRequired') }]}>
-                <Input placeholder={t('institutions.placeholder.linkedMobile')} />
+              <Form.Item
+                label={t('institutions.fields.linkedMobile')}
+                name="linkedMobile"
+                rules={mobileInputRules(t as never, { required: true, requiredMessageKey: 'institutions.validation.linkedMobileRequired' })}
+              >
+                <MobileInput placeholder={t('institutions.placeholder.linkedMobile')} />
               </Form.Item>
               <Form.Item
                 label={t('institutions.fields.upiId')}
@@ -319,14 +326,13 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
             <Form.Item
               label={t('institutions.fields.operationMode')}
               name="operationMode"
-              className="sm:col-span-2"
               rules={category === 'digital-wallet' ? [] : [{ required: true, message: t('institutions.validation.operationModeRequired') }]}
             >
-              <Segmented
-                block
+              <Select
+                optionLabelProp="label"
                 options={[
-                  { value: 'online', label: t('institutions.operation.online') },
-                  { value: 'offline', label: t('institutions.operation.offline') },
+                  { value: 'online', label: <span className="inline-flex items-center gap-2"><Globe size={15} className="text-sky-600 dark:text-sky-400" /><span>{t('institutions.operation.online')}</span></span> },
+                  { value: 'offline', label: <span className="inline-flex items-center gap-2"><WifiOff size={15} className="text-folio-ink/55 dark:text-white/50" /><span>{t('institutions.operation.offline')}</span></span> },
                 ]}
               />
             </Form.Item>
@@ -368,8 +374,12 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
                 <Form.Item label={t('institutions.fields.contactEmail')} name="contactEmail" className="mt-2" rules={[{ type: 'email', message: t('validation.emailInvalid') }]}>
                   <Input placeholder={t('institutions.placeholder.contactEmail')} />
                 </Form.Item>
-                <Form.Item label={t('institutions.fields.contactPhone')} name="contactPhone">
-                  <Input placeholder={t('institutions.placeholder.contactPhone')} />
+                <Form.Item
+                  label={t('institutions.fields.contactPhone')}
+                  name="contactPhone"
+                  rules={mobileInputRules(t as never)}
+                >
+                  <MobileInput placeholder={t('institutions.placeholder.contactPhone')} />
                 </Form.Item>
               </>
             )}

@@ -5,8 +5,9 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { listDeposits } from '../../services/deposits';
 import { getDateFormatId } from '../../utils/date';
+import { isDobDisabled } from '../../config/validationConfig';
 import type { DepositNominee } from '../../types';
-import { NOMINEE_RELATIONSHIP_OPTIONS, type DepositFormValues } from './depositFormModel';
+import { NOMINEE_RELATIONSHIP_OPTIONS, newNominee, type DepositFormValues } from './depositFormModel';
 
 function nomineeKey(n: Pick<DepositNominee, 'name'>): string {
   return n.name.trim().toLowerCase();
@@ -61,7 +62,7 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
       name: match.name,
       relationship: match.relationship || existing.relationship || 'other',
       dateOfBirth: match.dateOfBirth ? dayjs(match.dateOfBirth) : existing.dateOfBirth,
-      share: Number.isFinite(existing.share) ? existing.share : 0,
+      share: Number.isFinite(existing.share) ? existing.share : undefined,
     };
     form.setFieldsValue({ nominees: next });
   };
@@ -71,7 +72,7 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-folio-ink dark:text-[#F3F4F6]">{t('deposit.section.nominees')}</h3>
+            <h3 className="text-sm font-semibold text-folio-ink dark:text-folio-dark-text">{t('deposit.section.nominees')}</h3>
             <p className="text-[11px] text-folio-ink/50 dark:text-white/45">{t('deposit.nominee.optionalHint')}</p>
           </div>
         </div>
@@ -120,10 +121,10 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
                       <Select disabled={locked} placeholder={t('deposit.placeholder.nomineeRelationship')} options={NOMINEE_RELATIONSHIP_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))} />
                     </Form.Item>
                     <Form.Item {...field} label={t('deposit.fields.nomineeDob')} name={[field.name, 'dateOfBirth']} required rules={[{ required: true, message: t('deposit.validation.nomineeDobRequired') }]}>
-                      <DatePicker disabled={locked} className="w-full" format={getDateFormatId()} />
+                      <DatePicker disabled={locked} className="w-full" format={getDateFormatId()} disabledDate={isDobDisabled} />
                     </Form.Item>
                     <Form.Item {...field} label={t('deposit.fields.nomineeShare')} name={[field.name, 'share']} required rules={[{ required: true, message: required }, { type: 'number', min: 1, max: 100, message: t('deposit.validation.nomineeShareMax') }]}>
-                      <InputNumber disabled={locked} className="w-full" min={1} max={100} precision={2} suffix="%" />
+                      <InputNumber disabled={locked} className="w-full" min={1} max={100} precision={2} suffix="%" placeholder="0.00" />
                     </Form.Item>
                   </div>
                   {!locked && (
@@ -135,7 +136,7 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
               ))}
               {errors.length > 0 && <div className="text-xs text-red-500">{errors}</div>}
               {!locked && (
-                <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add({ name: '', relationship: 'spouse', share: 0 })}>
+                <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add(newNominee())}>
                   {t('deposit.nominee.add')}
                 </Button>
               )}

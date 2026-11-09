@@ -10,7 +10,7 @@ export function PrivacyPanel() {
     <section className="folio-card p-4 sm:p-5">
       <div className="flex items-center gap-2">
         <Lock size={14} className="text-folio-primary dark:text-folio-accent" />
-        <h2 className="text-sm font-semibold">{t('dashboard.privacy.title')}</h2>
+        <h2 className="text-sm font-semibold text-folio-role-text">{t('dashboard.privacy.title')}</h2>
       </div>
       <p className="mt-2 text-xs leading-5 text-folio-ink/50 dark:text-white/45">
         {t('dashboard.privacy.body')}

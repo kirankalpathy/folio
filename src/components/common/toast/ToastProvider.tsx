@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { palette } from '../../../theme/palette';
 import { cn } from '../../../utils/cn';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -27,10 +28,10 @@ const MAX_TOASTS = 3;
 const DURATION_MS = 3500;
 
 const STYLES: Record<ToastType, { bg: string; Icon: typeof CheckCircle2 }> = {
-  success: { bg: '#34C759', Icon: CheckCircle2 },
-  error: { bg: '#FF3B30', Icon: XCircle },
-  warning: { bg: '#FF9500', Icon: AlertCircle },
-  info: { bg: '#007AFF', Icon: Info },
+  success: { bg: palette.semanticLight.success, Icon: CheckCircle2 },
+  error: { bg: palette.semanticLight.error, Icon: XCircle },
+  warning: { bg: palette.semanticLight.warning, Icon: AlertCircle },
+  info: { bg: palette.semanticLight.info, Icon: Info },
 };
 
 function ToastViewport({ items }: { items: ToastItem[] }) {
@@ -48,7 +49,7 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
             role="status"
             className={cn(
               'pointer-events-auto flex w-[min(260px,calc(100vw-32px))] min-w-[min(140px,calc(100vw-32px))] max-w-[min(260px,calc(100vw-32px))] items-center gap-2 rounded-[14px] px-3 py-2.5 text-white',
-              'shadow-[0_18px_40px_-18px_rgba(42,26,20,0.35),0_8px_18px_-10px_rgba(42,26,20,0.2)]',
+              'shadow-folio-toast',
               'animate-fade-in',
             )}
             style={{ backgroundColor: bg, fontFamily: '"Inter Variable", Inter, system-ui, sans-serif' }}

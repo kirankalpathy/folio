@@ -142,7 +142,7 @@ A detailed area for tracking fixed and recurring-style deposits, with a guided *
 What you can do:
 
 - **Create, view, and edit deposits** with clear step-by-step validations (including unique deposit numbers, amount/rate/date rules, and pre-closure dates that can’t be in the future).
-- **Choose account type** (currently Fixed Deposit; other account types are planned — see [To-do](#to-do)).
+- **Choose account type** (Fixed Deposit and Recurring Deposit; additional account types are planned — see [To-do](#to-do)).
 - **Set operation type** (Single, Joint, Either (or) Survivor, Former (or) Survivor) and add joint holders when applicable (up to 2), with share details and a clear primary-holder share summary.
 - **Link a deposit to an eligible Financial Institution** (Savings/Current accounts) when relevant.
 - **Track status** with clear lifecycle labels: Planned, Active, Matured, Pre-closed, and In Lien (shown with easy-to-read coloring).
@@ -202,8 +202,9 @@ Folio’s navigation also includes areas for other parts of your portfolio (such
 
 ### Upcoming improvements
 
-- **Deposit account types** — implement additional account types incrementally (currently only Fixed Deposit is enabled): Recurring Deposit, Tax Saving Deposit, and Other.
+- **Deposit account types** — implement additional account types incrementally (Fixed Deposit and Recurring Deposit enabled): Tax Saving Deposit and Other.
 - **Tables (resizable columns)** — add adjustable column widths in data tables (Deposits, Financial Institutions, and other tables). Users should be able to drag to increase a column’s width, with a minimum width equal to the column’s default/current width.
+- **In-app updates (GitHub Releases)** — add an update mechanism that checks GitHub Releases for new versions and lets users download/install updates from within the app (Tauri updater; implementation plan stored locally under `plans/`, not committed).
 
 ## Contributing & License
 

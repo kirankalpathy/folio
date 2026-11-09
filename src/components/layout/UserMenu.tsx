@@ -4,6 +4,7 @@ import { LogOut, Settings, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
+import { palette } from '../../theme/palette';
 import { getInitials } from '../../utils/profile';
 
 export default function UserMenu() {
@@ -58,7 +59,7 @@ export default function UserMenu() {
         <Avatar
           size={32}
           src={profile.photo}
-          style={!profile.photo ? { backgroundColor: '#C8502D', color: '#FFF7F2', fontFamily: '"Inter Variable", Inter, system-ui, sans-serif', fontSize: 11, fontWeight: 600 } : undefined}
+          style={!profile.photo ? { backgroundColor: palette.primary, color: palette.avatarOnPrimary, fontFamily: '"Inter Variable", Inter, system-ui, sans-serif', fontSize: 11, fontWeight: 600 } : undefined}
         >
           {!profile.photo ? getInitials(profile) : null}
         </Avatar>

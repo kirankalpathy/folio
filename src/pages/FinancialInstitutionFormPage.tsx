@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Spin } from 'antd';
-import { ArrowLeft } from 'lucide-react';
+import { Alert, Spin } from 'antd';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import type { FinancialInstitution, FinancialInstitutionInput } from '../types';
 import { useI18n } from '../i18n';
@@ -68,7 +67,7 @@ export default function FinancialInstitutionFormPage() {
   if (loading) {
     return (
       <div className="space-y-5">
-        <PageHeader eyebrow={t('nav.group.accounts')} title={title} actions={<Button icon={<ArrowLeft size={15} />} onClick={goBack}>{t('common.back')}</Button>} />
+        <PageHeader eyebrow={t('nav.group.accounts')} title={title} />
         <div className="folio-card grid place-items-center p-10"><Spin /></div>
       </div>
     );
@@ -77,7 +76,7 @@ export default function FinancialInstitutionFormPage() {
   if (loadError) {
     return (
       <div className="space-y-5">
-        <PageHeader eyebrow={t('nav.group.accounts')} title={title} actions={<Button icon={<ArrowLeft size={15} />} onClick={goBack}>{t('common.back')}</Button>} />
+        <PageHeader eyebrow={t('nav.group.accounts')} title={title} />
         <Alert type="error" showIcon title={loadError} />
       </div>
     );
@@ -89,7 +88,7 @@ export default function FinancialInstitutionFormPage() {
         eyebrow={t('nav.group.accounts')}
         title={title}
         description={record?.name}
-        actions={<Button icon={<ArrowLeft size={15} />} onClick={goBack}>{t('common.back')}</Button>}
+
       />
       <section className="folio-card p-4 sm:p-5">
         <InstitutionWizard institution={record} onCancel={goBack} onSubmit={handleSubmit} />

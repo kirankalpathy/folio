@@ -1,5 +1,4 @@
 import { Alert } from 'antd';
-import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useI18n } from '../i18n';
@@ -21,12 +20,6 @@ export default function DashboardPage() {
         eyebrow={t('nav.group.overview')}
         title={t('nav.dashboard')}
         description={t('dashboard.description')}
-        actions={
-          <button type="button" className="folio-button-primary" onClick={() => navigate('/deposits')}>
-            <Plus size={14} />
-            {t('dashboard.addDeposit')}
-          </button>
-        }
       />
 
       {error && <Alert type="error" showIcon title={error} />}

@@ -1,22 +1,20 @@
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import type { ApplicationBackupSchema, BackupRecordCounts, FinancialInstitution, RestoreResult } from '../types';
+import type {
+  ApplicationBackupSchema,
+  BackupRecordCounts,
+  BackupReport,
+  BackupReportRow,
+  FinancialInstitution,
+  RestoreResult,
+} from '../types';
+import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../types';
 import { parseBackup } from '../utils/backupSchema';
+import { calculateDepositValues } from '../utils/deposits';
 import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
 
 const FINANCIAL_TABLES = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
 const ALL_TABLES = [...FINANCIAL_TABLES, 'profile', 'credentials'] as const;
-
-function countRecords(backup: ApplicationBackupSchema): BackupRecordCounts {
-  return {
-    stocks: backup.data.stocks.length,
-    bonds: backup.data.bonds.length,
-    pfAccounts: backup.data.pfAccounts.length,
-    deposits: backup.data.deposits.length,
-    commodities: backup.data.commodities.length,
-    debts: backup.data.debts.length,
-  };
-}
 
 function backupFileName(exportedAt: string): string {
   const date = new Date(exportedAt);
@@ -72,12 +70,196 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function recomputeDepositForRestore(record: unknown): Record<string, unknown> | null {
+  if (!isRecordObject(record)) return null;
+  const d = record as unknown as Partial<DepositHolding> & Record<string, unknown>;
+  const id = typeof d.id === 'string' ? d.id.trim() : '';
+  if (!id) return null;
+
+  const isRd = d.accountType === 'rd';
+  const cumulativeInterest = isRd ? true : (d.cumulativeInterest ?? false);
+  const payoutFrequency = (isRd || cumulativeInterest) ? undefined : (d.payoutFrequency as DepositPayoutFrequency | undefined);
+  const compoundingFrequency = (d.compoundingFrequency ?? 'quarterly') as CompoundingFrequency;
+  const principal = typeof d.principal === 'number' && Number.isFinite(d.principal) ? Math.max(0, d.principal) : 0;
+  const recurringAmountRaw = typeof d.recurringAmount === 'number' && Number.isFinite(d.recurringAmount) ? Math.max(0, d.recurringAmount) : undefined;
+  const interestRate = typeof d.interestRate === 'number' && Number.isFinite(d.interestRate) ? Math.max(0, d.interestRate) : 0;
+  const startDate = typeof d.startDate === 'string' ? d.startDate : '';
+  const maturityDate = typeof d.maturityDate === 'string' ? d.maturityDate : '';
+
+  const computed = calculateDepositValues({
+    accountType: d.accountType as DepositType | undefined,
+    principal,
+    recurringAmount: isRd ? recurringAmountRaw : undefined,
+    interestRate,
+    startDate,
+    maturityDate,
+    cumulativeInterest,
+    compoundingFrequency,
+    payoutFrequency,
+  });
+
+  const next: Record<string, unknown> = { ...d };
+  next.cumulativeInterest = cumulativeInterest;
+  next.payoutFrequency = payoutFrequency;
+  next.compoundingFrequency = compoundingFrequency;
+  if (isRd) {
+    next.markedAsLien = false;
+    next.lienReason = undefined;
+    next.principal = computed.totalDeposited;
+    next.recurringAmount = recurringAmountRaw;
+    next.interestPayoutAmount = undefined;
+  } else {
+    next.recurringAmount = undefined;
+    next.interestPayoutAmount =
+      !cumulativeInterest && payoutFrequency && Number.isFinite(computed.interestPayoutAmount)
+        ? computed.interestPayoutAmount
+        : undefined;
+  }
+  // Persist computed current/maturity value. Pre-closure credited value is preserved separately.
+  next.currentValue = computed.realizedValue;
+  const ts = typeof d.updatedAt === 'string' && d.updatedAt ? d.updatedAt : (typeof d.changedAt === 'string' && d.changedAt ? d.changedAt : new Date().toISOString());
+  next.updatedAt = ts;
+  if (typeof d.changedAt !== 'string' || !d.changedAt) next.changedAt = ts;
+  return next;
+}
+
+interface PreparedRestore {
+  records: unknown[];
+  input: number;
+  success: number;
+  errors: number;
+  depositSubtypes?: Array<{ accountType: DepositType; input: number; success: number; errors: number }>;
+}
+
+const DEPOSIT_SUBTYPE_ORDER: DepositType[] = ['fd', 'rd', 'tax-saving', 'savings', 'nsc', 'other'];
+const DEPOSIT_SUBTYPE_LABEL_KEYS: Record<DepositType, string> = {
+  fd: 'deposit.account.fd',
+  rd: 'deposit.account.rd',
+  'tax-saving': 'deposit.account.taxSaving',
+  savings: 'deposit.account.savings',
+  nsc: 'deposit.account.nsc',
+  other: 'deposit.account.other',
+};
+
+function normalizeDepositSubtype(value: unknown): DepositType {
+  if (value === 'fd' || value === 'rd' || value === 'tax-saving' || value === 'savings' || value === 'nsc' || value === 'other') return value;
+  return 'other';
+}
+
+function prepareRecordsForRestore(table: (typeof FINANCIAL_TABLES)[number], records: unknown[]): PreparedRestore {
+  if (table === 'deposits') {
+    const out: unknown[] = [];
+    const byType = new Map<DepositType, { input: number; success: number; errors: number }>();
+    for (const r of records) {
+      const t = isRecordObject(r) ? normalizeDepositSubtype(r.accountType) : 'other';
+      const stat = byType.get(t) ?? { input: 0, success: 0, errors: 0 };
+      stat.input += 1;
+      const computed = recomputeDepositForRestore(r);
+      if (computed) {
+        out.push(computed);
+        stat.success += 1;
+      } else {
+        stat.errors += 1; // not pushed when computed fields cannot be derived
+      }
+      byType.set(t, stat);
+    }
+    const depositSubtypes = DEPOSIT_SUBTYPE_ORDER
+      .filter((t) => (byType.get(t)?.input ?? 0) > 0)
+      .map((t) => ({ accountType: t, ...(byType.get(t) ?? { input: 0, success: 0, errors: 0 }) }));
+    return { records: out, input: records.length, success: out.length, errors: records.length - out.length, depositSubtypes };
+  }
+  // No computed persisted fields to recalculate; push records as-is.
+  return { records, input: records.length, success: records.length, errors: 0 };
+}
+
+function row(itemLabelKey: string, success: number, errors: number, indent = false): BackupReportRow {
+  return { itemLabelKey, success, errors, indent };
+}
+
+function buildRestoreReport(preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore>): BackupReport {
+  const rows: BackupReportRow[] = [];
+  const fi = preparedByTable.financialInstitutions;
+  if (fi.input > 0) rows.push(row('backup.category.financialInstitutions', fi.success, fi.errors));
+
+  const dep = preparedByTable.deposits;
+  if (dep.input > 0) {
+    rows.push(row('backup.category.deposits', dep.success, dep.errors));
+    for (const sub of dep.depositSubtypes ?? []) {
+      rows.push(row(DEPOSIT_SUBTYPE_LABEL_KEYS[sub.accountType], sub.success, sub.errors, true));
+    }
+  }
+
+  const others: Array<{ key: (typeof FINANCIAL_TABLES)[number]; labelKey: string }> = [
+    { key: 'stocks', labelKey: 'backup.category.stocks' },
+    { key: 'bonds', labelKey: 'backup.category.bonds' },
+    { key: 'pfAccounts', labelKey: 'backup.category.pfAccounts' },
+    { key: 'commodities', labelKey: 'backup.category.commodities' },
+    { key: 'debts', labelKey: 'backup.category.debts' },
+  ];
+  for (const o of others) {
+    const p = preparedByTable[o.key];
+    if (p.input > 0) rows.push(row(o.labelKey, p.success, p.errors));
+  }
+  return { kind: 'restore', rows };
+}
+
+export function buildExportReport(backup: ApplicationBackupSchema): BackupReport {
+  const rows: BackupReportRow[] = [];
+  const fi = backup.data.financialInstitutions ?? [];
+  if (fi.length > 0) rows.push(row('backup.category.financialInstitutions', fi.length, 0));
+
+  const deposits = backup.data.deposits ?? [];
+  if (deposits.length > 0) {
+    rows.push(row('backup.category.deposits', deposits.length, 0));
+    const byType = new Map<DepositType, number>();
+    for (const d of deposits) byType.set(normalizeDepositSubtype((d as { accountType?: unknown }).accountType), (byType.get(normalizeDepositSubtype((d as { accountType?: unknown }).accountType)) ?? 0) + 1);
+    for (const t of DEPOSIT_SUBTYPE_ORDER) {
+      const n = byType.get(t) ?? 0;
+      if (n > 0) rows.push(row(DEPOSIT_SUBTYPE_LABEL_KEYS[t], n, 0, true));
+    }
+  }
+
+  const others: Array<{ key: keyof ApplicationBackupSchema['data']; labelKey: string }> = [
+    { key: 'stocks', labelKey: 'backup.category.stocks' },
+    { key: 'bonds', labelKey: 'backup.category.bonds' },
+    { key: 'pfAccounts', labelKey: 'backup.category.pfAccounts' },
+    { key: 'commodities', labelKey: 'backup.category.commodities' },
+    { key: 'debts', labelKey: 'backup.category.debts' },
+  ];
+  for (const o of others) {
+    const arr = backup.data[o.key];
+    const n = Array.isArray(arr) ? arr.length : 0;
+    if (n > 0) rows.push(row(o.labelKey, n, 0));
+  }
+  return { kind: 'export', rows };
+}
+
 export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   const parsed = typeof source === 'string' ? JSON.parse(source) : source;
   // Validate the entire file first; only import when fully valid (no mid-way import).
   const backup = parseBackup(parsed);
-  const counts = countRecords(backup);
-  const institutions = backup.data.financialInstitutions ?? [];
+  const preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore> = {
+    stocks: prepareRecordsForRestore('stocks', backup.data.stocks),
+    bonds: prepareRecordsForRestore('bonds', backup.data.bonds),
+    pfAccounts: prepareRecordsForRestore('pfAccounts', backup.data.pfAccounts),
+    deposits: prepareRecordsForRestore('deposits', backup.data.deposits),
+    commodities: prepareRecordsForRestore('commodities', backup.data.commodities),
+    debts: prepareRecordsForRestore('debts', backup.data.debts),
+    financialInstitutions: prepareRecordsForRestore('financialInstitutions', backup.data.financialInstitutions ?? []),
+  };
+  const counts: BackupRecordCounts = {
+    stocks: preparedByTable.stocks.success,
+    bonds: preparedByTable.bonds.success,
+    pfAccounts: preparedByTable.pfAccounts.success,
+    deposits: preparedByTable.deposits.success,
+    commodities: preparedByTable.commodities.success,
+    debts: preparedByTable.debts.success,
+  };
+  const report = buildRestoreReport(preparedByTable);
 
   const maxAttempts = 6;
   let lastError: unknown;
@@ -86,16 +268,16 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
       await withTransaction(async (db) => {
         try { await db.execute('PRAGMA busy_timeout = 8000'); } catch { /* ignore */ }
         for (const table of FINANCIAL_TABLES) await clearTableSilent(db, table);
-        await bulkPutRecordsSilent(db, 'stocks', backup.data.stocks);
-        await bulkPutRecordsSilent(db, 'bonds', backup.data.bonds);
-        await bulkPutRecordsSilent(db, 'pfAccounts', backup.data.pfAccounts);
-        await bulkPutRecordsSilent(db, 'deposits', backup.data.deposits);
-        await bulkPutRecordsSilent(db, 'commodities', backup.data.commodities);
-        await bulkPutRecordsSilent(db, 'debts', backup.data.debts);
-        await bulkPutRecordsSilent(db, 'financialInstitutions', institutions);
+        await bulkPutRecordsSilent(db, 'stocks', preparedByTable.stocks.records);
+        await bulkPutRecordsSilent(db, 'bonds', preparedByTable.bonds.records);
+        await bulkPutRecordsSilent(db, 'pfAccounts', preparedByTable.pfAccounts.records);
+        await bulkPutRecordsSilent(db, 'deposits', preparedByTable.deposits.records);
+        await bulkPutRecordsSilent(db, 'commodities', preparedByTable.commodities.records);
+        await bulkPutRecordsSilent(db, 'debts', preparedByTable.debts.records);
+        await bulkPutRecordsSilent(db, 'financialInstitutions', preparedByTable.financialInstitutions.records);
       });
-      console.info('[folio/backup] restore complete', { counts, institutions: institutions.length, attempt });
-      return { counts, total: totalRecords(counts) };
+      console.info('[folio/backup] restore complete', { counts, institutions: preparedByTable.financialInstitutions.success, attempt });
+      return { counts, total: totalRecords(counts), report };
     } catch (error) {
       lastError = error;
       console.warn('[folio/backup] restore attempt failed', { attempt, maxAttempts, locked: isDatabaseLockedError(error), error: errorDetails(error) });

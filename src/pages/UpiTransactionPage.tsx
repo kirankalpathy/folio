@@ -6,6 +6,8 @@ import PageHeader from '../components/common/PageHeader';
 import { formatNumber, getNumberFormat } from '../utils/finance';
 import { UPI_ID_REGEX, buildUpiPayUri } from '../utils/upi';
 import { useTheme } from '../theme/ThemeProvider';
+import { palette } from '../theme/palette';
+import MobileInput, { mobileInputRules, normalizeMobileDigits } from '../components/common/MobileInput';
 
 type PaymentMode = 'upi' | 'mobile';
 
@@ -28,7 +30,7 @@ function parseFormattedNumber(input: string): number {
 }
 
 function toMobileDigits(value?: string): string {
-  return (value ?? '').replace(/\D/g, '').slice(0, 10);
+  return normalizeMobileDigits(value);
 }
 
 export default function UpiTransactionPage() {
@@ -96,34 +98,13 @@ export default function UpiTransactionPage() {
               <Form.Item
                 label={t('transactions.upi.fields.mobileNumber')}
                 name="mobileNumber"
-                rules={[
-                  {
-                    validator: async (_, value?: string) => {
-                      const digits = toMobileDigits(value);
-                      if (!digits) throw new Error(t('transactions.upi.validation.mobileRequired'));
-                      if (digits.length !== 10) throw new Error(t('transactions.upi.validation.mobileDigits'));
-                    },
-                  },
-                ]}
+                rules={mobileInputRules(t as never, {
+                  required: true,
+                  requiredMessageKey: 'transactions.upi.validation.mobileRequired',
+                  digitsMessageKey: 'transactions.upi.validation.mobileDigits',
+                })}
               >
-                <Input
-                  addonBefore={(
-                    <span className="inline-flex items-center gap-1.5 text-[12px]">
-                      <svg aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" className="overflow-hidden rounded-[2px] ring-1 ring-black/10 dark:ring-white/10" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="18" height="4" y="0" fill="#FF9933" />
-                        <rect width="18" height="4" y="4" fill="#FFFFFF" />
-                        <rect width="18" height="4" y="8" fill="#138808" />
-                        <circle cx="9" cy="6" r="1.35" fill="none" stroke="#000080" strokeWidth="0.35" />
-                        <circle cx="9" cy="6" r="0.2" fill="#000080" />
-                      </svg>
-                      <span>+91</span>
-                    </span>
-                  )}
-                  maxLength={10}
-                  inputMode="numeric"
-                  placeholder={t('transactions.upi.placeholder.mobileNumber')}
-                  onChange={(e) => form.setFieldValue('mobileNumber', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                />
+                <MobileInput placeholder={t('transactions.upi.placeholder.mobileNumber')} />
               </Form.Item>
             )}
 
@@ -180,7 +161,7 @@ export default function UpiTransactionPage() {
 
         {canGenerateQr ? (
           <section className="folio-card p-4 sm:p-5">
-            <h2 className="mb-4 text-sm font-semibold text-folio-ink dark:text-[#F3F4F6]">
+            <h2 className="mb-4 text-sm font-semibold text-folio-ink dark:text-folio-dark-text">
               {t('transactions.upi.qr.title')}
             </h2>
             <div className="space-y-3">
@@ -204,13 +185,13 @@ export default function UpiTransactionPage() {
                   logoPadding={4}
                   removeQrCodeBehindLogo
                   logoPaddingStyle="circle"
-                  bgColor={theme === 'dark' ? '#141414' : '#FFFFFF'}
-                  fgColor={theme === 'dark' ? '#E19F8C' : '#C8502D'}
+                  bgColor={theme === 'dark' ? palette.night : palette.paper}
+                  fgColor={theme === 'dark' ? palette.accent : palette.primary}
                 />
               </div>
               <div className="rounded-lg bg-folio-paper/60 p-3 text-center dark:bg-white/[0.03]">
                 {payeeName?.trim() ? (
-                  <p className="text-[13px] font-semibold text-folio-ink dark:text-[#F3F4F6]">
+                  <p className="text-[13px] font-semibold text-folio-ink dark:text-folio-dark-text">
                     {payeeName.trim()}
                   </p>
                 ) : null}

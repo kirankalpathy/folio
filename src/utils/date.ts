@@ -38,6 +38,18 @@ export function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? '—' : formatShortDate(date);
 }
 
+export function formatDateTime(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return formatDate(value);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = MONTHS_SHORT[date.getMonth()] ?? '';
+  const year = date.getFullYear();
+  const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const datePart = activeDateFormatId === 'MMM DD YYYY' ? `${month} ${day} ${year}` : `${day} ${month} ${year}`;
+  return `${datePart}, ${time}`;
+}
+
 export function formatLongDate(date: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-IN', {
     weekday: 'long',

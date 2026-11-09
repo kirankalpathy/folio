@@ -4,6 +4,7 @@ import { ArrowRight, ReceiptText } from 'lucide-react';
 import type { NetWorthSummary } from '../../types';
 import { useI18n } from '../../i18n';
 import { formatINR, formatPercent } from '../../utils/finance';
+import { alpha, palette } from '../../theme/palette';
 
 export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
   const { t } = useI18n();
@@ -34,8 +35,8 @@ export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
       <Progress
         percent={progress}
         showInfo={false}
-        strokeColor="#C8502D"
-        railColor="rgba(42, 26, 20, 0.08)"
+        strokeColor={palette.primary}
+        railColor={alpha(palette.ink, 0.08)}
         size="small"
         className="mt-4"
       />
@@ -50,7 +51,7 @@ export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
 
       <Link
         to="/debts"
-        className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-medium text-folio-primary transition-colors hover:text-[#A64022] dark:text-folio-accent"
+        className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-medium text-folio-primary transition-colors hover:text-folio-primary-hover dark:text-folio-accent"
       >
         {t('dashboard.debt.review')} <ArrowRight size={12} />
       </Link>

@@ -11,6 +11,7 @@ import {
   putRecord as putRecordTauri,
   putRecordSilent as putRecordSilentTauri,
   resetLocalLedgerData as resetLocalLedgerDataTauri,
+  updateAuditActorInAllTables as updateAuditActorInAllTablesTauri,
   withTransaction as withTransactionTauri,
   type SqliteDb,
 } from './sqlite.tauri';
@@ -75,4 +76,9 @@ export async function bulkPutRecordsSilent(db: SqliteDb, table: string, rows: un
 export async function resetLocalLedgerData(): Promise<void> {
   assertTauri();
   return resetLocalLedgerDataTauri();
+}
+
+export async function updateAuditActorInAllTables(oldIdentifiers: string[], newEmail: string): Promise<void> {
+  assertTauri();
+  return updateAuditActorInAllTablesTauri(oldIdentifiers, newEmail);
 }

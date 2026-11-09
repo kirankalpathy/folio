@@ -10,6 +10,7 @@ import type {
 import { translate } from '../i18n';
 import { isValidUpiId } from '../utils/upi';
 import { allRecords, deleteRecord, getRecord, putRecord } from './sqlite';
+import { getAuditActorEmail } from './currentUser';
 
 function clean(value: string | undefined | null): string | undefined {
   const v = typeof value === 'string' ? value.trim() : '';
@@ -150,7 +151,16 @@ export async function createFinancialInstitution(input: FinancialInstitutionInpu
   const normalized = normalize(input);
   validate(normalized);
   const now = new Date().toISOString();
-  const record: FinancialInstitution = { ...(normalized as FinancialInstitution), id: crypto.randomUUID(), createdAt: now, updatedAt: now };
+  const actorId = await getAuditActorEmail();
+  const record: FinancialInstitution = {
+    ...(normalized as FinancialInstitution),
+    id: crypto.randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+    changedAt: now,
+    createdBy: actorId,
+    changedBy: actorId,
+  };
   await putRecord('financialInstitutions', record.id, record, { updatedAt: record.updatedAt });
   return record;
 }
@@ -160,7 +170,19 @@ export async function updateFinancialInstitution(id: string, input: FinancialIns
   if (!existing) throw new Error(translate('institutions.saveError'));
   const normalized = normalize(input);
   validate(normalized);
-  const updated: FinancialInstitution = { ...migrateRecord(existing), ...normalized, id, updatedAt: new Date().toISOString() } as FinancialInstitution;
+  const now = new Date().toISOString();
+  const actorId = await getAuditActorEmail();
+  const base = migrateRecord(existing);
+  const updated: FinancialInstitution = {
+    ...base,
+    ...normalized,
+    id,
+    createdAt: base.createdAt,
+    createdBy: base.createdBy,
+    updatedAt: now,
+    changedAt: now,
+    changedBy: actorId,
+  } as FinancialInstitution;
   await putRecord('financialInstitutions', updated.id, updated, { updatedAt: updated.updatedAt });
   return updated;
 }

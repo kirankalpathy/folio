@@ -27,6 +27,7 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const [showError, setShowError] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const accountType = Form.useWatch('accountType', form);
 
   const stepItems = useMemo(() => ([
     { title: t('deposit.section.overview') },
@@ -52,7 +53,7 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const goNext = async () => {
     setShowError(false);
     try {
-      const fields: Array<string | number | (string | number)[]> = [...depositStepFields(step)];
+      const fields: Array<string | number | (string | number)[]> = [...depositStepFields(step, accountType)];
       if (step === 0) {
         const op = form.getFieldValue('operationType');
         if (op && op !== 'single') {
@@ -74,7 +75,6 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const goBack = () => { setShowError(false); setStep((s) => (Math.max(0, s - 1) as DepositWizardStep)); scrollTop(); };
 
   const handleFinish = async () => {
-    if (terminalLocked) return;
     setShowError(false);
     try {
       await form.validateFields();
@@ -83,10 +83,11 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
       const errorFields = (err as { errorFields?: Array<{ name: (string | number)[] }> })?.errorFields;
       if (errorFields?.length) {
         setShowError(true);
+        const at = form.getFieldValue('accountType');
         const topFields = errorFields.map((e) => e.name?.[0]);
-        if (topFields.some((f) => typeof f === 'string' && depositStepFields(0).includes(f as keyof DepositFormValues))) setStep(0);
-        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(1).includes(f as keyof DepositFormValues))) setStep(1);
-        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(2).includes(f as keyof DepositFormValues))) setStep(2);
+        if (topFields.some((f) => typeof f === 'string' && depositStepFields(0, at).includes(f as keyof DepositFormValues))) setStep(0);
+        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(1, at).includes(f as keyof DepositFormValues))) setStep(1);
+        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(2, at).includes(f as keyof DepositFormValues))) setStep(2);
         else setStep(3);
         scrollTop();
       }
@@ -113,22 +114,20 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
       <div ref={(el) => { stepRefs.current[2] = el; }} style={{ display: step === 2 ? 'block' : 'none' }}><DepositWizardStepMaturity activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
       <div ref={(el) => { stepRefs.current[3] = el; }} style={{ display: step === 3 ? 'block' : 'none' }}><DepositWizardStepAdditional activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
 
-      {!terminalLocked && (
-        <div className="mt-5 flex items-center justify-between gap-2 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
-          <Button onClick={step === 0 ? onCancel : goBack} icon={step === 0 ? undefined : <ArrowLeft size={14} />}>
-            {step === 0 ? t('common.cancel') : t('institutions.action.back')}
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
+        <Button onClick={step === 0 ? onCancel : goBack} icon={step === 0 ? undefined : <ArrowLeft size={14} />}>
+          {step === 0 ? t('common.cancel') : t('institutions.action.back')}
+        </Button>
+        {step < 3 ? (
+          <Button type="primary" onClick={() => void goNext()}>
+            <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
           </Button>
-          {step < 3 ? (
-            <Button type="primary" onClick={() => void goNext()}>
-              <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
-            </Button>
-          ) : (
-            <Button type="primary" loading={saving} onClick={() => void handleFinish()}>
-              {submitLabel}
-            </Button>
-          )}
-        </div>
-      )}
+        ) : (
+          <Button type="primary" loading={saving} onClick={() => void handleFinish()}>
+            {submitLabel}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

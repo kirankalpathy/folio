@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Select } from 'antd';
+import { Checkbox, Select, Tooltip } from 'antd';
 import type { DefaultOptionType, SelectProps } from 'antd/es/select';
 import { multiselectSuffixIcon } from './selectIcons';
 
@@ -19,6 +19,11 @@ export default function FilterMultiSelect({
   className,
   suffixIcon = multiselectSuffixIcon,
   maxTagCount = 'responsive',
+  popupMatchSelectWidth = false,
+  optionRender,
+  value,
+  popupClassName,
+  maxTagPlaceholder,
   ...props
 }: FilterMultiSelectProps) {
   return (
@@ -26,8 +31,33 @@ export default function FilterMultiSelect({
       mode="multiple"
       allowClear
       maxTagCount={maxTagCount}
+      maxTagPlaceholder={
+        maxTagPlaceholder ??
+        ((omittedValues) => (
+          <Tooltip title={omittedValues.map((v) => v.label).join(', ')}>
+            <span>+{omittedValues.length}</span>
+          </Tooltip>
+        ))
+      }
       suffixIcon={suffixIcon}
-      className={`w-full min-w-[12rem] shrink-0 sm:w-[14rem] ${className ?? ''}`}
+      popupMatchSelectWidth={popupMatchSelectWidth}
+      value={value}
+      popupClassName={`folio-multiselect-dropdown ${popupClassName ?? ''}`}
+      menuItemSelectedIcon={null}
+      optionRender={
+        optionRender ??
+        ((option) => {
+          const selected = Array.isArray(value) && value.includes(option.value as string);
+          const label = (option.data?.label ?? option.label ?? option.value) as ReactNode;
+          return (
+            <span className="inline-flex w-full items-center gap-2">
+              <Checkbox checked={selected} tabIndex={-1} />
+              <span className="min-w-0 flex-1">{label}</span>
+            </span>
+          );
+        })
+      }
+      className={`w-full min-w-0 ${className ?? ''}`}
       {...props}
     />
   );

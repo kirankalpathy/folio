@@ -14,7 +14,7 @@ interface StatCardProps {
 }
 
 const toneClasses: Record<StatTone, string> = {
-  default: 'text-folio-ink dark:text-[#F7EFE9]',
+  default: 'text-folio-ink dark:text-folio-cream',
   positive: 'text-emerald-700 dark:text-emerald-400',
   negative: 'text-rose-700 dark:text-rose-400',
   accent: 'text-folio-primary dark:text-folio-accent',
