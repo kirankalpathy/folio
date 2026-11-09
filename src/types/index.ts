@@ -230,7 +230,10 @@ export interface DepositHolding extends BaseRecord {
   accountNumber?: string;
   financialInstitutionId?: string;
   accountType: DepositType;
+  /** Lump-sum principal for FD; for RD this stores total deposited (recurringAmount * months) for compatibility. */
   principal: number;
+  /** Monthly recurring/installment amount, used for RD. */
+  recurringAmount?: number;
   currentValue: number;
   interestRate: number;
   compoundingFrequency?: CompoundingFrequency;

@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import type { CompoundingFrequency, DepositHolding } from '../types';
+import type { CompoundingFrequency, DepositHolding, DepositType } from '../types';
 import { calculateCompoundInterest, calculateReturnsPercentage, COMPOUNDING_PERIODS } from './finance';
 import { daysUntil } from './date';
 
@@ -55,37 +55,86 @@ export function formatDepositTenure(startDate?: string, maturityDate?: string): 
 }
 
 export interface DepositComputedValues {
+  /** Interest earned (compound interest for cumulative/RD). */
   interest: number;
+  /** Maturity value (FD: principal+interest; RD: recurringAmount*months + interest). */
   realizedValue: number;
+  /** Total amount deposited/invested (FD: principal; RD: recurringAmount * months). */
+  totalDeposited: number;
+  /** Number of monthly installments/months for RD; 0 for FD. */
+  months: number;
+}
+
+function calculateRdMaturityValue(
+  recurringAmount: number,
+  annualRatePercent: number,
+  months: number,
+  compoundingFrequency?: CompoundingFrequency,
+): number {
+  if (recurringAmount <= 0 || annualRatePercent <= 0 || months <= 0) return recurringAmount * Math.max(0, months);
+  const r = annualRatePercent / 100;
+  if (compoundingFrequency === 'monthly') {
+    // Monthly deposits compounded monthly (annuity due approximation): M = R*(1+i)*((1+i)^n - 1)/i
+    const i = r / 12;
+    if (i === 0) return recurringAmount * months;
+    return recurringAmount * (1 + i) * ((Math.pow(1 + i, months) - 1) / i);
+  }
+  // Default: quarterly compounding with monthly deposits (standard Indian RD formula).
+  const i = r / 4;
+  if (i === 0) return recurringAmount * months;
+  const q = months / 3;
+  const onePlusI = 1 + i;
+  const denom = 1 - Math.pow(onePlusI, -1 / 3);
+  if (Math.abs(denom) < 1e-12) return recurringAmount * months;
+  return recurringAmount * ((Math.pow(onePlusI, q) - 1) / denom);
 }
 
 export function calculateDepositValues(input: {
+  accountType?: DepositType;
   principal: number;
+  recurringAmount?: number;
   interestRate: number;
   startDate: string;
   maturityDate: string;
   cumulativeInterest: boolean;
   compoundingFrequency?: CompoundingFrequency;
 }): DepositComputedValues {
-  const principal = Number.isFinite(input.principal) ? Math.max(0, input.principal) : 0;
   const rate = Number.isFinite(input.interestRate) ? Math.max(0, input.interestRate) : 0;
   const start = dayjs(input.startDate);
   const maturity = dayjs(input.maturityDate);
+
+  if (input.accountType === 'rd') {
+    const recurringAmount = Number.isFinite(input.recurringAmount) ? Math.max(0, input.recurringAmount as number) : 0;
+    if (!recurringAmount || !start.isValid() || !maturity.isValid() || !maturity.isAfter(start)) {
+      const months = start.isValid() && maturity.isValid() ? Math.max(0, maturity.diff(start, 'month')) : 0;
+      const totalDeposited = recurringAmount * months;
+      return { interest: 0, realizedValue: totalDeposited, totalDeposited, months };
+    }
+    const months = Math.max(0, maturity.diff(start, 'month'));
+    const totalDeposited = recurringAmount * months;
+    if (!rate || months <= 0) return { interest: 0, realizedValue: totalDeposited, totalDeposited, months };
+    // RD is cumulative (compound interest) by default.
+    const maturityValue = calculateRdMaturityValue(recurringAmount, rate, months, input.compoundingFrequency ?? 'quarterly');
+    const interest = Math.max(0, maturityValue - totalDeposited);
+    return { interest, realizedValue: totalDeposited + interest, totalDeposited, months };
+  }
+
+  const principal = Number.isFinite(input.principal) ? Math.max(0, input.principal) : 0;
   if (!principal || !rate || !start.isValid() || !maturity.isValid() || !maturity.isAfter(start)) {
-    return { interest: 0, realizedValue: principal };
+    return { interest: 0, realizedValue: principal, totalDeposited: principal, months: 0 };
   }
   const years = maturity.diff(start, 'day') / 365;
-  if (years <= 0) return { interest: 0, realizedValue: principal };
+  if (years <= 0) return { interest: 0, realizedValue: principal, totalDeposited: principal, months: 0 };
 
   if (input.cumulativeInterest) {
     const compoundsPerYear = COMPOUNDING_PERIODS[input.compoundingFrequency ?? 'quarterly'] ?? 4;
     const result = calculateCompoundInterest({ principal, annualRate: rate, years, compoundsPerYear });
     const interest = Math.max(0, result.interestEarned);
-    return { interest, realizedValue: principal + interest };
+    return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
   }
 
   const interest = Math.max(0, (principal * rate * years) / 100);
-  return { interest, realizedValue: principal + interest };
+  return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
 }
 
 export function summarizeDeposits(

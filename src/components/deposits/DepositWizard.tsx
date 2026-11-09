@@ -27,6 +27,7 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const [showError, setShowError] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const accountType = Form.useWatch('accountType', form);
 
   const stepItems = useMemo(() => ([
     { title: t('deposit.section.overview') },
@@ -52,7 +53,7 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const goNext = async () => {
     setShowError(false);
     try {
-      const fields: Array<string | number | (string | number)[]> = [...depositStepFields(step)];
+      const fields: Array<string | number | (string | number)[]> = [...depositStepFields(step, accountType)];
       if (step === 0) {
         const op = form.getFieldValue('operationType');
         if (op && op !== 'single') {
@@ -83,10 +84,11 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
       const errorFields = (err as { errorFields?: Array<{ name: (string | number)[] }> })?.errorFields;
       if (errorFields?.length) {
         setShowError(true);
+        const at = form.getFieldValue('accountType');
         const topFields = errorFields.map((e) => e.name?.[0]);
-        if (topFields.some((f) => typeof f === 'string' && depositStepFields(0).includes(f as keyof DepositFormValues))) setStep(0);
-        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(1).includes(f as keyof DepositFormValues))) setStep(1);
-        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(2).includes(f as keyof DepositFormValues))) setStep(2);
+        if (topFields.some((f) => typeof f === 'string' && depositStepFields(0, at).includes(f as keyof DepositFormValues))) setStep(0);
+        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(1, at).includes(f as keyof DepositFormValues))) setStep(1);
+        else if (topFields.some((f) => typeof f === 'string' && depositStepFields(2, at).includes(f as keyof DepositFormValues))) setStep(2);
         else setStep(3);
         scrollTop();
       }

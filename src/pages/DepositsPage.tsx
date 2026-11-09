@@ -4,11 +4,13 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/common/toast/ToastProvider';
 import { ChevronLeft, ChevronRight, Download, Equal, EqualNot, FileSpreadsheet, FileText, Minus, PiggyBank, Plus, Search, Table2 } from 'lucide-react';
-import type { DepositHolding } from '../types';
+import type { DepositHolding, DepositType } from '../types';
 import { useDeposits } from '../hooks/useDeposits';
 import { useFinancialInstitutions } from '../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../services/financialInstitutions';
 import { getDepositLifecycleStatus, summarizeDeposits, type DepositLifecycleStatus } from '../utils/deposits';
+import { getDateFormatId } from '../utils/date';
+import { isDateOutsidePickerBounds } from '../config/validationConfig';
 
 type MaturityDateOp = '==' | '<>' | '<' | '>' | '<=' | '>=';
 
@@ -50,6 +52,7 @@ import DepositStats from '../components/deposits/DepositStats';
 import DepositTable from '../components/deposits/DepositTable';
 import { multiselectSuffixIcon } from '../components/common/selectIcons';
 import { DEPOSIT_STATUS_SEMANTIC, FOLIO_TAG_CLASS, semanticTagStyle } from '../components/deposits/DepositStatusTag';
+import { ACCOUNT_TYPE_FILTER_OPTIONS, accountLabel, accountTypeTagStyle } from '../components/deposits/depositTableHelpers';
 
 export default function DepositsPage() {
   const { modal } = AntApp.useApp();
@@ -61,6 +64,7 @@ export default function DepositsPage() {
   const [search, setSearch] = useState('');
   const [bankFilter, setBankFilter] = useState<string[]>([]);
   const [lifecycleFilter, setLifecycleFilter] = useState<DepositLifecycleStatus[]>([]);
+  const [accountTypeFilter, setAccountTypeFilter] = useState<DepositType[]>([]);
   const [maturityDateOp, setMaturityDateOp] = useState<MaturityDateOp>('==');
   const [maturityDateValue, setMaturityDateValue] = useState<Dayjs | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -85,6 +89,7 @@ export default function DepositsPage() {
       if (lifecycleFilter.length > 0) {
         if (!status || !lifecycleFilter.includes(status)) return false;
       }
+      if (accountTypeFilter.length > 0 && !accountTypeFilter.includes(d.accountType)) return false;
       if (maturityDateValue) {
         if (!d.maturityDate) return false;
         const md = dayjs(d.maturityDate);
@@ -103,12 +108,13 @@ export default function DepositsPage() {
       }
       return true;
     });
-  }, [deposits, institutions, search, bankFilter, lifecycleFilter, maturityDateOp, maturityDateValue]);
+  }, [deposits, institutions, search, bankFilter, lifecycleFilter, accountTypeFilter, maturityDateOp, maturityDateValue]);
 
   const hasFilters =
     search.trim().length > 0 ||
     bankFilter.length > 0 ||
     lifecycleFilter.length > 0 ||
+    accountTypeFilter.length > 0 ||
     maturityDateValue != null;
 
   const openCreate = () => navigate('/deposits/new');
@@ -135,6 +141,21 @@ export default function DepositsPage() {
         tags: lifecycleFilter.map((s) => ({
           label: t(`deposit.lifecycle.${s === 'in-lien' ? 'inLien' : s === 'pre-closed' ? 'preClosed' : s}`),
           color: DEPOSIT_STATUS_SEMANTIC[s],
+        })),
+      });
+    }
+    if (accountTypeFilter.length > 0) {
+      const colorMap: Partial<Record<DepositType, 'info' | 'success' | 'warning' | 'error' | 'neutral'>> = {
+        fd: 'success',
+        rd: 'info',
+        'tax-saving': 'warning',
+      };
+      appliedFilters.push({
+        type: 'tags',
+        label: t('deposit.filter.accountType'),
+        tags: accountTypeFilter.map((type) => ({
+          label: accountLabel(type, t),
+          color: colorMap[type] ?? 'neutral',
         })),
       });
     }
@@ -223,6 +244,7 @@ export default function DepositsPage() {
                     setSearch('');
                     setBankFilter([]);
                     setLifecycleFilter([]);
+                    setAccountTypeFilter([]);
                     setMaturityDateOp('==');
                     setMaturityDateValue(null);
                     toast.success(t('deposit.filters.cleared'));
@@ -275,6 +297,30 @@ export default function DepositsPage() {
                 optionRender={(option) => option.data.children as ReactNode}
                 className="w-[150px] shrink-0"
               />
+              <Select
+                mode="multiple"
+                allowClear
+                maxTagCount="responsive"
+                value={accountTypeFilter}
+                onChange={(value) => setAccountTypeFilter(value as DepositType[])}
+                placeholder={t('deposit.filter.accountType')}
+                optionLabelProp="label"
+                suffixIcon={multiselectSuffixIcon}
+                options={ACCOUNT_TYPE_FILTER_OPTIONS.map((o) => {
+                  const label = t(o.labelKey);
+                  return {
+                    value: o.value,
+                    label,
+                    children: (
+                      <Tag bordered={false} style={accountTypeTagStyle(o.value)} className={FOLIO_TAG_CLASS}>
+                        {label}
+                      </Tag>
+                    ),
+                  };
+                })}
+                optionRender={(option) => option.data.children as ReactNode}
+                className="w-[170px] shrink-0"
+              />
               <Space.Compact className="w-[184px] shrink-0">
                 <Select<MaturityDateOp>
                   value={maturityDateOp}
@@ -290,7 +336,8 @@ export default function DepositsPage() {
                   value={maturityDateValue}
                   onChange={(value) => setMaturityDateValue(value)}
                   placeholder={t('deposit.filter.maturityDate')}
-                  format="DD MMM YYYY"
+                  format={getDateFormatId()}
+                  disabledDate={isDateOutsidePickerBounds}
                   style={{ width: 'calc(100% - 44px)' }}
                 />
               </Space.Compact>
@@ -334,7 +381,7 @@ export default function DepositsPage() {
               </EmptyState>
             ) : !isLoading && filteredDeposits.length === 0 ? (
               <EmptyState icon={Search} title={t('deposit.search.emptyTitle')} description={t('deposit.search.emptyBody')}>
-                <Button onClick={() => { setSearch(''); setBankFilter([]); setLifecycleFilter([]); setMaturityDateOp('=='); setMaturityDateValue(null); }}>{t('common.clear')}</Button>
+                <Button onClick={() => { setSearch(''); setBankFilter([]); setLifecycleFilter([]); setAccountTypeFilter([]); setMaturityDateOp('=='); setMaturityDateValue(null); }}>{t('common.clear')}</Button>
               </EmptyState>
             ) : (
               <DepositTable deposits={filteredDeposits} loading={isLoading} onView={openView} onEdit={openEdit} onDelete={handleDelete} />

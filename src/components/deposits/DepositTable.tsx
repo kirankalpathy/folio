@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import type { TableProps } from 'antd';
-import { AutoComplete, Table } from 'antd';
+import { AutoComplete, Table, Tag } from 'antd';
 import type { DepositHolding } from '../../types';
 import { daysUntil, formatDate } from '../../utils/date';
 import { calculateReturnsPercentage, formatINR, formatPercent } from '../../utils/finance';
 import { getDepositLifecycleStatus } from '../../utils/deposits';
 import { useI18n } from '../../i18n';
 import DepositRowActions from './DepositRowActions';
-import DepositStatusTag from './DepositStatusTag';
+import DepositStatusTag, { FOLIO_TAG_CLASS } from './DepositStatusTag';
 import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../../services/financialInstitutions';
 import {
   accountLabel,
+  accountTypeTagStyle,
   frequencyLabel,
   maturityClass,
   maturityLabel,
@@ -78,9 +79,9 @@ export default function DepositTable({
         <div className="min-w-[190px]">
           <p className="text-sm font-medium">{record.name}</p>
           <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-folio-ink/45 dark:text-white/40">
-            <span className="inline-flex rounded-full border border-folio-primary/20 bg-folio-primary/[0.06] px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.12em] text-folio-primary dark:text-folio-accent">
+            <Tag bordered={false} style={accountTypeTagStyle(record.accountType)} className={FOLIO_TAG_CLASS}>
               {accountLabel(record.accountType, t)}
-            </span>
+            </Tag>
             <span>{institutionName(record)}</span>
           </div>
         </div>

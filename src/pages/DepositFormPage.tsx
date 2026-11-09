@@ -73,14 +73,16 @@ export default function DepositFormPage() {
     setFormError(false);
     try {
       const computed = calculateDepositValues({
+        accountType: values.accountType,
         principal: values.principal,
+        recurringAmount: values.recurringAmount,
         interestRate: values.interestRate,
         startDate: values.startDate?.format('YYYY-MM-DD') ?? '',
         maturityDate: values.maturityDate?.format('YYYY-MM-DD') ?? '',
-        cumulativeInterest: values.cumulativeInterest,
+        cumulativeInterest: values.accountType === 'rd' ? true : values.cumulativeInterest,
         compoundingFrequency: values.compoundingFrequency,
       });
-      const input = toDepositInput(values, computed.realizedValue);
+      const input = toDepositInput(values, { realizedValue: computed.realizedValue, totalDeposited: computed.totalDeposited });
       if (isEdit && id) {
         await updateDeposit(id, input);
         toast.success(t('deposit.updated'));

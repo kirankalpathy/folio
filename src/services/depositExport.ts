@@ -104,27 +104,31 @@ const HEADERS = [
   'Financial Institution',
   'Account Type',
   'Lifecycle',
-  'Principal (INR)',
+  'Principal / Total Deposited (INR)',
+  'Recurring Amount (INR)',
   'Rate of Interest (% p.a.)',
   'Start Date',
   'Maturity Date',
   'Tenure',
-  'Cumulative Interest',
+  'Cumulative / Compound',
   'Compounding / Payout Frequency',
   'Rollover',
   'Interest (INR)',
-  'Realized Value (INR)',
+  'Maturity Value (INR)',
   'Notes',
 ] as const;
 
 function buildRows(deposits: DepositHolding[], byId: Map<string, FinancialInstitution>) {
   return deposits.map((d) => {
+    const isRd = d.accountType === 'rd';
     const computed = calculateDepositValues({
+      accountType: d.accountType,
       principal: d.principal,
+      recurringAmount: d.recurringAmount,
       interestRate: d.interestRate,
       startDate: d.startDate,
       maturityDate: d.maturityDate,
-      cumulativeInterest: d.cumulativeInterest ?? false,
+      cumulativeInterest: isRd ? true : (d.cumulativeInterest ?? false),
       compoundingFrequency: d.compoundingFrequency,
     });
     const lifecycle = getDepositLifecycleStatus(d);
@@ -135,12 +139,13 @@ function buildRows(deposits: DepositHolding[], byId: Map<string, FinancialInstit
       accountType: accountTypeLabel(d.accountType),
       lifecycle: lifecycleLabel(lifecycle),
       principal: d.principal,
+      recurringAmount: d.recurringAmount ?? '',
       interestRate: d.interestRate,
       startDate: d.startDate ? formatDate(d.startDate) : '',
       maturityDate: d.maturityDate ? formatDate(d.maturityDate) : '',
       tenure: formatDepositTenure(d.startDate, d.maturityDate) ?? '',
-      cumulativeInterest: d.cumulativeInterest ? 'Yes' : 'No',
-      frequency: frequencyLabel(d.cumulativeInterest === false ? d.payoutFrequency : d.compoundingFrequency),
+      cumulativeInterest: (isRd || d.cumulativeInterest) ? 'Yes' : 'No',
+      frequency: frequencyLabel(d.cumulativeInterest === false && !isRd ? d.payoutFrequency : d.compoundingFrequency),
       rollover: rolloverLabel(d.rollover),
       interest: computed.interest,
       realizedValue: d.currentValue || computed.realizedValue,
@@ -162,17 +167,18 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
     { header: HEADERS[2], key: 'financialInstitution', width: 24 },
     { header: HEADERS[3], key: 'accountType', width: 18 },
     { header: HEADERS[4], key: 'lifecycle', width: 12 },
-    { header: HEADERS[5], key: 'principal', width: 16 },
-    { header: HEADERS[6], key: 'interestRate', width: 18 },
-    { header: HEADERS[7], key: 'startDate', width: 14 },
-    { header: HEADERS[8], key: 'maturityDate', width: 14 },
-    { header: HEADERS[9], key: 'tenure', width: 22 },
-    { header: HEADERS[10], key: 'cumulativeInterest', width: 16 },
-    { header: HEADERS[11], key: 'frequency', width: 22 },
-    { header: HEADERS[12], key: 'rollover', width: 18 },
-    { header: HEADERS[13], key: 'interest', width: 16 },
-    { header: HEADERS[14], key: 'realizedValue', width: 18 },
-    { header: HEADERS[15], key: 'notes', width: 28 },
+    { header: HEADERS[5], key: 'principal', width: 20 },
+    { header: HEADERS[6], key: 'recurringAmount', width: 18 },
+    { header: HEADERS[7], key: 'interestRate', width: 18 },
+    { header: HEADERS[8], key: 'startDate', width: 14 },
+    { header: HEADERS[9], key: 'maturityDate', width: 14 },
+    { header: HEADERS[10], key: 'tenure', width: 22 },
+    { header: HEADERS[11], key: 'cumulativeInterest', width: 16 },
+    { header: HEADERS[12], key: 'frequency', width: 22 },
+    { header: HEADERS[13], key: 'rollover', width: 18 },
+    { header: HEADERS[14], key: 'interest', width: 16 },
+    { header: HEADERS[15], key: 'realizedValue', width: 18 },
+    { header: HEADERS[16], key: 'notes', width: 28 },
   ];
   const header = sheet.getRow(1);
   header.font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Calibri', size: 11 };
@@ -186,6 +192,7 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
     const numFmt = nf.decimal === ',' ? '#.##0,00' : '#,##0.00';
     const rateFmt = nf.decimal === ',' ? '0,00' : '0.00';
     row.getCell('principal').numFmt = numFmt;
+    if (typeof r.recurringAmount === 'number') row.getCell('recurringAmount').numFmt = numFmt;
     row.getCell('interestRate').numFmt = rateFmt;
     row.getCell('interest').numFmt = numFmt;
     row.getCell('realizedValue').numFmt = numFmt;
@@ -211,8 +218,12 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
   for (const r of rows) {
     lines.push([
       r.depositNumber, r.name, r.financialInstitution, r.accountType, r.lifecycle,
-      formatNumber(r.principal, 2), formatNumber(r.interestRate, 2), r.startDate, r.maturityDate, r.tenure,
-      r.cumulativeInterest, r.frequency, r.rollover, formatNumber(r.interest, 2), formatNumber(r.realizedValue, 2), r.notes,
+      formatNumber(r.principal, 2),
+      typeof r.recurringAmount === 'number' ? formatNumber(r.recurringAmount, 2) : '',
+      formatNumber(r.interestRate, 2),
+      r.startDate, r.maturityDate, r.tenure,
+      r.cumulativeInterest, r.frequency, r.rollover,
+      formatNumber(r.interest, 2), formatNumber(r.realizedValue, 2), r.notes,
     ].map(csvEscape).join(','));
   }
   const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'csv'), filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }] });
@@ -352,12 +363,15 @@ async function exportPdf(
   };
 
   const body = deposits.map((d) => {
+    const isRd = d.accountType === 'rd';
     const computed = calculateDepositValues({
+      accountType: d.accountType,
       principal: d.principal,
+      recurringAmount: d.recurringAmount,
       interestRate: d.interestRate,
       startDate: d.startDate,
       maturityDate: d.maturityDate,
-      cumulativeInterest: d.cumulativeInterest ?? false,
+      cumulativeInterest: isRd ? true : (d.cumulativeInterest ?? false),
       compoundingFrequency: d.compoundingFrequency,
     });
     const lifecycle = lifecycleLabel(getDepositLifecycleStatus(d));

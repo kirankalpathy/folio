@@ -24,8 +24,11 @@ const payoutIcons: Record<DepositPayoutFrequency, ReactNode> = {
 export default function DepositWizardStepMaturity({ activeLocked = false, terminalLocked = false }: { activeLocked?: boolean; terminalLocked?: boolean }) {
   const { t } = useI18n();
   const form = Form.useFormInstance<DepositFormValues>();
+  const accountType = Form.useWatch('accountType', form);
+  const isRd = accountType === 'rd';
   const cumulative = Form.useWatch('cumulativeInterest', form) ?? false;
   const principal = Form.useWatch('principal', form) ?? 0;
+  const recurringAmount = Form.useWatch('recurringAmount', form) ?? 0;
   const interestRate = Form.useWatch('interestRate', form) ?? 0;
   const startDate = Form.useWatch('startDate', form) as Dayjs | undefined;
   const maturityDate = Form.useWatch('maturityDate', form) as Dayjs | undefined;
@@ -35,20 +38,26 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
 
   const computed = useMemo(
     () => calculateDepositValues({
-      principal, interestRate,
+      accountType,
+      principal,
+      recurringAmount,
+      interestRate,
       startDate: startDate?.format('YYYY-MM-DD') ?? '',
       maturityDate: maturityDate?.format('YYYY-MM-DD') ?? '',
-      cumulativeInterest: cumulative, compoundingFrequency,
+      cumulativeInterest: isRd ? true : cumulative,
+      compoundingFrequency,
     }),
-    [principal, interestRate, startDate, maturityDate, cumulative, compoundingFrequency],
+    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, isRd],
   );
 
   return (
     <div className="space-y-0">
       <div className="grid gap-x-4 sm:grid-cols-2">
-        <Form.Item name="cumulativeInterest" valuePropName="checked" className="sm:col-span-2 mb-2">
-          <Checkbox disabled={locked} className="folio-checkbox">{t('deposit.fields.cumulativeInterest')}</Checkbox>
-        </Form.Item>
+        {!isRd && (
+          <Form.Item name="cumulativeInterest" valuePropName="checked" className="sm:col-span-2 mb-2">
+            <Checkbox disabled={locked} className="folio-checkbox">{t('deposit.fields.cumulativeInterest')}</Checkbox>
+          </Form.Item>
+        )}
 
         <Form.Item label={t('deposit.fields.rollover')} name="rollover" required rules={[{ required: true, message: required }]}>
           <Select
@@ -66,7 +75,7 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
             optionRender={(option) => option.data.children as ReactNode}
           />
         </Form.Item>
-        {!cumulative && (
+        {!isRd && !cumulative && (
           <Form.Item label={t('deposit.fields.payoutFrequency')} name="payoutFrequency" required rules={[{ required: true, message: required }]}>
             <Select
               disabled={locked}
@@ -90,7 +99,7 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
         showIcon type="info"
         title={
           <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-            <div><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.interest')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(computed.interest, { decimals: 2 })}</span></div>
+            <div><span className="text-folio-ink/55 dark:text-white/50">{t(isRd ? 'deposit.fields.compoundInterest' : 'deposit.fields.interest')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(computed.interest, { decimals: 2 })}</span></div>
             <div><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.realizedValue')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(computed.realizedValue, { decimals: 2 })}</span></div>
             <div className="sm:col-span-2 text-[11px] text-folio-ink/45 dark:text-white/40">{t('deposit.extra.autoComputed')}</div>
           </div>

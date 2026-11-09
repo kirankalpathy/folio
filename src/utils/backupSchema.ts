@@ -88,6 +88,7 @@ const DEPOSIT_FIELDS: FieldRule[] = [
   ['financialInstitutionId', 'string', 'optional'],
   ['accountType', 'string', DEPOSIT_TYPES],
   ['principal', 'number'],
+  ['recurringAmount', 'number', 'optional'],
   ['currentValue', 'number'],
   ['interestRate', 'number'],
   ['compoundingFrequency', 'string', { optional: true, enum: COMPOUNDING }],

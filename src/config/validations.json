@@ -1,0 +1,9 @@
+{
+  "datePicker": {
+    "min": "1900-01-01",
+    "max": "2080-12-31"
+  },
+  "dob": {
+    "allowFuture": false
+  }
+}

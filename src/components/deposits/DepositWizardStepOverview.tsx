@@ -10,6 +10,7 @@ import InstitutionFormModal from '../institutions/InstitutionFormModal';
 import { institutionLabel } from '../../services/financialInstitutions';
 import { listDeposits } from '../../services/deposits';
 import { getDateFormatId } from '../../utils/date';
+import { isDobDisabled } from '../../config/validationConfig';
 import { profileDisplayName, type DepositJointHolder, type DepositOperationType, type DepositType, type FinancialInstitutionInput } from '../../types';
 import {
   ACCOUNT_OPTIONS,
@@ -265,10 +266,10 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
                           />
                         </Form.Item>
                         <Form.Item name={[field.name, 'dateOfBirth']} label={t('deposit.fields.jointHolderDob')} rules={[{ required: true, message: t('deposit.validation.jointHolderDobRequired') }]}>
-                          <DatePicker className="w-full" disabled={locked} format={getDateFormatId()} allowClear />
+                          <DatePicker className="w-full" disabled={locked} format={getDateFormatId()} allowClear disabledDate={isDobDisabled} />
                         </Form.Item>
                         <Form.Item name={[field.name, 'share']} label={t('deposit.fields.jointHolderShare')} rules={[{ required: true, message: t('deposit.validation.jointHolderShareRequired') }, { type: 'number', min: 1, message: t('deposit.validation.jointHolderShareMin') }, { type: 'number', max: 100, message: t('deposit.validation.jointHolderShareMax') }]}>
-                          <InputNumber className="w-full" disabled={locked} min={1} max={100} precision={2} addonAfter="%" placeholder="0.0" />
+                          <InputNumber className="w-full" disabled={locked} min={1} max={100} precision={2} addonAfter="%" placeholder="0.00" />
                         </Form.Item>
                       </div>
                       {!locked ? (

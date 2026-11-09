@@ -54,12 +54,15 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
   const institutionName = institution ? institutionLabel(institution) : record.bankName;
   const lifecycle = getDepositLifecycleStatus(record);
   const tenure = formatDepositTenure(record.startDate, record.maturityDate);
+  const isRd = record.accountType === 'rd';
   const computed = calculateDepositValues({
+    accountType: record.accountType,
     principal: record.principal,
+    recurringAmount: record.recurringAmount,
     interestRate: record.interestRate,
     startDate: record.startDate,
     maturityDate: record.maturityDate,
-    cumulativeInterest: record.cumulativeInterest ?? false,
+    cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
     compoundingFrequency: record.compoundingFrequency,
   });
   const accountOpt = ACCOUNT_OPTIONS.find((o) => o.value === record.accountType);
@@ -120,7 +123,9 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
       ) : null}
       <Section title={t('deposit.section.investment')}>
         <Descriptions {...dp} items={[
-          { key: 'principal', label: t('deposit.fields.principal'), children: val(formatINR(record.principal)) },
+          isRd
+            ? { key: 'recurringAmount', label: t('deposit.fields.recurringAmount'), children: val(record.recurringAmount != null ? formatINR(record.recurringAmount) : undefined) }
+            : { key: 'principal', label: t('deposit.fields.principal'), children: val(formatINR(record.principal)) },
           { key: 'rate', label: t('deposit.fields.interestRate'), children: val(formatPercent(record.interestRate)) },
           { key: 'start', label: t('deposit.fields.startDate'), children: val(record.startDate ? formatDate(record.startDate) : undefined) },
           { key: 'maturity', label: t('deposit.fields.maturityDate'), children: val(record.maturityDate ? formatDate(record.maturityDate) : undefined) },
@@ -128,8 +133,8 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
           { key: 'operationMode', label: t('deposit.fields.operationMode'), children: val(record.operationMode === 'offline' ? t('institutions.operation.offline') : t('institutions.operation.online')) },
           { key: 'isPanLinked', label: t('deposit.fields.isPanLinked'), children: val(record.isPanLinked ? t('common.yes') : t('common.no')) },
           { key: 'isTaxExempt', label: t('deposit.fields.isTaxExempt'), children: val(record.isTaxExempt ? t('common.yes') : t('common.no')) },
-          { key: 'markedAsLien', label: t('deposit.fields.markedAsLien'), children: val(record.markedAsLien ? t('common.yes') : t('common.no')) },
-          ...(record.markedAsLien && record.lienReason ? [{ key: 'lienReason', label: t('deposit.fields.lienReason'), children: val(record.lienReason) }] : []),
+          ...(!isRd ? [{ key: 'markedAsLien', label: t('deposit.fields.markedAsLien'), children: val(record.markedAsLien ? t('common.yes') : t('common.no')) }] : []),
+          ...(!isRd && record.markedAsLien && record.lienReason ? [{ key: 'lienReason', label: t('deposit.fields.lienReason'), children: val(record.lienReason) }] : []),
           ...(record.preClosedDate ? [
             { key: 'preClosedDate', label: t('deposit.fields.preClosedDate'), children: val(formatDate(record.preClosedDate)) },
             { key: 'credited', label: t('deposit.fields.creditedValue'), children: val(record.preClosureCreditedValue != null ? formatINR(record.preClosureCreditedValue) : undefined) },
@@ -139,10 +144,10 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
       </Section>
       <Section title={t('deposit.section.maturity')}>
         <Descriptions {...dp} items={[
-          { key: 'cumulative', label: t('deposit.fields.cumulativeInterest'), children: val(record.cumulativeInterest ? t('common.yes') : t('common.no')) },
-          { key: 'freq', label: record.cumulativeInterest === false ? t('deposit.fields.payoutFrequency') : t('deposit.fields.compounding'), children: val(freqLabel ? t(freqLabel) : undefined) },
+          ...(!isRd ? [{ key: 'cumulative', label: t('deposit.fields.cumulativeInterest'), children: val(record.cumulativeInterest ? t('common.yes') : t('common.no')) }] : []),
+          { key: 'freq', label: (isRd || record.cumulativeInterest !== false) ? t('deposit.fields.compounding') : t('deposit.fields.payoutFrequency'), children: val(freqLabel ? t(freqLabel) : undefined) },
           { key: 'rollover', label: t('deposit.fields.rollover'), children: val(rolloverLabel ? t(rolloverLabel) : undefined) },
-          { key: 'interest', label: t('deposit.fields.interest'), children: val(formatINR(computed.interest)) },
+          { key: 'interest', label: t(isRd ? 'deposit.fields.compoundInterest' : 'deposit.fields.interest'), children: val(formatINR(computed.interest)) },
           { key: 'realized', label: t('deposit.fields.realizedValue'), children: val(formatINR(record.currentValue ?? computed.realizedValue)) },
         ]} />
       </Section>
