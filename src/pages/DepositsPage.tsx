@@ -3,7 +3,7 @@ import { Alert, App as AntApp, Button, DatePicker, Dropdown, Input, Select, Spac
 import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/common/toast/ToastProvider';
-import { ChevronLeft, ChevronRight, CopyCheck, Download, Equal, EqualNot, FileSpreadsheet, FileText, Minus, PiggyBank, Plus, Search, Table2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Equal, EqualNot, FileSpreadsheet, FileText, Minus, PiggyBank, Plus, Search, Table2 } from 'lucide-react';
 import type { DepositHolding } from '../types';
 import { useDeposits } from '../hooks/useDeposits';
 import { useFinancialInstitutions } from '../hooks/useFinancialInstitutions';
@@ -48,6 +48,7 @@ import PageHeader from '../components/common/PageHeader';
 import EmptyState from '../components/common/EmptyState';
 import DepositStats from '../components/deposits/DepositStats';
 import DepositTable from '../components/deposits/DepositTable';
+import { multiselectSuffixIcon } from '../components/common/selectIcons';
 import { DEPOSIT_STATUS_SEMANTIC, FOLIO_TAG_CLASS, semanticTagStyle } from '../components/deposits/DepositStatusTag';
 
 export default function DepositsPage() {
@@ -248,7 +249,7 @@ export default function DepositsPage() {
                 onChange={(value) => setBankFilter(value)}
                 placeholder={t('deposit.filter.bank')}
                 options={bankOptions}
-                suffixIcon={<CopyCheck size={14} className="text-folio-ink/40 dark:text-white/35" />}
+                suffixIcon={multiselectSuffixIcon}
                 className="w-[150px] shrink-0"
               />
               <Select
@@ -259,7 +260,7 @@ export default function DepositsPage() {
                 onChange={(value) => setLifecycleFilter(value as DepositLifecycleStatus[])}
                 placeholder={t('deposit.filter.lifecycle')}
                 optionLabelProp="label"
-                suffixIcon={<CopyCheck size={14} className="text-folio-ink/40 dark:text-white/35" />}
+                suffixIcon={multiselectSuffixIcon}
                 options={([
                   { value: 'planned', label: t('deposit.lifecycle.planned') },
                   { value: 'active', label: t('deposit.lifecycle.active') },

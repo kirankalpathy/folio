@@ -1,18 +1,26 @@
 import ExcelJS from 'exceljs';
-import dayjs from 'dayjs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { DepositHolding, FinancialInstitution } from '../types';
-import { formatDate, getDateFormatId } from '../utils/date';
+import { formatDate } from '../utils/date';
 import { calculateDepositValues, formatDepositTenure, getDepositLifecycleStatus } from '../utils/deposits';
 import { formatNumber, formatPercent, getNumberFormat } from '../utils/finance';
 import { listFinancialInstitutions } from './financialInstitutions';
+import {
+  drawRoundedRect,
+  drawTagPill,
+  exportDateTimeLabel,
+  loadLogoDataUrl,
+  registerInterFont,
+  stampName,
+  type PdfSemanticColor,
+} from './pdfExportUtils';
 
 export type DepositExportFormat = 'xlsx' | 'csv' | 'pdf';
 
-export type PdfSemanticColor = 'info' | 'success' | 'warning' | 'error' | 'neutral';
+export type { PdfSemanticColor };
 
 export interface DepositPdfFilterTag {
   label: string;
@@ -32,14 +40,6 @@ export interface DepositExportOptions {
   /** Applied filters for PDF rendering. Omit or pass empty to hide the Filters section. */
   filters?: DepositPdfFilter[];
 }
-
-const SEMANTIC_RGB: Record<PdfSemanticColor, { bg: [number, number, number]; border: [number, number, number]; text: [number, number, number] }> = {
-  info: { bg: [239, 246, 255], border: [147, 197, 253], text: [29, 78, 216] },
-  success: { bg: [240, 253, 244], border: [134, 239, 172], text: [21, 128, 61] },
-  warning: { bg: [254, 252, 232], border: [253, 224, 71], text: [161, 98, 7] },
-  error: { bg: [254, 242, 242], border: [252, 165, 165], text: [185, 28, 28] },
-  neutral: { bg: [248, 245, 242], border: [220, 210, 202], text: [72, 58, 52] },
-};
 
 const OP_RGB: Record<NonNullable<DepositPdfFilter['op']>, [number, number, number]> = {
   '==': [2, 132, 199],
@@ -149,11 +149,7 @@ function buildRows(deposits: DepositHolding[], byId: Map<string, FinancialInstit
   });
 }
 
-function stampName(ext: string): string {
-  const stamp = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `folio-deposits-${stamp.getFullYear()}-${pad(stamp.getMonth() + 1)}-${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}${pad(stamp.getSeconds())}.${ext}`;
-}
+// Uses shared stampName('folio-deposits', ext) from pdfExportUtils.
 
 async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> {
   const workbook = new ExcelJS.Workbook();
@@ -197,7 +193,7 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
   });
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
 
-  const path = await save({ title: 'Export deposits', defaultPath: stampName('xlsx'), filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }] });
+  const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'xlsx'), filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }] });
   if (!path) return false;
   const buffer = await workbook.xlsx.writeBuffer();
   await writeFile(path, buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer as ArrayBuffer));
@@ -219,7 +215,7 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
       r.cumulativeInterest, r.frequency, r.rollover, formatNumber(r.interest, 2), formatNumber(r.realizedValue, 2), r.notes,
     ].map(csvEscape).join(','));
   }
-  const path = await save({ title: 'Export deposits', defaultPath: stampName('csv'), filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }] });
+  const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'csv'), filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }] });
   if (!path) return false;
   await writeTextFile(path, lines.join('\n'));
   return true;
@@ -232,105 +228,6 @@ const STATUS_RGB: Record<string, [number, number, number]> = {
   Matured: [234, 179, 8],
   'Pre-closed': [239, 68, 68],
 };
-
-async function loadLogoDataUrl(url: string): Promise<{ dataUrl: string; width: number; height: number } | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const svgText = await res.text();
-    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-    const objectUrl = URL.createObjectURL(blob);
-    try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error('logo load failed'));
-        image.src = objectUrl;
-      });
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      return { dataUrl: canvas.toDataURL('image/png'), width: img.naturalWidth || canvas.width / scale, height: img.naturalHeight || canvas.height / scale };
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  } catch {
-    return null;
-  }
-}
-
-function exportDateTimeLabel(): string {
-  const now = dayjs();
-  return `${now.format(getDateFormatId())} - ${now.format('hh:mm:ss A')}`;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-let interFontsPromise: Promise<{ regular: string; bold: string } | null> | null = null;
-
-async function loadInterFonts(): Promise<{ regular: string; bold: string } | null> {
-  if (!interFontsPromise) {
-    interFontsPromise = (async () => {
-      try {
-        const [regRes, boldRes] = await Promise.all([
-          fetch('/fonts/inter/Inter-Regular.ttf'),
-          fetch('/fonts/inter/Inter-SemiBold.ttf'),
-        ]);
-        if (!regRes.ok || !boldRes.ok) return null;
-        const [regBuf, boldBuf] = await Promise.all([regRes.arrayBuffer(), boldRes.arrayBuffer()]);
-        return { regular: arrayBufferToBase64(regBuf), bold: arrayBufferToBase64(boldBuf) };
-      } catch {
-        return null;
-      }
-    })();
-  }
-  return interFontsPromise;
-}
-
-async function registerInterFont(doc: jsPDF): Promise<string> {
-  const fonts = await loadInterFonts();
-  if (!fonts) return 'helvetica';
-  doc.addFileToVFS('Inter-Regular.ttf', fonts.regular);
-  doc.addFont('Inter-Regular.ttf', 'Inter', 'normal');
-  doc.addFileToVFS('Inter-SemiBold.ttf', fonts.bold);
-  doc.addFont('Inter-SemiBold.ttf', 'Inter', 'bold');
-  return 'Inter';
-}
-
-function drawRoundedRect(doc: jsPDF, x: number, y: number, w: number, h: number, r: number, fill: [number, number, number], stroke?: [number, number, number]) {
-  doc.setFillColor(...fill);
-  if (stroke) doc.setDrawColor(...stroke);
-  else doc.setDrawColor(...fill);
-  doc.setLineWidth(stroke ? 0.6 : 0);
-  // jsPDF roundedRect: (x, y, w, h, rx, ry, style)
-  doc.roundedRect(x, y, w, h, r, r, stroke ? 'FD' : 'F');
-}
-
-function drawTagPill(doc: jsPDF, font: string, text: string, x: number, yTop: number, color: PdfSemanticColor): number {
-  const c = SEMANTIC_RGB[color];
-  doc.setFont(font, 'normal');
-  doc.setFontSize(7);
-  const padX = 5;
-  const h = 14;
-  const textW = doc.getTextWidth(text);
-  const w = textW + padX * 2;
-  drawRoundedRect(doc, x, yTop, w, h, 4, c.bg, c.border);
-  doc.setTextColor(...c.text);
-  doc.text(text, x + padX, yTop + 9.5);
-  return w;
-}
 
 function drawOpBadge(doc: jsPDF, font: string, op: NonNullable<DepositPdfFilter['op']>, x: number, yTop: number): number {
   const rgb = OP_RGB[op];
@@ -550,7 +447,7 @@ async function exportPdf(
     (doc as unknown as { putTotalPages: (s: string) => void }).putTotalPages(totalPagesExp);
   }
 
-  const path = await save({ title: 'Export deposits', defaultPath: stampName('pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+  const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
   if (!path) return false;
   const buffer = doc.output('arraybuffer');
   await writeFile(path, new Uint8Array(buffer));

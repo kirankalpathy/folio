@@ -110,6 +110,7 @@ These features are planned for future updates (implemented work may be in progre
 ## To-do
 
 - **Deposit account types** — implement additional account types incrementally (currently only Fixed Deposit is enabled): Recurring Deposit, Tax Saving Deposit, and Other.
+- **Tables (resizable columns)** — add adjustable column widths in data tables (Deposits, Financial Institutions, and other tables). Users should be able to drag to increase a column’s width, with a minimum width equal to the column’s default/current width.
 
 ## Installation & Setup
 

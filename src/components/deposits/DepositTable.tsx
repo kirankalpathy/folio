@@ -91,10 +91,15 @@ export default function DepositTable({
       title: t('deposit.table.status'),
       key: 'status',
       width: 120,
+      align: 'center',
       render: (_, record) => {
         const lifecycle = getDepositLifecycleStatus(record);
         if (!lifecycle) return <span className="text-folio-ink/35 dark:text-white/30">—</span>;
-        return <DepositStatusTag status={lifecycle} />;
+        return (
+          <div className="flex justify-center">
+            <DepositStatusTag status={lifecycle} />
+          </div>
+        );
       },
     },
     {
