@@ -4,6 +4,8 @@ import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 import { createFolioTheme } from './theme/antdTheme';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/common/toast/ToastProvider';
+import { BusyIndicatorProvider } from './components/common/BusyIndicator';
+import { UnsavedChangesProvider } from './components/common/UnsavedChangesGuard';
 import AuthGate from './components/auth/AuthGate';
 
 function ThemedApplication() {
@@ -19,11 +21,15 @@ function ThemedApplication() {
       modal={{ styles: { body: { maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', paddingRight: 8 } } }}
     >
       <AntApp>
-        <ToastProvider>
-          <AuthProvider>
-            <AuthGate />
-          </AuthProvider>
-        </ToastProvider>
+        <BusyIndicatorProvider>
+          <ToastProvider>
+            <UnsavedChangesProvider>
+              <AuthProvider>
+                <AuthGate />
+              </AuthProvider>
+            </UnsavedChangesProvider>
+          </ToastProvider>
+        </BusyIndicatorProvider>
       </AntApp>
     </ConfigProvider>
   );

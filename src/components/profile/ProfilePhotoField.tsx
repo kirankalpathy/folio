@@ -4,6 +4,7 @@ import { ImagePlus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { getInitials } from '../../utils/profile';
 import type { UserProfile } from '../../types';
+import { palette } from '../../theme/palette';
 
 export default function ProfilePhotoField({
   profile,
@@ -25,7 +26,7 @@ export default function ProfilePhotoField({
         src={currentPhoto}
         style={
           !currentPhoto
-            ? { backgroundColor: '#C8502D', color: '#FFF7F2', fontWeight: 600 }
+            ? { backgroundColor: palette.primary, color: palette.avatarOnPrimary, fontWeight: 600 }
             : undefined
         }
       >

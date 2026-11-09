@@ -26,9 +26,9 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
   const TrendIcon = positive ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-folio-primary/20 bg-folio-ink p-5 text-[#F7EFE9] shadow-folio-lg sm:p-6">
+    <section className="relative overflow-hidden rounded-2xl border border-folio-primary/20 bg-folio-ink p-5 text-folio-cream shadow-folio-lg dark:border-folio-primary/25 dark:bg-folio-cream dark:text-folio-ink sm:p-6">
       <div
-        className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-folio-primary/20"
+        className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-folio-primary/20 dark:border-folio-primary/25"
         aria-hidden="true"
       />
 
@@ -36,8 +36,8 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-folio-primary" />
-            <p className="folio-label text-white/40">{t('dashboard.netWorth.label')}</p>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-white/40">
+            <p className="folio-label !text-folio-cream/50 dark:!text-folio-ink/50">{t('dashboard.netWorth.label')}</p>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-folio-cream/50 dark:border-folio-ink/10 dark:bg-folio-ink/[0.04] dark:text-folio-ink/50">
               {formatDate(dayjs().format('YYYY-MM-DD'))}
             </span>
           </div>
@@ -46,7 +46,7 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
             {isLoading ? (
               <Skeleton.Input active size="large" className="!h-12 !w-64" />
             ) : (
-              <p className="folio-value text-[2rem] leading-none sm:text-[2.75rem]">
+              <p className="folio-value text-[2rem] leading-none text-folio-cream dark:text-folio-ink sm:text-[2.75rem]">
                 {formatINR(summary.netWorth)}
               </p>
             )}
@@ -54,27 +54,26 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[10px]',
                 positive
-                  ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
-                  : 'border-rose-400/20 bg-rose-400/10 text-rose-300',
+                  ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300 dark:border-emerald-600/25 dark:bg-emerald-500/10 dark:text-emerald-700'
+                  : 'border-rose-400/25 bg-rose-400/10 text-rose-300 dark:border-rose-600/25 dark:bg-rose-500/10 dark:text-rose-700',
               )}
             >
               <TrendIcon size={12} />
               {formatPercent(summary.returnsPercentage)}
             </span>
           </div>
-
         </div>
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 xl:min-w-[520px]">
           {numberTiles.map((tile) => (
-            <div key={tile.key} className="min-w-0 border-white/10 sm:border-l sm:pl-4">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/35">
+            <div key={tile.key} className="min-w-0 border-white/10 sm:border-l sm:pl-4 dark:border-folio-ink/10">
+              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-folio-cream/45 dark:text-folio-ink/45">
                 {t(tile.label)}
               </p>
               <p
                 className={cn(
                   'folio-value mt-1.5 truncate text-sm',
-                  tile.key === 'totalLiabilities' ? 'text-folio-accent' : 'text-[#F7EFE9]',
+                  tile.key === 'totalLiabilities' ? 'text-folio-accent dark:text-folio-primary' : 'text-folio-cream dark:text-folio-ink',
                 )}
               >
                 {isLoading ? '—' : formatINR(Number(summary[tile.key]))}

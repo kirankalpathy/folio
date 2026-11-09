@@ -3,16 +3,17 @@ import { Alert, Button, Descriptions, Popover, Spin, Tag } from 'antd';
 import { QRCodeSVG } from 'qrcode.react';
 import { FOLIO_TAG_CLASS } from '../components/deposits/DepositStatusTag';
 import type { DescriptionsProps } from 'antd';
-import { ArrowLeft, Pencil, QrCode } from 'lucide-react';
+import { Pencil, QrCode } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { FinancialInstitution } from '../types';
 import { useI18n } from '../i18n';
 import PageHeader from '../components/common/PageHeader';
 import { getFinancialInstitution } from '../services/financialInstitutions';
+import ChangeDetailsSection from '../components/common/ChangeDetailsSection';
 
 function val(v?: string | number | null): ReactNode {
   if (v === undefined || v === null || v === '') return <span className="text-folio-ink/35 dark:text-white/30">—</span>;
-  return String(v);
+  return <span className="break-words whitespace-normal">{String(v)}</span>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -50,13 +51,12 @@ export default function FinancialInstitutionDetailPage() {
     return () => { active = false; };
   }, [id, t]);
 
-  const goBack = () => navigate('/institutions');
   const title = record?.name || t('nav.institutions');
 
   if (loading) {
     return (
       <div className="space-y-5">
-        <PageHeader eyebrow={t('nav.group.accounts')} title={t('nav.institutions')} actions={<Button icon={<ArrowLeft size={15} />} onClick={goBack}>{t('common.back')}</Button>} />
+        <PageHeader eyebrow={t('nav.group.accounts')} title={t('nav.institutions')} />
         <div className="folio-card grid place-items-center p-10"><Spin /></div>
       </div>
     );
@@ -65,7 +65,7 @@ export default function FinancialInstitutionDetailPage() {
   if (error || !record) {
     return (
       <div className="space-y-5">
-        <PageHeader eyebrow={t('nav.group.accounts')} title={t('nav.institutions')} actions={<Button icon={<ArrowLeft size={15} />} onClick={goBack}>{t('common.back')}</Button>} />
+        <PageHeader eyebrow={t('nav.group.accounts')} title={t('nav.institutions')} />
         <Alert type="error" showIcon title={error || t('institutions.saveError')} />
       </div>
     );
@@ -110,7 +110,7 @@ export default function FinancialInstitutionDetailPage() {
               <div className="flex justify-center rounded-lg bg-white p-2">
                 <QRCodeSVG value={upiQrValue} size={160} includeMargin={false} />
               </div>
-              <p className="text-center font-mono text-[12px] font-medium text-folio-ink dark:text-[#F3F4F6] break-all">{upiId}</p>
+              <p className="text-center font-mono text-[12px] font-medium text-folio-ink dark:text-folio-dark-text break-all">{upiId}</p>
             </div>
           }
         >
@@ -179,12 +179,7 @@ export default function FinancialInstitutionDetailPage() {
         eyebrow={t('nav.group.accounts')}
         title={title}
         description={t(`institutions.category.${category}` as 'institutions.category.savings-account')}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button icon={<ArrowLeft size={15} />} onClick={goBack}>{t('common.back')}</Button>
-            <Button type="primary" icon={<Pencil size={15} />} onClick={() => navigate(`/institutions/${record.id}/edit`)}>{t('common.edit')}</Button>
-          </div>
-        }
+        actions={<Button type="primary" icon={<Pencil size={15} />} onClick={() => navigate(`/institutions/${record.id}/edit`)}>{t('common.edit')}</Button>}
       />
 
       <Section title={t('institutions.step.overview')}>
@@ -198,6 +193,8 @@ export default function FinancialInstitutionDetailPage() {
       <Section title={t('institutions.step.additionalDetails')}>
         <Descriptions {...descProps} items={additionalItems} />
       </Section>
+
+      <ChangeDetailsSection record={record} descriptionsProps={descProps} />
     </div>
   );
 }

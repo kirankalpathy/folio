@@ -7,7 +7,12 @@ import { getDateFormatId } from '../../utils/date';
 import { DATE_PICKER_MIN, isDateOutsidePickerBounds } from '../../config/validationConfig';
 import { formatINR, formatNumber, getNumberFormat } from '../../utils/finance';
 import { calculateDepositValues, formatDepositTenure, type DepositLifecycleStatus } from '../../utils/deposits';
-import type { DepositFormValues } from './depositFormModel';
+import {
+  InterestPayoutOption,
+  deriveCumulativeInterest,
+  derivePeriodicPayoutFrequency,
+  type DepositFormValues,
+} from './depositFormModel';
 import DepositStatusTag from './DepositStatusTag';
 
 function parseFormattedNumber(input: string): number {
@@ -56,7 +61,9 @@ export default function DepositWizardStepInvestment({
   const startDate = Form.useWatch('startDate', form) as Dayjs | undefined;
   const maturityDate = Form.useWatch('maturityDate', form) as Dayjs | undefined;
   const compoundingFrequency = Form.useWatch('compoundingFrequency', form);
-  const cumulative = Form.useWatch('cumulativeInterest', form) ?? false;
+  const interestPayoutOption = (Form.useWatch('interestPayoutOption', form) ?? InterestPayoutOption.Cumulative) as InterestPayoutOption;
+  const cumulative = deriveCumulativeInterest(accountType, interestPayoutOption);
+  const payoutFrequency = derivePeriodicPayoutFrequency(accountType, interestPayoutOption);
   const preClosed = Form.useWatch('preClosed', form) ?? false;
   const preClosureCreditedValue = Form.useWatch('preClosureCreditedValue', form);
   const markedAsLien = Form.useWatch('markedAsLien', form) ?? false;
@@ -73,7 +80,13 @@ export default function DepositWizardStepInvestment({
 
   useEffect(() => {
     if (isRd) {
-      form.setFieldsValue({ markedAsLien: false, lienReason: '', cumulativeInterest: true, payoutFrequency: undefined } as Partial<DepositFormValues>);
+      form.setFieldsValue({
+        markedAsLien: false,
+        lienReason: '',
+        interestPayoutOption: InterestPayoutOption.Cumulative,
+        cumulativeInterest: true,
+        payoutFrequency: 'annual',
+      } as Partial<DepositFormValues>);
     }
   }, [isRd, form]);
 
@@ -87,8 +100,9 @@ export default function DepositWizardStepInvestment({
       maturityDate: maturityDate?.format('YYYY-MM-DD') ?? '',
       cumulativeInterest: isRd ? true : cumulative,
       compoundingFrequency,
+      payoutFrequency,
     }),
-    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, isRd],
+    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, payoutFrequency, isRd],
   );
   const tenure = formatDepositTenure(startDate?.format('YYYY-MM-DD'), maturityDate?.format('YYYY-MM-DD'));
 

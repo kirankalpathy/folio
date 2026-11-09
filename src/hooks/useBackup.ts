@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { BackupReport } from '../types';
 import {
+  buildExportReport,
   clearLedgerData,
   createBackup,
   restoreBackup,
   saveBackupToChosenLocation,
-  totalRecords,
 } from '../services/backup';
+import { useBusyIndicator } from '../components/common/BusyIndicator';
 import { useI18n } from '../i18n';
 
 export type BackupPhase = 'idle' | 'working' | 'success' | 'error';
@@ -15,19 +17,22 @@ export interface BackupState {
   message: string;
 }
 
+export type BackupOpResult = { ok: true; report: BackupReport } | { ok: false; cancelled?: boolean; message: string };
+
 const MAX_BACKUP_BYTES = 25 * 1024 * 1024;
 
 export interface BackupActions {
   state: BackupState;
   isWorking: boolean;
-  exportBackup: () => Promise<void>;
-  restoreFromFile: (file: File) => Promise<void>;
+  exportBackup: () => Promise<BackupOpResult>;
+  restoreFromFile: (file: File) => Promise<BackupOpResult>;
   clearLedger: () => Promise<void>;
   dismiss: () => void;
 }
 
 export function useBackup(): BackupActions {
   const { t } = useI18n();
+  const { setBusyIndicator } = useBusyIndicator();
   const [state, setState] = useState<BackupState>({ phase: 'idle', message: '' });
 
   useEffect(() => {
@@ -39,42 +44,37 @@ export function useBackup(): BackupActions {
     return () => window.clearTimeout(timer);
   }, [state.phase, state.message]);
 
-  const exportBackup = useCallback(async () => {
+  const exportBackup = useCallback(async (): Promise<BackupOpResult> => {
+    setBusyIndicator();
     setState({ phase: 'working', message: t('backup.preparing') });
     try {
       const backup = await createBackup();
       const saved = await saveBackupToChosenLocation(backup);
       if (!saved) {
         setState({ phase: 'idle', message: '' });
-        return;
+        return { ok: false, cancelled: true, message: '' };
       }
-      const count = totalRecords({
-        stocks: backup.data.stocks.length,
-        bonds: backup.data.bonds.length,
-        pfAccounts: backup.data.pfAccounts.length,
-        deposits: backup.data.deposits.length,
-        commodities: backup.data.commodities.length,
-        debts: backup.data.debts.length,
-      });
-      setState({
-        phase: 'success',
-        message: t(count === 1 ? 'backup.saved.one' : 'backup.saved.other', { count }),
-      });
+      const report = buildExportReport(backup);
+      setState({ phase: 'idle', message: '' });
+      return { ok: true, report };
     } catch (error) {
-      setState({
-        phase: 'error',
-        message: error instanceof Error ? error.message : t('backup.createError'),
-      });
+      const message = error instanceof Error ? error.message : t('backup.createError');
+      setState({ phase: 'error', message });
+      return { ok: false, message };
+    } finally {
+      setBusyIndicator(false);
     }
-  }, [t]);
+  }, [setBusyIndicator, t]);
 
   const restoreFromFile = useCallback(
-    async (file: File) => {
+    async (file: File): Promise<BackupOpResult> => {
       if (file.size > MAX_BACKUP_BYTES) {
-        setState({ phase: 'error', message: t('backup.tooLarge') });
-        return;
+        const message = t('backup.tooLarge');
+        setState({ phase: 'error', message });
+        return { ok: false, message };
       }
 
+      setBusyIndicator();
       setState({ phase: 'working', message: t('backup.restoring') });
       try {
         const text = await file.text();
@@ -87,13 +87,8 @@ export function useBackup(): BackupActions {
 
         const result = await restoreBackup(parsed);
         console.info('[folio/backup] restore result', result);
-        setState({
-          phase: 'success',
-          message: t(
-            result.total === 1 ? 'backup.restored.one' : 'backup.restored.other',
-            { count: result.total },
-          ),
-        });
+        setState({ phase: 'idle', message: '' });
+        return { ok: true, report: result.report };
       } catch (error) {
         console.error('[folio/backup] restore failed', error);
         const message =
@@ -101,9 +96,12 @@ export function useBackup(): BackupActions {
           typeof error === 'string' ? error :
           t('backup.restoreError');
         setState({ phase: 'error', message });
+        return { ok: false, message };
+      } finally {
+        setBusyIndicator(false);
       }
     },
-    [t],
+    [setBusyIndicator, t],
   );
 
   const clearLedger = useCallback(async () => {

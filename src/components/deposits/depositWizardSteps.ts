@@ -24,7 +24,7 @@ export function depositStepFields(
     ];
   }
   if (step === 2) return isRd
-    ? ['cumulativeInterest', 'compoundingFrequency', 'rollover']
-    : ['cumulativeInterest', 'compoundingFrequency', 'payoutFrequency', 'rollover'];
+    ? ['interestPayoutOption', 'compoundingFrequency', 'rollover']
+    : ['interestPayoutOption', 'compoundingFrequency', 'rollover'];
   return ['nominees', 'notes'];
 }

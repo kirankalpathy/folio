@@ -5,24 +5,16 @@ import type { ProfileInput } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 import ProfilePhotoField from './ProfilePhotoField';
+import MobileInput, { formatMobileE164, mobileInputRules, normalizeMobileDigits } from '../common/MobileInput';
 
 type IdentityValues = Omit<ProfileInput, 'photo' | 'city'> & { photo?: string | null };
 
-function toNationalPhone(phone?: string | null): string {
-  const digits = (phone ?? '').replace(/\D/g, '');
-  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
-  if (digits.length === 10) return digits;
-  if (digits.length > 10) return digits.slice(-10);
-  return digits;
-}
-
 function normalize(values: Partial<IdentityValues>): Omit<ProfileInput, 'photo' | 'city'> & { photo?: string | null } {
-  const phoneDigits = (values.phone ?? '').replace(/\D/g, '').slice(0, 10);
   return {
     firstName: (values.firstName ?? '').trim(),
     lastName: (values.lastName ?? '').trim(),
     email: (values.email ?? '').trim(),
-    phone: phoneDigits.length === 10 ? `+91${phoneDigits}` : '',
+    phone: formatMobileE164(values.phone) ?? '',
     photo: values.photo ?? null,
   };
 }
@@ -45,7 +37,7 @@ export default function IdentityForm() {
       firstName: profile.firstName ?? '',
       lastName: profile.lastName ?? '',
       email: profile.email ?? '',
-      phone: toNationalPhone(profile.phone),
+      phone: normalizeMobileDigits(profile.phone),
       photo: profile.photo ?? null,
     };
     form.setFieldsValue(next);
@@ -66,7 +58,7 @@ export default function IdentityForm() {
     if (key === lastSavedRef.current) return;
     if (!payload.firstName || !payload.email) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) return;
-    const phoneDigits = (values.phone ?? '').replace(/\D/g, '');
+    const phoneDigits = normalizeMobileDigits(values.phone);
     if (phoneDigits.length > 0 && phoneDigits.length !== 10) return;
     setSaving(true);
     setError(null);
@@ -126,25 +118,9 @@ export default function IdentityForm() {
             <Form.Item
               label={t('form.phone')}
               name="phone"
-              rules={[{ validator: async (_, value: string | undefined) => { const digits = (value ?? '').replace(/\D/g, ''); if (!digits || digits.length === 10) return; throw new Error(t('validation.phoneDigits')); } }]}
+              rules={mobileInputRules(t as never)}
             >
-              <Input
-                addonBefore={(
-                  <span className="inline-flex items-center gap-1.5 text-[12px]">
-                    <svg aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" className="overflow-hidden rounded-[2px] ring-1 ring-black/10 dark:ring-white/10" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="18" height="4" y="0" fill="#FF9933" />
-                      <rect width="18" height="4" y="4" fill="#FFFFFF" />
-                      <rect width="18" height="4" y="8" fill="#138808" />
-                      <circle cx="9" cy="6" r="1.35" fill="none" stroke="#000080" strokeWidth="0.35" />
-                      <circle cx="9" cy="6" r="0.2" fill="#000080" />
-                    </svg>
-                    <span>+91</span>
-                  </span>
-                )}
-                maxLength={10}
-                inputMode="numeric"
-                onChange={(e) => form.setFieldValue('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-              />
+              <MobileInput />
             </Form.Item>
           </div>
         </Form>

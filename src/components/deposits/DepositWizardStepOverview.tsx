@@ -100,30 +100,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
 
   return (
     <div className="grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
-      <Form.Item
-        name="depositNumber"
-        label={t('deposit.fields.depositNumber')}
-        className="sm:col-span-2"
-        rules={[
-          { required: true, message: t('deposit.validation.depositNumberRequired') },
-          { pattern: /^[A-Z0-9_-]*$/, message: t('deposit.validation.depositNumberInvalid') },
-          {
-            validator: async (_, value: string) => {
-              const normalized = normalizeDepositNumber(value ?? '');
-              if (!normalized) return;
-              const all = await listDeposits();
-              const dup = all.some((d) => d.id !== editId && normalizeDepositNumber(d.depositNumber ?? '') === normalized);
-              if (dup) throw new Error(t('deposit.validation.depositNumberDuplicate'));
-            },
-          },
-        ]}
-      >
-        <Input maxLength={64} disabled={locked} autoComplete="off" onChange={(e) => form.setFieldValue('depositNumber', normalizeDepositNumber(e.target.value))} />
-      </Form.Item>
-      <Form.Item name="name" label={t('deposit.fields.name')} className="sm:col-span-2" rules={[{ required: true, whitespace: true, message: t('deposit.validation.nameRequired') }]}>
-        <Input maxLength={120} disabled={activeLocked || terminalLocked} autoComplete="off" />
-      </Form.Item>
-      <Form.Item name="financialInstitutionId" label={t('deposit.fields.institution')} rules={[{ required: true, message: t('deposit.validation.institutionRequired') }]}>
+      <Form.Item name="financialInstitutionId" label={t('deposit.fields.institution')} className="sm:col-span-2" rules={[{ required: true, message: t('deposit.validation.institutionRequired') }]}>
         <Select
           showSearch
           optionFilterProp="label"
@@ -153,6 +130,30 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
         />
       </Form.Item>
       <Form.Item name="bankName" hidden><Input /></Form.Item>
+
+      <Form.Item
+        name="depositNumber"
+        label={t('deposit.fields.depositNumber')}
+        rules={[
+          { required: true, message: t('deposit.validation.depositNumberRequired') },
+          { pattern: /^[A-Z0-9_-]*$/, message: t('deposit.validation.depositNumberInvalid') },
+          {
+            validator: async (_, value: string) => {
+              const normalized = normalizeDepositNumber(value ?? '');
+              if (!normalized) return;
+              const all = await listDeposits();
+              const dup = all.some((d) => d.id !== editId && normalizeDepositNumber(d.depositNumber ?? '') === normalized);
+              if (dup) throw new Error(t('deposit.validation.depositNumberDuplicate'));
+            },
+          },
+        ]}
+      >
+        <Input maxLength={64} disabled={locked} autoComplete="off" onChange={(e) => form.setFieldValue('depositNumber', normalizeDepositNumber(e.target.value))} />
+      </Form.Item>
+      <Form.Item name="name" label={t('deposit.fields.name')} rules={[{ required: true, whitespace: true, message: t('deposit.validation.nameRequired') }]}>
+        <Input maxLength={120} autoComplete="off" />
+      </Form.Item>
+
       <Form.Item name="accountType" label={t('deposit.fields.accountType')} rules={[{ required: true, message: t('deposit.validation.accountTypeRequired') }]}>
         <Select
           disabled={locked}
@@ -163,7 +164,6 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
           })}
         />
       </Form.Item>
-
       <Form.Item name="operationType" label={t('deposit.fields.operationType')} rules={[{ required: true, message: t('deposit.validation.operationTypeRequired') }]}>
         <Select
           disabled={locked}

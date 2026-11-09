@@ -14,6 +14,38 @@ import type {
   OperationMode,
 } from '../../types';
 
+export const InterestPayoutOption = {
+  Cumulative: 'cumulative',
+  Monthly: 'monthly',
+  Quarterly: 'quarterly',
+  SemiAnnual: 'semi-annual',
+  Annual: 'annual',
+} as const;
+
+export type InterestPayoutOption = (typeof InterestPayoutOption)[keyof typeof InterestPayoutOption];
+
+export function isCumulativePayoutOption(option: InterestPayoutOption | undefined): boolean {
+  return option === InterestPayoutOption.Cumulative || option == null;
+}
+
+export function deriveCumulativeInterest(accountType: DepositType | undefined, option: InterestPayoutOption | undefined): boolean {
+  return accountType === 'rd' || isCumulativePayoutOption(option);
+}
+
+export function derivePeriodicPayoutFrequency(accountType: DepositType | undefined, option: InterestPayoutOption | undefined): DepositPayoutFrequency | undefined {
+  if (accountType === 'rd' || !option || option === InterestPayoutOption.Cumulative) return undefined;
+  return option as DepositPayoutFrequency;
+}
+
+export function toInterestPayoutOption(deposit: Pick<DepositHolding, 'accountType' | 'cumulativeInterest' | 'payoutFrequency'>): InterestPayoutOption {
+  if (deposit.accountType === 'rd') return InterestPayoutOption.Cumulative;
+  if (deposit.cumulativeInterest === false && deposit.payoutFrequency) return deposit.payoutFrequency as InterestPayoutOption;
+  if (deposit.cumulativeInterest === true) return InterestPayoutOption.Cumulative;
+  // Legacy ambiguous: if a periodic payout frequency exists, treat as non-cumulative payout; else cumulative.
+  if (deposit.payoutFrequency) return deposit.payoutFrequency as InterestPayoutOption;
+  return InterestPayoutOption.Cumulative;
+}
+
 export interface DepositNomineeFormValue {
   name: string;
   relationship: NomineeRelationship | string;
@@ -40,8 +72,12 @@ export interface DepositFormValues {
   recurringAmount?: number;
   interestRate: number;
   compoundingFrequency: CompoundingFrequency;
+  /** @deprecated derived from interestPayoutOption; kept for compatibility with existing form consumers. */
   cumulativeInterest: boolean;
+  /** @deprecated periodic payout only when non-cumulative; derived from interestPayoutOption. */
   payoutFrequency: DepositPayoutFrequency;
+  /** UI selection: cumulative (compounded) or a periodic interest payout frequency. */
+  interestPayoutOption: InterestPayoutOption;
   rollover: DepositRollover;
   operationMode: OperationMode;
   isPanLinked: boolean;
@@ -78,6 +114,13 @@ export const FREQUENCY_OPTIONS: Array<{
 
 export const COMPOUNDING_OPTIONS = FREQUENCY_OPTIONS.map(({ value, label }) => ({ value, label }));
 export const PAYOUT_OPTIONS = FREQUENCY_OPTIONS.map(({ value, label, months }) => ({ value, label, months }));
+export const INTEREST_PAYOUT_OPTIONS: Array<{ value: InterestPayoutOption; label: MessageKey }> = [
+  { value: InterestPayoutOption.Cumulative, label: 'deposit.payoutMode.cumulative' },
+  { value: InterestPayoutOption.Monthly, label: 'deposit.frequency.monthly' },
+  { value: InterestPayoutOption.Quarterly, label: 'deposit.frequency.quarterly' },
+  { value: InterestPayoutOption.SemiAnnual, label: 'deposit.frequency.semiAnnual' },
+  { value: InterestPayoutOption.Annual, label: 'deposit.frequency.annual' },
+];
 
 export const ROLLOVER_OPTIONS: Array<{ value: DepositRollover; label: MessageKey }> = [
   { value: 'none', label: 'deposit.rollover.none' },
@@ -145,8 +188,9 @@ export function defaultDepositValues(): DepositFormValues {
     recurringAmount: undefined,
     interestRate: 0,
     compoundingFrequency: 'quarterly',
-    cumulativeInterest: false,
+    cumulativeInterest: true,
     payoutFrequency: 'annual',
+    interestPayoutOption: InterestPayoutOption.Cumulative,
     rollover: 'none',
     operationMode: 'online',
     isPanLinked: true,
@@ -165,6 +209,9 @@ export function defaultDepositValues(): DepositFormValues {
 
 export function toFormValues(deposit: DepositHolding): DepositFormValues {
   const isRd = deposit.accountType === 'rd';
+  const interestPayoutOption = toInterestPayoutOption(deposit);
+  const cumulativeInterest = deriveCumulativeInterest(deposit.accountType, interestPayoutOption);
+  const payoutFrequency = derivePeriodicPayoutFrequency(deposit.accountType, interestPayoutOption) ?? deposit.payoutFrequency ?? 'annual';
   return {
     depositNumber: deposit.depositNumber ?? '',
     name: deposit.name,
@@ -181,8 +228,9 @@ export function toFormValues(deposit: DepositHolding): DepositFormValues {
     recurringAmount: deposit.recurringAmount,
     interestRate: deposit.interestRate,
     compoundingFrequency: deposit.compoundingFrequency ?? 'quarterly',
-    cumulativeInterest: isRd ? true : (deposit.cumulativeInterest ?? false),
-    payoutFrequency: deposit.payoutFrequency ?? 'annual',
+    cumulativeInterest,
+    payoutFrequency,
+    interestPayoutOption,
     rollover: deposit.rollover ?? 'none',
     operationMode: deposit.operationMode ?? 'online',
     isPanLinked: deposit.isPanLinked ?? true,
@@ -229,7 +277,7 @@ function toJointHolderInput(h: DepositJointHolderFormValue): DepositJointHolder 
 
 export function toDepositInput(
   values: DepositFormValues,
-  computed: { realizedValue: number; totalDeposited: number },
+  computed: { realizedValue: number; totalDeposited: number; interestPayoutAmount?: number },
 ): DepositInput {
   const isRd = values.accountType === 'rd';
   const nominees = (values.nominees ?? []).map(toNomineeInput).filter((n): n is DepositNominee => Boolean(n));
@@ -238,9 +286,13 @@ export function toDepositInput(
     ? []
     : (values.jointHolders ?? []).map(toJointHolderInput).filter((h): h is DepositJointHolder => Boolean(h));
   const markedAsLien = isRd ? false : Boolean(values.markedAsLien);
-  const cumulativeInterest = isRd ? true : Boolean(values.cumulativeInterest);
+  const cumulativeInterest = deriveCumulativeInterest(values.accountType, values.interestPayoutOption);
+  const periodicPayoutFrequency = derivePeriodicPayoutFrequency(values.accountType, values.interestPayoutOption);
   const recurringAmount = isRd && Number.isFinite(values.recurringAmount) ? Math.max(0, values.recurringAmount as number) : undefined;
   const principal = isRd ? computed.totalDeposited : values.principal;
+  const interestPayoutAmount = (!isRd && !cumulativeInterest && Number.isFinite(computed.interestPayoutAmount))
+    ? computed.interestPayoutAmount
+    : undefined;
   return {
     depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, ''),
     name: values.name.trim(),
@@ -255,7 +307,8 @@ export function toDepositInput(
     interestRate: values.interestRate,
     compoundingFrequency: values.compoundingFrequency,
     cumulativeInterest,
-    payoutFrequency: (isRd || cumulativeInterest) ? undefined : values.payoutFrequency,
+    payoutFrequency: periodicPayoutFrequency,
+    interestPayoutAmount,
     rollover: values.rollover,
     operationMode: values.operationMode ?? 'online',
     isPanLinked: Boolean(values.isPanLinked),

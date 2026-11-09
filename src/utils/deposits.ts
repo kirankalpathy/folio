@@ -1,7 +1,14 @@
 import dayjs from 'dayjs';
-import type { CompoundingFrequency, DepositHolding, DepositType } from '../types';
+import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../types';
 import { calculateCompoundInterest, calculateReturnsPercentage, COMPOUNDING_PERIODS } from './finance';
 import { daysUntil } from './date';
+
+export const PAYOUTS_PER_YEAR: Record<DepositPayoutFrequency, number> = {
+  monthly: 12,
+  quarterly: 4,
+  'semi-annual': 2,
+  annual: 1,
+};
 
 export interface DepositSummary {
   totalCurrentValue: number;
@@ -14,6 +21,21 @@ export interface DepositSummary {
 }
 
 export type DepositLifecycleStatus = 'planned' | 'active' | 'matured' | 'pre-closed' | 'in-lien';
+
+/** Closed/reference-only statuses: excluded from portfolio/principal/stat calculations across the app. */
+export const CLOSED_DEPOSIT_STATUSES: ReadonlySet<DepositLifecycleStatus> = new Set(['matured', 'pre-closed']);
+
+export function isClosedDepositStatus(status: DepositLifecycleStatus | null | undefined): boolean {
+  return status != null && CLOSED_DEPOSIT_STATUSES.has(status);
+}
+
+/** True for deposits that count toward portfolio value/principal/stats (excludes matured & pre-closed). */
+export function isPortfolioDeposit(
+  input: { startDate: string; maturityDate: string; preClosedDate?: string; markedAsLien?: boolean },
+  asOf: Date = new Date(),
+): boolean {
+  return !isClosedDepositStatus(getDepositLifecycleStatus(input, asOf));
+}
 
 export function getDepositLifecycleStatus(input: {
   startDate: string;
@@ -39,6 +61,7 @@ export function formatDepositTenure(startDate?: string, maturityDate?: string): 
   const start = dayjs(startDate);
   const end = dayjs(maturityDate);
   if (!start.isValid() || !end.isValid() || !end.isAfter(start, 'day')) return null;
+  const totalDays = end.diff(start, 'day');
   let years = end.diff(start, 'year');
   const afterYears = start.add(years, 'year');
   let months = end.diff(afterYears, 'month');
@@ -51,18 +74,21 @@ export function formatDepositTenure(startDate?: string, maturityDate?: string): 
   if (years > 0) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`);
   if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
   if (days > 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
-  return parts.length > 0 ? parts.join(' ') : '0 days';
+  const breakdown = parts.length > 0 ? parts.join(' ') : '0 days';
+  return `${breakdown} (${totalDays} ${totalDays === 1 ? 'day' : 'days'})`;
 }
 
 export interface DepositComputedValues {
-  /** Interest earned (compound interest for cumulative/RD). */
+  /** Interest earned (compound interest for cumulative/RD; total simple interest for non-cumulative payout FD). */
   interest: number;
-  /** Maturity value (FD: principal+interest; RD: recurringAmount*months + interest). */
+  /** Maturity value (FD cumulative: principal+interest; FD non-cumulative payout: principal; RD: recurringAmount*months + interest). */
   realizedValue: number;
   /** Total amount deposited/invested (FD: principal; RD: recurringAmount * months). */
   totalDeposited: number;
   /** Number of monthly installments/months for RD; 0 for FD. */
   months: number;
+  /** Periodic interest payout/credit amount for non-cumulative FD/RD-like payout cases (optional). */
+  interestPayoutAmount?: number;
 }
 
 function calculateRdMaturityValue(
@@ -98,6 +124,7 @@ export function calculateDepositValues(input: {
   maturityDate: string;
   cumulativeInterest: boolean;
   compoundingFrequency?: CompoundingFrequency;
+  payoutFrequency?: DepositPayoutFrequency;
 }): DepositComputedValues {
   const rate = Number.isFinite(input.interestRate) ? Math.max(0, input.interestRate) : 0;
   const start = dayjs(input.startDate);
@@ -133,21 +160,27 @@ export function calculateDepositValues(input: {
     return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
   }
 
+  // Non-cumulative (interest payout): maturity amount is principal; interest is paid out periodically.
   const interest = Math.max(0, (principal * rate * years) / 100);
-  return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
+  const payoutsPerYear = input.payoutFrequency ? PAYOUTS_PER_YEAR[input.payoutFrequency] : undefined;
+  const interestPayoutAmount = payoutsPerYear && payoutsPerYear > 0 ? (principal * rate) / 100 / payoutsPerYear : undefined;
+  return { interest, realizedValue: principal, totalDeposited: principal, months: 0, interestPayoutAmount };
 }
 
 export function summarizeDeposits(
   deposits: DepositHolding[],
   asOf: Date = new Date(),
 ): DepositSummary {
-  const totalCurrentValue = deposits.reduce((sum, item) => sum + item.currentValue, 0);
-  const totalPrincipal = deposits.reduce((sum, item) => sum + item.principal, 0);
-  const weightedRateBase = deposits.reduce(
+  // Matured & pre-closed deposits are reference-only; exclude from portfolio/principal calculations.
+  const portfolio = deposits.filter((item) => isPortfolioDeposit(item, asOf));
+  const totalCurrentValue = portfolio.reduce((sum, item) => sum + item.currentValue, 0);
+  const totalPrincipal = portfolio.reduce((sum, item) => sum + item.principal, 0);
+  const weightedRateBase = portfolio.reduce(
     (sum, item) => sum + item.principal * item.interestRate,
     0,
   );
-  const maturingSoon = deposits.filter((item) => {
+  const maturingSoon = portfolio.filter((item) => {
+    if (getDepositLifecycleStatus(item, asOf) !== 'active') return false;
     const days = daysUntil(item.maturityDate, asOf);
     return Number.isFinite(days) && days >= 0 && days <= 90;
   }).length;
@@ -159,6 +192,6 @@ export function summarizeDeposits(
     gainPercentage: calculateReturnsPercentage(totalPrincipal, totalCurrentValue),
     weightedAverageRate: totalPrincipal > 0 ? weightedRateBase / totalPrincipal : 0,
     maturingSoon,
-    count: deposits.length,
+    count: portfolio.length,
   };
 }

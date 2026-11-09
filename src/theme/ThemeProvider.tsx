@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Theme } from '../types';
+import { palette } from './palette';
 
 export type ColorMode = 'system' | 'light' | 'dark';
 
@@ -70,7 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute('content', theme === 'dark' ? '#141414' : '#FFFFFF');
+      meta.setAttribute('content', theme === 'dark' ? palette.night : palette.paper);
     }
   }, [theme, colorMode]);
 

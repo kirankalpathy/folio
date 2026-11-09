@@ -29,6 +29,23 @@
 @layer base {
   :root {
     color-scheme: light;
+    --folio-primary-rgb: 200 80 45;
+    --folio-cream: #F7EFE9;
+    --folio-primary: #C8502D;
+    --folio-primary-hover: #B44526;
+    --folio-dark-surface: #1E1E1E;
+    --folio-night: #141414;
+    --folio-table-header-bg: #FAF6F3;
+    --folio-table-body-bg: #FFFFFF;
+    --folio-table-hover-bg: #FDF6F4;
+    /* Theme role tokens (swap in dark mode) - prefer these for dark-mode-safe UI */
+    --folio-role-bg: #FFFFFF;
+    --folio-role-bg-muted: #FBF8F6;
+    --folio-role-surface: #FFFFFF;
+    --folio-role-text: #2A1A14;
+    --folio-role-text-secondary: rgba(42, 26, 20, 0.55);
+    --folio-role-text-muted: rgba(42, 26, 20, 0.45);
+    --folio-role-border: rgba(42, 26, 20, 0.08);
     /* Semantic: Info (True Ocean Blue) */
     --folio-info-bg: #EDF5FF;
     --folio-info-border: #ADCCFF;
@@ -53,6 +70,19 @@
 
   html.dark {
     color-scheme: dark;
+    --folio-dark-text: #F3F4F6;
+    --folio-dark-surface: #1E1E1E;
+    --folio-night: #141414;
+    --folio-table-header-bg: #1A1A1A;
+    --folio-table-body-bg: #1E1E1E;
+    --folio-table-hover-bg: #2B1E1B;
+    --folio-role-bg: #141414;
+    --folio-role-bg-muted: #1E1E1E;
+    --folio-role-surface: #1E1E1E;
+    --folio-role-text: #F3F4F6;
+    --folio-role-text-secondary: rgba(243, 244, 246, 0.55);
+    --folio-role-text-muted: rgba(243, 244, 246, 0.45);
+    --folio-role-border: rgba(255, 255, 255, 0.08);
     /* Semantic: Info (True Ocean Blue, dark-shaded) */
     --folio-info-bg: #071A2E;
     --folio-info-border: #0E3A66;
@@ -111,21 +141,21 @@
   }
 
   .dark body {
-    @apply bg-folio-night text-[#F3F4F6];
+    @apply bg-[var(--folio-night)] text-[color:var(--folio-dark-text)];
   }
 
   ::selection {
-    background: rgb(200 80 45 / 0.22);
+    background: rgb(var(--folio-primary-rgb) / 0.22);
   }
 
   :focus-visible {
-    outline: 2px solid rgb(200 80 45 / 0.65);
+    outline: 2px solid rgb(var(--folio-primary-rgb) / 0.65);
     outline-offset: 2px;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(200 80 45 / 0.3) transparent;
+    scrollbar-color: rgb(var(--folio-primary-rgb) / 0.3) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -134,7 +164,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(200 80 45 / 0.28);
+    background: rgb(var(--folio-primary-rgb) / 0.28);
     background-clip: content-box;
     border: 3px solid transparent;
     border-radius: 999px;
@@ -143,11 +173,13 @@
 
 @layer components {
   .folio-card {
-    @apply overflow-hidden rounded-2xl border border-folio-ink/10 bg-white shadow-folio dark:border-white/10 dark:bg-[#1E1E1E];
+    @apply overflow-hidden rounded-2xl border border-folio-ink/10 bg-white shadow-folio dark:border-white/10 dark:bg-[var(--folio-dark-surface)];
+    color: var(--folio-role-text);
   }
 
   .folio-label {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-folio-ink/45 dark:text-white/40;
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em];
+    color: var(--folio-role-text-muted);
   }
 
   .folio-value {
@@ -160,11 +192,11 @@
   }
 
   .folio-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-folio-ink/10 bg-white px-3 py-2 text-xs font-medium text-folio-ink transition-colors hover:border-folio-primary/40 hover:bg-folio-primary/[0.06] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-[#F3F4F6] dark:hover:border-folio-primary/50 dark:hover:bg-folio-primary/10;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-folio-ink/10 bg-white px-3 py-2 text-xs font-medium text-folio-ink transition-colors hover:border-folio-primary/40 hover:bg-folio-primary/[0.06] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-[color:var(--folio-dark-text)] dark:hover:border-folio-primary/50 dark:hover:bg-folio-primary/10;
   }
 
   .folio-button-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-folio-primary bg-folio-primary px-3.5 py-2 text-xs font-medium text-white transition-colors hover:bg-[#B44526] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-folio-primary bg-folio-primary px-3.5 py-2 text-xs font-medium text-white transition-colors hover:bg-[var(--folio-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .ant-btn {
@@ -242,13 +274,105 @@
     border-bottom: none;
   }
 
+  .folio-view-tabs.ant-segmented {
+    background: transparent;
+    padding: 0;
+  }
+  .folio-view-tabs .ant-segmented-group {
+    gap: 8px;
+  }
+  .folio-view-tabs .ant-segmented-item {
+    border-radius: 8px;
+  }
+  .folio-view-tabs .ant-segmented-item-selected {
+    font-weight: 600;
+    box-shadow: 0 1px 2px var(--folio-role-border);
+  }
+  .folio-view-tabs .ant-segmented-thumb {
+    border-radius: 8px;
+    box-shadow: 0 1px 2px var(--folio-role-border);
+  }
+
+  /* Keep fixed columns (e.g. actions) above row hover/scrolling content. */
+  .folio-card .ant-table-wrapper .ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-cell-fix-right-first,
+  .folio-card .ant-table-wrapper .ant-table-cell-fix-left-last,
+  .folio-card .ant-table-wrapper [class*='ant-table-cell-fix'] {
+    position: sticky !important;
+    z-index: 100 !important;
+    isolation: isolate;
+    background-clip: padding-box;
+  }
+  .folio-card .ant-table-wrapper .ant-table-cell-fix-right-first::after,
+  .folio-card .ant-table-wrapper .ant-table-cell-fix-left-last::before {
+    z-index: 101 !important;
+  }
+  .folio-card .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-thead > tr > th[class*='ant-table-cell-fix'] {
+    z-index: 101 !important;
+    background: var(--folio-table-header-bg) !important;
+  }
+  .dark .folio-card .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-right,
+  .dark .folio-card .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left,
+  .dark .folio-card .ant-table-wrapper .ant-table-thead > tr > th[class*='ant-table-cell-fix'] {
+    background: var(--folio-table-header-bg) !important;
+  }
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr > td[class*='ant-table-cell-fix'] {
+    z-index: 100 !important;
+    background: var(--folio-table-body-bg) !important;
+  }
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr > td[class*='ant-table-cell-fix'] {
+    background: var(--folio-table-body-bg) !important;
+  }
+  /* Hover (AntD may use tr:hover and/or ant-table-cell-row-hover on cells). */
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr:hover > td[class*='ant-table-cell-fix'],
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td[class*='ant-table-cell-fix'],
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover.ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover.ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover[class*='ant-table-cell-fix'] {
+    z-index: 100 !important;
+    background: var(--folio-table-hover-bg) !important;
+  }
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr:hover > td[class*='ant-table-cell-fix'],
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-right,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-left,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td[class*='ant-table-cell-fix'],
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover.ant-table-cell-fix-right,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover.ant-table-cell-fix-left,
+  .dark .folio-card .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover[class*='ant-table-cell-fix'] {
+    background: var(--folio-table-hover-bg) !important;
+  }
+  .folio-card .ant-table-wrapper .ant-table-summary .ant-table-cell-fix-right,
+  .folio-card .ant-table-wrapper .ant-table-summary .ant-table-cell-fix-left,
+  .folio-card .ant-table-wrapper .ant-table-summary [class*='ant-table-cell-fix'] {
+    z-index: 100 !important;
+    background: var(--folio-table-header-bg) !important;
+  }
+  .dark .folio-card .ant-table-wrapper .ant-table-summary .ant-table-cell-fix-right,
+  .dark .folio-card .ant-table-wrapper .ant-table-summary .ant-table-cell-fix-left,
+  .dark .folio-card .ant-table-wrapper .ant-table-summary [class*='ant-table-cell-fix'] {
+    background: var(--folio-table-header-bg) !important;
+  }
+
   .folio-card .ant-table-summary .folio-table-summary-row > td {
-    background: #FAF6F3 !important;
+    background: var(--folio-table-header-bg) !important;
     border-bottom: 0 !important;
   }
 
   .dark .folio-card .ant-table-summary .folio-table-summary-row > td {
-    background: #1A1A1A !important;
+    background: var(--folio-table-header-bg) !important;
   }
 }
 

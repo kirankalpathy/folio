@@ -22,7 +22,7 @@ export default function FilterSummaryBar({
       showIcon={false}
       title={title}
       description={
-        <span className="text-sm font-semibold text-folio-ink dark:text-[#F7EFE9]">
+        <span className="text-sm font-semibold text-folio-ink dark:text-folio-cream">
           {count}
         </span>
       }

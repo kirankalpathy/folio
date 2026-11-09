@@ -160,6 +160,7 @@ export async function createCredential(
     recoveryAcknowledged: false,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
+    changedAt: now,
   };
   await putRecord('credentials', credential.id, credential);
   return { credential, recoveryFile: await buildRecoveryFile(ledgerId, secret) };
@@ -186,6 +187,7 @@ export async function updatePasscode(passcode: string): Promise<PasscodeCredenti
     ledgerId,
     recoveryVerifier,
     updatedAt: now,
+    changedAt: now,
   };
   await putRecord('credentials', credential.id, credential);
   return credential;
@@ -199,6 +201,7 @@ export async function createPasscodeFreeCredential(): Promise<PasscodeFreeCreden
     kind: 'none',
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
+    changedAt: now,
   };
   await putRecord('credentials', credential.id, credential);
   return credential;
@@ -225,7 +228,8 @@ export async function verifyPasscode(passcode: string): Promise<boolean> {
 export async function acknowledgeRecovery(): Promise<void> {
   const credential = await getCredential();
   if (!credential || credential.kind === 'none') return;
-  await putRecord('credentials', credential.id, { ...credential, recoveryAcknowledged: true, updatedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  await putRecord('credentials', credential.id, { ...credential, recoveryAcknowledged: true, updatedAt: now, changedAt: now });
 }
 
 export async function validateRecoveryFile(file: File): Promise<void> {
@@ -258,6 +262,7 @@ export async function resetPasscodeWithRecovery(file: File, newPasscode: string)
     iterations: ITERATIONS,
     recoveryAcknowledged: true,
     updatedAt: now,
+    changedAt: now,
   });
 }
 

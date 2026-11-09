@@ -1,5 +1,5 @@
-import { Badge, Button } from 'antd';
-import { Bell, Menu, Moon, Sun } from 'lucide-react';
+import { Badge, Button, Tooltip } from 'antd';
+import { ArrowLeft, Bell, Menu, Moon, Sun } from 'lucide-react';
 import type { NetWorthSummary } from '../../types';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useSettings } from '../../context/SettingsContext';
@@ -11,9 +11,11 @@ interface HeaderProps {
   summary: NetWorthSummary;
   isLoading: boolean;
   onOpenSidebar: () => void;
+  onBack?: () => void;
+  canGoBack?: boolean;
 }
 
-export default function Header({ summary, isLoading, onOpenSidebar }: HeaderProps) {
+export default function Header({ summary, isLoading, onOpenSidebar, onBack, canGoBack }: HeaderProps) {
   const { theme } = useTheme();
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n();
@@ -24,7 +26,7 @@ export default function Header({ summary, isLoading, onOpenSidebar }: HeaderProp
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-folio-ink/[0.07] bg-white/85 backdrop-blur-md dark:border-white/[0.07] dark:bg-[#141414]/85">
+    <header className="sticky top-0 z-[200] border-b border-folio-ink/[0.07] bg-white/85 backdrop-blur-md dark:border-white/[0.07] dark:bg-folio-night/85">
       <div className="flex h-16 items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Button
           type="text"
@@ -33,6 +35,19 @@ export default function Header({ summary, isLoading, onOpenSidebar }: HeaderProp
           icon={<Menu size={18} />}
           onClick={onOpenSidebar}
         />
+
+        {onBack ? (
+          <Tooltip title={t('common.back')}>
+            <Button
+              type="text"
+              aria-label={t('common.back')}
+              icon={<ArrowLeft size={18} />}
+              onClick={onBack}
+              disabled={!canGoBack}
+              className={!canGoBack ? 'opacity-40' : undefined}
+            />
+          </Tooltip>
+        ) : null}
 
         <div className="flex min-w-0 flex-1 items-center">
           <img

@@ -26,7 +26,7 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-folio-ink/[0.08] bg-[#FBF8F6] transition-[width,transform] duration-200 dark:border-white/10 dark:bg-[#1E1E1E]',
+        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-folio-ink/[0.08] bg-folio-shell transition-[width,transform] duration-200 dark:border-white/10 dark:bg-folio-dark-surface',
         'w-[280px] lg:translate-x-0',
         collapsed ? 'lg:w-[80px]' : 'lg:w-[264px]',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',

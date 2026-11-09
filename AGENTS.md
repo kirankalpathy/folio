@@ -7,7 +7,7 @@ This document summarizes the engineering and product conventions established for
 - **App**: Folio is a **local-first personal finance desktop app** (Tauri + React + TypeScript + Vite), focused on tracking assets/liabilities in INR with data stored on the user’s device.
 - **Primary stack**: React 19, TypeScript (strict), Vite, Tauri 2, Ant Design, Tailwind CSS, Lucide icons, dayjs.
 - **Native/storage**: Desktop app uses **native SQLite** via `@tauri-apps/plugin-sql` (Tauri-only runtime behavior). Use Tauri plugins for native capabilities (e.g., dialog/fs for backups/exports) where applicable.
-- **Working directory**: project root is `folio/` (e.g., `/Users/kirankalpathy/Desktop/projects/folio`).
+- **Working directory**: project root is `folio/` (run commands from the `folio/` directory).
 
 ## 2. Core engineering principles
 
@@ -44,6 +44,7 @@ This document summarizes the engineering and product conventions established for
 
 - **Strict TypeScript**: follow the repo’s strict settings (`tsconfig.app.json` includes `strict`, `noUnusedLocals`, `noUnusedParameters`, etc.).
 - **No `any`**. Use precise types, generics, unions, and `unknown` + narrowing when needed.
+- **Enums for fixed value sets**: wherever a field has a known list of values (e.g., interest payout options/modes, deposit account types, operation types, statuses, frequencies, categories), define and use an **enum/enum-like constant** instead of scattering raw string literals. Prefer **JSON/SQLite-safe** patterns: TypeScript **string enums** or `as const` objects with a derived union type (e.g., `export const Foo = { Bar: 'bar' } as const; export type Foo = (typeof Foo)[keyof typeof Foo];`) so values serialize cleanly, comparisons stay type-safe, and adding a new value is centralized. Reuse the same enum/constants in types, validation, UI options, i18n key maps, backup schema, normalization, and calculations.
 - Prefer type-safe domain modeling (e.g., lifecycle/status unions, typed IDs/inputs, discriminated patterns where helpful).
 - Keep imports/exports clean; avoid unused symbols (the compiler/config enforces this).
 - **Quality gate**: run `npm run typecheck` after meaningful changes.
@@ -55,6 +56,8 @@ This document summarizes the engineering and product conventions established for
 - **Date pickers**: whenever a `DatePicker` (or date-entry field) is introduced, it **must follow the user-configured date format** (use the shared date format utilities/settings, e.g. `getDateFormatId()`/date helpers in `src/utils/date.ts`), not a hardcoded display format.
 - **Theming**: support light/dark (and system where implemented) using existing theme providers/tokens.
 - **Semantic colors**: use the semantic color system (CSS variables in `src/index.css`, Tailwind semantic mappings, and AntD theme alignment) for info/success/warning/error states (including status tags, alerts, and semantic surfaces). Do not introduce ad-hoc semantic colors when a semantic token exists.
+- **No hardcoded colors**: do not hardcode colors (hex/rgb/hsl, named CSS colors, or arbitrary color values) in components, pages, utilities, or styles. Keep colors centralized in theme tokens/CSS variables (`src/index.css`), Tailwind theme/config mappings, and AntD theme configuration. Use existing semantic or brand tokens/classes; if a new color is truly needed, add it centrally first rather than inlining it.
+- **Busy indicator (global blocking)**: use the shared `BusyIndicator` (`BusyIndicatorProvider` / `useBusyIndicator().setBusyIndicator`) for operations that must block the UI until complete (e.g., backup/restore). **Important:** whenever `setBusyIndicator()` / `setBusyIndicator(true)` is called, the **same method/function must always call `setBusyIndicator(false)`** when the operation completes (use `try/finally`). Never leave the busy indicator active after the action finishes, or the app will remain stuck/spinning.
 - **Accessibility/interaction**: follow established UX rules (e.g., global text selection limited to editable/text-entry contexts; consistent focus/contrast; clear validation messages).
 - **Icons and components**: use existing libraries/patterns (Lucide icons, AntD components) consistently.
 
@@ -70,8 +73,10 @@ This document summarizes the engineering and product conventions established for
 
 - Preserve established domain behavior unless the change request explicitly updates it.
 - **Deposits** (key conventions implemented): wizard-based create/edit, read-only detail view, ID-based linkage to Financial Institutions (`financialInstitutionId`), lifecycle/status rules (including lien/pre-closure behavior), validations (e.g., required fields, principal/rate/date constraints, nominee rules), and export/backup compatibility considerations.
+- **Portfolio calculations (matured & pre-closed deposits)**: deposits with status **Matured** or **Pre-closed** are **reference-only data points**. They must **not** be considered in principal, current value, gains, weighted averages, counts, stat cards, summaries, or any other portfolio/financial calculations **across the application**. Only planned, active, and in-lien deposits count toward portfolio totals; matured/pre-closed remain viewable in their dedicated deposits view/tab and exports where appropriate.
 - **Financial Institutions**: category-specific fields/validation, migration/normalization for legacy data where present, and safeguards (e.g., prevent deletion when linked records exist).
 - **Backups/restore/exports**: use Tauri dialog/fs flows where applicable; keep data portable and schema-compatible; handle cancel/no-op cases gracefully.
+- **Display changes vs. exports (check with user)**: whenever a **display/detail view** changes and an **export option is enabled** for that area, **check with the user** whether the display changes should apply to exports (**especially PDF**). Adding/removing fields or changing layout may impact export output (columns, sections, formatting, field availability) in some cases—confirm before assuming parity.
 - When changing stored data shape, consider **backward compatibility**, normalization, migration, backup schema validation, and UI/export impacts.
 - **Schema/backup discipline**: whenever fields/record structure change for persisted domain data, **update the backup schema validation** (`src/utils/backupSchema.ts` and related types/rules) and **update backup/restore engines** (`src/services/backup.ts` and any normalization/migration paths) accordingly. **Ensure backup/restore functionality is not broken** (validate end-to-end behavior for affected data). Keep legacy backups restorable where practical (optional/tolerant validation, safe defaults/normalization).
 

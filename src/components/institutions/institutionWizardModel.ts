@@ -6,6 +6,7 @@ import type {
   InvestmentSegment,
   OperationMode,
 } from '../../types';
+import { formatMobileE164 } from '../common/MobileInput';
 
 export type WizardStep = 0 | 1 | 2;
 
@@ -101,11 +102,11 @@ export function toInstitutionInput(values: InstitutionWizardValues): FinancialIn
     dpId: values.dpId?.trim() || undefined,
     segments: values.segments && values.segments.length > 0 ? values.segments : undefined,
     walletId: values.walletId?.trim() || undefined,
-    linkedMobile: values.linkedMobile?.trim() || undefined,
+    linkedMobile: formatMobileE164(values.linkedMobile),
     upiId: values.upiId?.trim() || undefined,
     contactPerson: values.contactPerson?.trim() || undefined,
     contactEmail: values.contactEmail?.trim() || undefined,
-    contactPhone: values.contactPhone?.trim() || undefined,
+    contactPhone: formatMobileE164(values.contactPhone),
     address: values.address?.trim() || undefined,
   };
 }

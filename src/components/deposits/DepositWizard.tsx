@@ -75,7 +75,6 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   const goBack = () => { setShowError(false); setStep((s) => (Math.max(0, s - 1) as DepositWizardStep)); scrollTop(); };
 
   const handleFinish = async () => {
-    if (terminalLocked) return;
     setShowError(false);
     try {
       await form.validateFields();
@@ -115,22 +114,20 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
       <div ref={(el) => { stepRefs.current[2] = el; }} style={{ display: step === 2 ? 'block' : 'none' }}><DepositWizardStepMaturity activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
       <div ref={(el) => { stepRefs.current[3] = el; }} style={{ display: step === 3 ? 'block' : 'none' }}><DepositWizardStepAdditional activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
 
-      {!terminalLocked && (
-        <div className="mt-5 flex items-center justify-between gap-2 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
-          <Button onClick={step === 0 ? onCancel : goBack} icon={step === 0 ? undefined : <ArrowLeft size={14} />}>
-            {step === 0 ? t('common.cancel') : t('institutions.action.back')}
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
+        <Button onClick={step === 0 ? onCancel : goBack} icon={step === 0 ? undefined : <ArrowLeft size={14} />}>
+          {step === 0 ? t('common.cancel') : t('institutions.action.back')}
+        </Button>
+        {step < 3 ? (
+          <Button type="primary" onClick={() => void goNext()}>
+            <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
           </Button>
-          {step < 3 ? (
-            <Button type="primary" onClick={() => void goNext()}>
-              <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
-            </Button>
-          ) : (
-            <Button type="primary" loading={saving} onClick={() => void handleFinish()}>
-              {submitLabel}
-            </Button>
-          )}
-        </div>
-      )}
+        ) : (
+          <Button type="primary" loading={saving} onClick={() => void handleFinish()}>
+            {submitLabel}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

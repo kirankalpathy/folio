@@ -1,7 +1,7 @@
 {
   "name": "folio",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "versionChannel": "dev",
   "license": "MIT",
   "type": "module",
@@ -24,6 +24,7 @@
     "dayjs": "^1.11.23",
     "dexie": "^4.4.7",
     "exceljs": "^4.4.0",
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "lucide-react": "^1.70.0",

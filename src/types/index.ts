@@ -12,10 +12,39 @@ export type StockInstrument = 'equity' | 'etf' | 'reit' | 'invit';
 export type BondType = 'government' | 'corporate' | 'tax-free' | 'other';
 export type CouponFrequency = 'annual' | 'semi-annual' | 'quarterly' | 'monthly' | 'zero-coupon';
 export type ProvidentFundType = 'EPF' | 'PPF' | 'VPF' | 'NPS' | 'OTHER';
-export type DepositType = 'fd' | 'rd' | 'tax-saving' | 'savings' | 'nsc' | 'other';
-export type CompoundingFrequency = 'annual' | 'semi-annual' | 'quarterly' | 'monthly';
-export type DepositRollover = 'none' | 'principal' | 'principal-interest';
-export type DepositPayoutFrequency = 'annual' | 'semi-annual' | 'quarterly' | 'monthly';
+
+export const DepositType = {
+  FD: 'fd',
+  RD: 'rd',
+  TaxSaving: 'tax-saving',
+  Savings: 'savings',
+  NSC: 'nsc',
+  Other: 'other',
+} as const;
+export type DepositType = (typeof DepositType)[keyof typeof DepositType];
+
+export const CompoundingFrequency = {
+  Annual: 'annual',
+  SemiAnnual: 'semi-annual',
+  Quarterly: 'quarterly',
+  Monthly: 'monthly',
+} as const;
+export type CompoundingFrequency = (typeof CompoundingFrequency)[keyof typeof CompoundingFrequency];
+
+export const DepositRollover = {
+  None: 'none',
+  Principal: 'principal',
+  PrincipalInterest: 'principal-interest',
+} as const;
+export type DepositRollover = (typeof DepositRollover)[keyof typeof DepositRollover];
+
+export const DepositPayoutFrequency = {
+  Annual: 'annual',
+  SemiAnnual: 'semi-annual',
+  Quarterly: 'quarterly',
+  Monthly: 'monthly',
+} as const;
+export type DepositPayoutFrequency = (typeof DepositPayoutFrequency)[keyof typeof DepositPayoutFrequency];
 export type CommodityForm = 'physical' | 'etf' | 'sgb' | 'digital';
 export type CommodityUnit = 'gram' | 'kilogram' | 'ounce' | 'unit';
 export type DebtType =
@@ -26,15 +55,27 @@ export type DebtType =
   | 'credit-card'
   | 'other';
 
-export interface BaseRecord {
-  id: string;
+export interface AuditFields {
   createdAt: string;
+  /** Last-changed timestamp (kept in sync with updatedAt). */
   updatedAt: string;
+  /** Alias for updatedAt (audit). */
+  changedAt?: string;
+  /** User/profile UUID that created the record. */
+  createdBy?: string;
+  /** User/profile UUID that last changed the record. */
+  changedBy?: string;
+}
+
+export interface BaseRecord extends AuditFields {
+  id: string;
   notes?: string;
 }
 
 export interface UserProfile {
   id: 'primary';
+  /** Stable local user UUID (used for audit createdBy/changedBy). */
+  userId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -43,6 +84,7 @@ export interface UserProfile {
   photo?: string;
   createdAt: string;
   updatedAt: string;
+  changedAt?: string;
 }
 
 export interface ProfileInput {
@@ -73,6 +115,9 @@ export interface PasscodeCredential {
   recoveryAcknowledged?: boolean;
   createdAt: string;
   updatedAt: string;
+  changedAt?: string;
+  createdBy?: string;
+  changedBy?: string;
 }
 
 export type AuthStatus = 'loading' | 'setup' | 'recovery' | 'locked' | 'unlocked' | 'error';
@@ -82,6 +127,9 @@ export interface PasscodeFreeCredential {
   kind: 'none';
   createdAt: string;
   updatedAt: string;
+  changedAt?: string;
+  createdBy?: string;
+  changedBy?: string;
 }
 
 export type AuthCredential = PasscodeCredential | PasscodeFreeCredential;
@@ -127,15 +175,23 @@ export interface PFAccount extends BaseRecord {
   maturityDate?: string;
 }
 
-export type FinancialInstitutionCategory =
-  | 'savings-account'
-  | 'current-account'
-  | 'credit-card-issuer'
-  | 'digital-wallet'
-  | 'investment-brokerage';
+export const FinancialInstitutionCategory = {
+  SavingsAccount: 'savings-account',
+  CurrentAccount: 'current-account',
+  CreditCardIssuer: 'credit-card-issuer',
+  DigitalWallet: 'digital-wallet',
+  InvestmentBrokerage: 'investment-brokerage',
+} as const;
+export type FinancialInstitutionCategory = (typeof FinancialInstitutionCategory)[keyof typeof FinancialInstitutionCategory];
+
 export type CardNetwork = 'VISA' | 'MasterCard' | 'RuPay' | 'American Express';
 export type InvestmentSegment = 'cash-equity-mf' | 'equity-fo' | 'commodities' | 'debt';
-export type OperationMode = 'online' | 'offline';
+
+export const OperationMode = {
+  Online: 'online',
+  Offline: 'offline',
+} as const;
+export type OperationMode = (typeof OperationMode)[keyof typeof OperationMode];
 export type IndianState =
   | 'Andhra Pradesh' | 'Arunachal Pradesh' | 'Assam' | 'Bihar' | 'Chhattisgarh' | 'Goa' | 'Gujarat'
   | 'Haryana' | 'Himachal Pradesh' | 'Jharkhand' | 'Karnataka' | 'Kerala' | 'Madhya Pradesh'
@@ -198,17 +254,25 @@ export const INDIAN_STATES: IndianState[] = [
   'Lakshadweep', 'Puducherry',
 ];
 
-export type NomineeRelationship =
-  | 'spouse'
-  | 'father'
-  | 'mother'
-  | 'son'
-  | 'daughter'
-  | 'brother'
-  | 'sister'
-  | 'other';
+export const NomineeRelationship = {
+  Spouse: 'spouse',
+  Father: 'father',
+  Mother: 'mother',
+  Son: 'son',
+  Daughter: 'daughter',
+  Brother: 'brother',
+  Sister: 'sister',
+  Other: 'other',
+} as const;
+export type NomineeRelationship = (typeof NomineeRelationship)[keyof typeof NomineeRelationship];
 
-export type DepositOperationType = 'single' | 'joint' | 'either-or-survivor' | 'former-or-survivor';
+export const DepositOperationType = {
+  Single: 'single',
+  Joint: 'joint',
+  EitherOrSurvivor: 'either-or-survivor',
+  FormerOrSurvivor: 'former-or-survivor',
+} as const;
+export type DepositOperationType = (typeof DepositOperationType)[keyof typeof DepositOperationType];
 
 export interface DepositNominee {
   name: string;
@@ -239,6 +303,8 @@ export interface DepositHolding extends BaseRecord {
   compoundingFrequency?: CompoundingFrequency;
   cumulativeInterest?: boolean;
   payoutFrequency?: DepositPayoutFrequency;
+  /** Periodic interest credit amount for non-cumulative (payout) deposits. Optional; computed from interest and payout frequency when applicable. */
+  interestPayoutAmount?: number;
   rollover?: DepositRollover;
   operationMode?: OperationMode;
   operationType?: DepositOperationType;
@@ -308,8 +374,12 @@ export interface CategoryTotals {
   count: number;
 }
 
+/** Deposit subcategories used for allocation/progress breakdown (dashboard overview). */
+export type DepositAllocationKey = 'deposits-fd' | 'deposits-rd' | 'deposits-other';
+export type AllocationKey = AssetClassKey | DepositAllocationKey;
+
 export interface AllocationSlice {
-  key: AssetClassKey;
+  key: AllocationKey;
   value: number;
   percentage: number;
   count: number;
@@ -356,9 +426,37 @@ export interface BackupRecordCounts {
   debts: number;
 }
 
+export interface BackupReportRow {
+  /** i18n key for the item label, or a resolved label when itemLabel is provided. */
+  itemLabelKey: string;
+  itemLabelParams?: Record<string, string | number>;
+  /** Optional pre-resolved label (use itemLabelKey via t() when absent). */
+  itemLabel?: string;
+  success: number;
+  errors: number;
+  /** Render as an indented child row (e.g. deposit subtypes). */
+  indent?: boolean;
+}
+
+export interface BackupReport {
+  kind: 'export' | 'restore';
+  /** Only categories/subcategories present in the backup/operation are included. */
+  rows: BackupReportRow[];
+}
+
 export interface RestoreResult {
   counts: BackupRecordCounts;
   total: number;
+  report: BackupReport;
+}
+
+export interface TableColumnLayout {
+  key: string;
+  visible: boolean;
+}
+
+export interface TableLayoutPrefs {
+  columns: TableColumnLayout[];
 }
 
 export interface AppSettings {
@@ -367,4 +465,6 @@ export interface AppSettings {
   dateFormatId: import('../utils/date').DateFormatId;
   colorMode: 'system' | 'light' | 'dark';
   showHeaderTicker: boolean;
+  /** Per-table column visibility and order (keyed by table id). */
+  tableLayouts?: Record<string, TableLayoutPrefs>;
 }

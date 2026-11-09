@@ -1,28 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button } from 'antd';
-import { useToast } from '../../components/common/toast/ToastProvider';
+import { useRef, useState } from 'react';
+import { App as AntApp, Button } from 'antd';
 import { Archive, Download, RotateCcw } from 'lucide-react';
 import { useBackup } from '../../hooks/useBackup';
 import { useI18n } from '../../i18n';
+import { showBackupErrorDialog, showBackupReportDialog } from './BackupReportDialog';
 
 type PendingAction = 'export' | 'restore' | null;
 
 export default function BackupCard() {
-  const { toast } = useToast();
   const { t } = useI18n();
-  const { state, exportBackup, restoreFromFile } = useBackup();
+  const { modal } = AntApp.useApp();
+  const { exportBackup, restoreFromFile } = useBackup();
   const [pending, setPending] = useState<PendingAction>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (state.phase === 'success') toast.success(state.message);
-    if (state.phase === 'error') toast.error(state.message);
-  }, [toast, state.message, state.phase]);
 
   const handleExport = async () => {
     setPending('export');
     try {
-      await exportBackup();
+      const result = await exportBackup();
+      if (result.ok) showBackupReportDialog(modal, t, result.report);
+      else if (!result.cancelled) showBackupErrorDialog(modal, t, result.message);
     } finally {
       setPending(null);
     }
@@ -32,7 +29,9 @@ export default function BackupCard() {
     if (!file) return;
     setPending('restore');
     try {
-      await restoreFromFile(file);
+      const result = await restoreFromFile(file);
+      if (result.ok) showBackupReportDialog(modal, t, result.report);
+      else if (!result.cancelled) showBackupErrorDialog(modal, t, result.message);
     } finally {
       setPending(null);
     }

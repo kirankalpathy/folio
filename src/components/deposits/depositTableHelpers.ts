@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../../types';
 import type { MessageKey, Translator } from '../../i18n';
+import { palette } from '../../theme/palette';
 
 const ACCOUNT_LABEL_KEYS: Record<string, MessageKey> = {
   fd: 'deposit.accountShort.fd',
@@ -40,9 +41,9 @@ export function accountTypeTagStyle(type: DepositType): CSSProperties {
     fd: { bg: 'var(--folio-success-bg)', border: 'var(--folio-success-border)', text: 'var(--folio-success-text)' },
     rd: { bg: 'var(--folio-info-bg)', border: 'var(--folio-info-border)', text: 'var(--folio-info-text)' },
     'tax-saving': { bg: 'var(--folio-warning-bg)', border: 'var(--folio-warning-border)', text: 'var(--folio-warning-text)' },
-    savings: { bg: 'color-mix(in srgb, #14b8a6 16%, transparent)', border: 'color-mix(in srgb, #14b8a6 40%, transparent)', text: '#0f766e' },
-    nsc: { bg: 'color-mix(in srgb, #8b5cf6 16%, transparent)', border: 'color-mix(in srgb, #8b5cf6 40%, transparent)', text: '#6d28d9' },
-    other: { bg: 'color-mix(in srgb, #64748b 14%, transparent)', border: 'color-mix(in srgb, #64748b 35%, transparent)', text: '#475569' },
+    savings: { bg: `color-mix(in srgb, ${palette.tag.savings.base} 16%, transparent)`, border: `color-mix(in srgb, ${palette.tag.savings.base} 40%, transparent)`, text: palette.tag.savings.text },
+    nsc: { bg: `color-mix(in srgb, ${palette.tag.nsc.base} 16%, transparent)`, border: `color-mix(in srgb, ${palette.tag.nsc.base} 40%, transparent)`, text: palette.tag.nsc.text },
+    other: { bg: `color-mix(in srgb, ${palette.tag.other.base} 14%, transparent)`, border: `color-mix(in srgb, ${palette.tag.other.base} 35%, transparent)`, text: palette.tag.other.text },
   };
   const c = map[type] ?? map.other;
   return { background: c.bg, border: `1px solid ${c.border}`, color: c.text };

@@ -38,6 +38,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       dateFormatId: merged.dateFormatId,
       colorMode: merged.colorMode,
       showHeaderTicker: merged.showHeaderTicker,
+      tableLayouts: merged.tableLayouts,
     });
     setSettings(next);
     setColorMode(next.colorMode);

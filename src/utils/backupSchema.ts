@@ -34,6 +34,9 @@ const BASE_FIELDS: FieldRule[] = [
   ['id', 'string'],
   ['createdAt', 'date'],
   ['updatedAt', 'date'],
+  ['changedAt', 'date', 'optional'],
+  ['createdBy', 'string', 'optional'],
+  ['changedBy', 'string', 'optional'],
   ['notes', 'string', 'optional'],
 ];
 
@@ -94,6 +97,7 @@ const DEPOSIT_FIELDS: FieldRule[] = [
   ['compoundingFrequency', 'string', { optional: true, enum: COMPOUNDING }],
   ['cumulativeInterest', 'boolean', 'optional'],
   ['payoutFrequency', 'string', { optional: true, enum: PAYOUT_FREQUENCIES }],
+  ['interestPayoutAmount', 'number', 'optional'],
   ['rollover', 'string', { optional: true, enum: ROLLOVERS }],
   ['operationMode', 'string', { optional: true, enum: OPERATION_MODES }],
   ['operationType', 'string', { optional: true, enum: DEPOSIT_OPERATION_TYPES }],
@@ -193,9 +197,18 @@ function fieldMeta(extra: FieldExtra | undefined): { optional: boolean; enumValu
   return { optional: !!obj.optional, enumValues: obj.enum };
 }
 
+function resolveAuditAlias(record: Record<string, unknown>, key: string): unknown {
+  const value = record[key];
+  if (value !== undefined) return value;
+  if (key === 'createdAt') return record.CreatedAt ?? record.created_at;
+  if (key === 'updatedAt') return record.UpdatedAt ?? record.updated_at ?? record.changedAt ?? record.ChangedAt;
+  if (key === 'changedAt') return record.ChangedAt ?? record.changed_at ?? record.updatedAt ?? record.UpdatedAt;
+  return value;
+}
+
 function validateField(record: Record<string, unknown>, rule: FieldRule): string | null {
   const [key, kind, extra] = rule;
-  const value = record[key];
+  const value = resolveAuditAlias(record, key);
   const meta = fieldMeta(extra);
 
   if (value === undefined) return meta.optional ? null : `missing required "${key}"`;

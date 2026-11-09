@@ -7,6 +7,7 @@ import type {
   PortfolioSnapshot,
 } from '../types';
 import { ASSET_CLASS_KEYS } from '../types';
+import { isPortfolioDeposit } from './deposits';
 
 export type NumberFormatId = 'en-IN' | 'en-US' | 'de-DE' | 'fr-FR-space-dot' | 'fr-FR-space-comma' | 'de-CH';
 
@@ -186,12 +187,14 @@ function readCategory(key: AssetClassKey, snapshot: PortfolioSnapshot): Category
         investedValue: snapshot.pfAccounts.reduce((sum, item) => sum + item.totalContributed, 0),
         count: snapshot.pfAccounts.length,
       };
-    case 'deposits':
+    case 'deposits': {
+      const portfolioDeposits = snapshot.deposits.filter((item) => isPortfolioDeposit(item));
       return {
-        currentValue: snapshot.deposits.reduce((sum, item) => sum + item.currentValue, 0),
-        investedValue: snapshot.deposits.reduce((sum, item) => sum + item.principal, 0),
-        count: snapshot.deposits.length,
+        currentValue: portfolioDeposits.reduce((sum, item) => sum + item.currentValue, 0),
+        investedValue: portfolioDeposits.reduce((sum, item) => sum + item.principal, 0),
+        count: portfolioDeposits.length,
       };
+    }
     case 'commodities':
       return {
         currentValue: snapshot.commodities.reduce(
@@ -249,14 +252,37 @@ export function aggregateNetWorth(snapshot: PortfolioSnapshot): NetWorthSummary 
   const totalLiabilities = categories.debts.currentValue;
   const unrealisedGain = totalAssets - totalInvested;
 
-  const allocations: AllocationSlice[] = ASSET_CLASS_KEYS.map((key) => ({
-    key,
-    value: categories[key].currentValue,
-    percentage:
-      totalAssets > 0 ? (Math.max(0, categories[key].currentValue) / totalAssets) * 100 : 0,
-    count: categories[key].count,
-    kind: key === 'debts' ? 'liability' : 'asset',
-  }));
+  const portfolioDeposits = snapshot.deposits.filter((item) => isPortfolioDeposit(item));
+  const allocations: AllocationSlice[] = [];
+  for (const key of ASSET_CLASS_KEYS) {
+    if (key === 'deposits') {
+      const groups: Array<{ key: AllocationSlice['key']; types: Set<string> | null; include: (t: string) => boolean }> = [
+        { key: 'deposits-fd', types: null, include: (t) => t === 'fd' || t === 'tax-saving' || t === 'nsc' },
+        { key: 'deposits-rd', types: null, include: (t) => t === 'rd' },
+        { key: 'deposits-other', types: null, include: (t) => t !== 'fd' && t !== 'rd' && t !== 'tax-saving' && t !== 'nsc' },
+      ];
+      for (const g of groups) {
+        const items = portfolioDeposits.filter((d) => g.include(d.accountType ?? 'other'));
+        const value = items.reduce((sum, item) => sum + (item.currentValue ?? 0), 0);
+        allocations.push({
+          key: g.key,
+          value,
+          percentage: totalAssets > 0 ? (Math.max(0, value) / totalAssets) * 100 : 0,
+          count: items.length,
+          kind: 'asset',
+        });
+      }
+      continue;
+    }
+    allocations.push({
+      key,
+      value: categories[key].currentValue,
+      percentage:
+        totalAssets > 0 ? (Math.max(0, categories[key].currentValue) / totalAssets) * 100 : 0,
+      count: categories[key].count,
+      kind: key === 'debts' ? 'liability' : 'asset',
+    });
+  }
 
   return {
     totalAssets,

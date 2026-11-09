@@ -72,7 +72,7 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-folio-ink dark:text-[#F3F4F6]">{t('deposit.section.nominees')}</h3>
+            <h3 className="text-sm font-semibold text-folio-ink dark:text-folio-dark-text">{t('deposit.section.nominees')}</h3>
             <p className="text-[11px] text-folio-ink/50 dark:text-white/45">{t('deposit.nominee.optionalHint')}</p>
           </div>
         </div>

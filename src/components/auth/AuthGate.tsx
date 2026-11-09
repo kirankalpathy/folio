@@ -26,7 +26,7 @@ import FolioLogo from '../common/FolioLogo';
 function BootScreen() {
   const { t } = useI18n();
   return (
-    <div className="grid min-h-screen place-items-center bg-folio-paper dark:bg-[#141414]">
+    <div className="grid min-h-screen place-items-center bg-folio-paper dark:bg-folio-night">
       <div className="flex flex-col items-center gap-5">
         <FolioLogo />
         <Spin size="small" />

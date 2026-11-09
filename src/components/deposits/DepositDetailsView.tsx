@@ -10,11 +10,12 @@ import { calculateDepositValues, formatDepositTenure, getDepositLifecycleStatus 
 import DepositStatusTag from './DepositStatusTag';
 import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../../services/financialInstitutions';
-import { ACCOUNT_OPTIONS, COMPOUNDING_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, OPERATION_TYPE_OPTIONS, PAYOUT_OPTIONS, ROLLOVER_OPTIONS } from './depositFormModel';
+import { ACCOUNT_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, OPERATION_TYPE_OPTIONS, PAYOUT_OPTIONS, ROLLOVER_OPTIONS } from './depositFormModel';
+import ChangeDetailsSection from '../common/ChangeDetailsSection';
 
 function val(v?: string | number | null): ReactNode {
   if (v === undefined || v === null || v === '') return <span className="text-folio-ink/35 dark:text-white/30">—</span>;
-  return String(v);
+  return <span className="break-words whitespace-normal">{String(v)}</span>;
 }
 
 function accountTypeIcon(type: DepositType): ReactNode {
@@ -64,6 +65,7 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
     maturityDate: record.maturityDate,
     cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
     compoundingFrequency: record.compoundingFrequency,
+    payoutFrequency: record.payoutFrequency,
   });
   const accountOpt = ACCOUNT_OPTIONS.find((o) => o.value === record.accountType);
   const legacyAccountKeys: Partial<Record<string, MessageKey>> = { savings: 'deposit.account.savings', nsc: 'deposit.account.nsc', 'tax-saving': 'deposit.account.taxSaving' };
@@ -72,25 +74,27 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
   const operationType = record.operationType ?? 'single';
   const operationTypeLabel = OPERATION_TYPE_OPTIONS.find((o) => o.value === operationType)?.label;
   const rolloverLabel = ROLLOVER_OPTIONS.find((o) => o.value === (record.rollover ?? 'none'))?.label;
-  const freqLabel = (record.cumulativeInterest === false ? PAYOUT_OPTIONS : COMPOUNDING_OPTIONS)
-    .find((o) => o.value === (record.cumulativeInterest === false ? record.payoutFrequency : record.compoundingFrequency))?.label;
   const dp: Partial<DescriptionsProps> = {
-    layout: 'vertical', column: { xs: 1, sm: 2 }, size: 'small', colon: false, className: 'folio-desc-tight',
+    layout: 'vertical',
+    column: { xs: 1, sm: 2 },
+    size: 'small',
+    colon: false,
+    className: 'folio-desc-tight [&_table]:!w-full [&_table]:table-fixed [&_td]:w-1/2 [&_td]:!break-words [&_td]:[overflow-wrap:anywhere]',
   };
 
   return (
     <div className="space-y-4 select-none">
       <Section title={t('deposit.section.overview')}>
         <Descriptions {...dp} items={[
-          { key: 'lifecycle', label: t('deposit.fields.lifecycle'), children: lifecycle ? <DepositStatusTag status={lifecycle} /> : val(undefined) },
           { key: 'depositNumber', label: t('deposit.fields.depositNumber'), children: val(record.depositNumber) },
           { key: 'name', label: t('deposit.fields.name'), children: val(record.name) },
+          { key: 'lifecycle', label: t('deposit.fields.lifecycle'), children: lifecycle ? <DepositStatusTag status={lifecycle} /> : val(undefined) },
           { key: 'institution', label: t('deposit.fields.institution'), children: val(institutionName) },
           { key: 'accountType', label: t('deposit.fields.accountType'), children: <span className="inline-flex items-center gap-2">{accountTypeIcon(record.accountType)}<span>{accountText}</span></span> },
           { key: 'operationType', label: t('deposit.fields.operationType'), children: <span className="inline-flex items-center gap-2">{operationTypeIcon(operationType)}<span>{operationTypeLabel ? t(operationTypeLabel) : operationType}</span></span> },
         ]} />
         {operationType !== 'single' && record.jointHolders?.length ? (
-          <div className="mt-4 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
+          <div className="mt-4">
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.jointHolders')}</h3>
             <div className="space-y-2">
               {record.jointHolders.map((h, i) => (
@@ -144,11 +148,53 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
       </Section>
       <Section title={t('deposit.section.maturity')}>
         <Descriptions {...dp} items={[
-          ...(!isRd ? [{ key: 'cumulative', label: t('deposit.fields.cumulativeInterest'), children: val(record.cumulativeInterest ? t('common.yes') : t('common.no')) }] : []),
-          { key: 'freq', label: (isRd || record.cumulativeInterest !== false) ? t('deposit.fields.compounding') : t('deposit.fields.payoutFrequency'), children: val(freqLabel ? t(freqLabel) : undefined) },
+          {
+            key: 'payoutMode',
+            label: t('deposit.fields.payoutFrequency'),
+            children: val(
+              isRd || record.cumulativeInterest !== false
+                ? t('deposit.payoutMode.cumulative')
+                : (PAYOUT_OPTIONS.find((o) => o.value === record.payoutFrequency)?.label ? t(PAYOUT_OPTIONS.find((o) => o.value === record.payoutFrequency)!.label) : undefined),
+            ),
+          },
           { key: 'rollover', label: t('deposit.fields.rollover'), children: val(rolloverLabel ? t(rolloverLabel) : undefined) },
-          { key: 'interest', label: t(isRd ? 'deposit.fields.compoundInterest' : 'deposit.fields.interest'), children: val(formatINR(computed.interest)) },
-          { key: 'realized', label: t('deposit.fields.realizedValue'), children: val(formatINR(record.currentValue ?? computed.realizedValue)) },
+          {
+            key: 'interest',
+            label: t(isRd ? 'deposit.fields.compoundInterest' : 'deposit.fields.interest'),
+            children: (() => {
+              const payoutsPerYear = record.payoutFrequency
+                ? ({ monthly: 12, quarterly: 4, 'semi-annual': 2, annual: 1 } as const)[record.payoutFrequency]
+                : undefined;
+              const payoutAmount = computed.interestPayoutAmount ?? (
+                !isRd && record.cumulativeInterest === false && payoutsPerYear
+                  ? (record.principal * record.interestRate) / 100 / payoutsPerYear
+                  : undefined
+              );
+              const freqText = record.payoutFrequency === 'monthly' ? t('deposit.frequency.short.monthly')
+                : record.payoutFrequency === 'quarterly' ? t('deposit.frequency.short.quarterly')
+                : record.payoutFrequency === 'semi-annual' ? t('deposit.frequency.short.semiAnnual')
+                : record.payoutFrequency === 'annual' ? t('deposit.frequency.short.annual')
+                : '';
+              const showPayoutCredit = !isRd && record.cumulativeInterest === false && payoutAmount != null && Number.isFinite(payoutAmount) && !!record.payoutFrequency;
+              return (
+                <div>
+                  {showPayoutCredit ? (
+                    <>
+                      <span className="break-words whitespace-normal font-medium">
+                        {t('deposit.interestCredit', { frequency: freqText, amount: formatINR(payoutAmount, { decimals: 2 }) })}
+                      </span>
+                      <div className="mt-1 text-[12px] text-folio-primary dark:text-folio-accent">
+                        {t('deposit.fields.totalInterestAccrued')}: {formatINR(computed.interest, { decimals: 2 })}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="break-words whitespace-normal">{formatINR(computed.interest)}</span>
+                  )}
+                </div>
+              );
+            })(),
+          },
+          { key: 'realized', label: t('deposit.fields.realizedValue'), children: val(formatINR(!isRd && record.cumulativeInterest === false ? computed.realizedValue : (record.currentValue ?? computed.realizedValue))) },
         ]} />
       </Section>
       {(record.nominees?.length || record.notes) && (
@@ -180,6 +226,7 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
           </div>
         </Section>
       )}
+      <ChangeDetailsSection record={record} descriptionsProps={dp} />
     </div>
   );
 }

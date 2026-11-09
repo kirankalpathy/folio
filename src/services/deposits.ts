@@ -1,6 +1,7 @@
 import type { DepositHolding, DepositInput, DepositNominee } from '../types';
 import { translate } from '../i18n';
 import { allRecords, deleteRecord, getRecord, putRecord } from './sqlite';
+import { getAuditActorEmail } from './currentUser';
 
 function normalizeNominees(nominees: DepositNominee[] | undefined): DepositNominee[] | undefined {
   if (!nominees?.length) return undefined;
@@ -20,6 +21,11 @@ function normalize(input: DepositInput): DepositInput {
   const financialInstitutionId = input.financialInstitutionId?.trim() || undefined;
   const markedAsLien = isRd ? false : Boolean(input.markedAsLien);
   const cumulativeInterest = isRd ? true : input.cumulativeInterest;
+  const payoutFrequency = (isRd || cumulativeInterest) ? undefined : input.payoutFrequency;
+  const interestPayoutAmount =
+    !isRd && !cumulativeInterest && payoutFrequency && Number.isFinite(input.interestPayoutAmount)
+      ? Math.max(0, input.interestPayoutAmount as number)
+      : undefined;
   return {
     ...input,
     depositNumber: input.depositNumber?.trim() || undefined,
@@ -29,7 +35,8 @@ function normalize(input: DepositInput): DepositInput {
     financialInstitutionId,
     recurringAmount: isRd && Number.isFinite(input.recurringAmount) ? Math.max(0, input.recurringAmount as number) : undefined,
     cumulativeInterest,
-    payoutFrequency: (isRd || cumulativeInterest) ? undefined : input.payoutFrequency,
+    payoutFrequency,
+    interestPayoutAmount,
     operationMode: input.operationMode === 'offline' ? 'offline' : 'online',
     markedAsLien,
     lienReason: markedAsLien ? (input.lienReason?.trim() || undefined) : undefined,
@@ -93,7 +100,16 @@ export async function createDeposit(input: DepositInput): Promise<DepositHolding
   const normalized = normalize(input);
   validate(normalized);
   const now = new Date().toISOString();
-  const record: DepositHolding = { ...normalized, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
+  const actorId = await getAuditActorEmail();
+  const record: DepositHolding = {
+    ...normalized,
+    id: crypto.randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+    changedAt: now,
+    createdBy: actorId,
+    changedBy: actorId,
+  };
   await putRecord('deposits', record.id, record, { maturityDate: record.maturityDate, updatedAt: record.updatedAt });
   return record;
 }
@@ -103,7 +119,17 @@ export async function updateDeposit(id: string, input: DepositInput): Promise<De
   if (!existing) throw new Error(translate('errors.deposit.missing'));
   const normalized = normalize(input);
   validate(normalized);
-  const updated: DepositHolding = { ...existing, ...normalized, updatedAt: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const actorId = await getAuditActorEmail();
+  const updated: DepositHolding = {
+    ...existing,
+    ...normalized,
+    createdAt: existing.createdAt,
+    createdBy: existing.createdBy,
+    updatedAt: now,
+    changedAt: now,
+    changedBy: actorId,
+  };
   await putRecord('deposits', updated.id, updated, { maturityDate: updated.maturityDate, updatedAt: updated.updatedAt });
   return updated;
 }
