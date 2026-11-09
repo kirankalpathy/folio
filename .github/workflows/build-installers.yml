@@ -16,10 +16,10 @@ jobs:
         include:
           - platform: macos-latest
             name: macos
-            args: ''
+            args: '--bundles app,dmg'
           - platform: windows-latest
             name: windows
-            args: ''
+            args: '--bundles nsis'
 
     runs-on: ${{ matrix.platform }}
     steps:
