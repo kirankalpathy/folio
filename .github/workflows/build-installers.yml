@@ -2,9 +2,8 @@ name: Build installers
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -30,8 +29,24 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install Rust (stable)
+      - name: Install Rust (stable, macOS)
+        if: matrix.name == 'macos'
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust (stable, Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
+          if (-not (Test-Path $cargoBin)) {
+            $rustup = Join-Path $env:TEMP "rustup-init.exe"
+            Invoke-WebRequest "https://win.rustup.rs/x86_64" -OutFile $rustup
+            & $rustup -y --default-toolchain stable --profile minimal
+          }
+          "$cargoBin" >> $env:GITHUB_PATH
+          rustup default stable
+          rustup show
+          cargo --version
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
