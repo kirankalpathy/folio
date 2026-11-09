@@ -1,6 +1,7 @@
 import {
   Landmark,
   LayoutGrid,
+  QrCode,
   Settings,
   UserRound,
   type LucideIcon,
@@ -71,6 +72,17 @@ export const NAV_GROUPS: NavGroup[] = [
         description: ASSET_CLASS_META.debts.description,
         icon: ASSET_CLASS_META.debts.icon,
         assetClass: 'debts',
+      },
+    ],
+  },
+  {
+    label: 'nav.group.transactions',
+    items: [
+      {
+        path: '/transactions/upi',
+        label: 'nav.transactions.upi',
+        description: 'nav.transactions.upi.description',
+        icon: QrCode,
       },
     ],
   },

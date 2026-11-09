@@ -16,6 +16,7 @@ import DepositFormPage from '../../pages/DepositFormPage';
 import FinancialInstitutionsPage from '../../pages/FinancialInstitutionsPage';
 import FinancialInstitutionFormPage from '../../pages/FinancialInstitutionFormPage';
 import FinancialInstitutionDetailPage from '../../pages/FinancialInstitutionDetailPage';
+import UpiTransactionPage from '../../pages/UpiTransactionPage';
 import ProfilePage from '../../pages/ProfilePage';
 import SettingsPage from '../../pages/SettingsPage';
 import LedgerPage from '../ledger/LedgerPage';
@@ -109,6 +110,7 @@ export default function AuthGate() {
             <Route path="deposits/:id" element={<DepositFormPage />} />
             <Route path="assets" element={<LedgerPage assetClass="commodities" />} />
             <Route path="debts" element={<LedgerPage assetClass="debts" />} />
+            <Route path="transactions/upi" element={<UpiTransactionPage />} />
             <Route path="institutions" element={<FinancialInstitutionsPage />} />
             <Route path="institutions/new" element={<FinancialInstitutionFormPage />} />
             <Route path="institutions/:id/edit" element={<FinancialInstitutionFormPage />} />

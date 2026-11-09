@@ -3,6 +3,7 @@ import { Alert, Button, Form, Input, InputNumber, Segmented, Select, Steps } fro
 import { ArrowLeft, ArrowRight, Building2, CreditCard, Landmark, LineChart, MapPin, Users, Wallet } from 'lucide-react';
 import type { CardNetwork, FinancialInstitution, FinancialInstitutionCategory, FinancialInstitutionInput, InvestmentSegment } from '../../types';
 import { useI18n } from '../../i18n';
+import { UPI_ID_REGEX } from '../../utils/upi';
 import {
   defaultInstitutionValues,
   stepFields,
@@ -190,7 +191,7 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
                   {
                     validator: async (_, value: string) => {
                       if (!value?.trim()) return;
-                      if (/^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/.test(value.trim())) return;
+                      if (UPI_ID_REGEX.test(value.trim())) return;
                       throw new Error(t('institutions.validation.upiIdInvalid'));
                     },
                   },
@@ -284,7 +285,7 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
                   {
                     validator: async (_, value: string) => {
                       if (!value?.trim()) return;
-                      if (/^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/.test(value.trim())) return;
+                      if (UPI_ID_REGEX.test(value.trim())) return;
                       throw new Error(t('institutions.validation.upiIdInvalid'));
                     },
                   },

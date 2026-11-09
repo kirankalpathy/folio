@@ -8,6 +8,7 @@ import type {
   OperationMode,
 } from '../types';
 import { translate } from '../i18n';
+import { isValidUpiId } from '../utils/upi';
 import { allRecords, deleteRecord, getRecord, putRecord } from './sqlite';
 
 function clean(value: string | undefined | null): string | undefined {
@@ -91,8 +92,6 @@ function normalize(input: FinancialInstitutionInput | Record<string, unknown>): 
   return normalizeLegacy(input as Record<string, unknown>);
 }
 
-const UPI_ID_REGEX = /^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/;
-
 function validate(input: FinancialInstitutionInput): void {
   if (!input.name || input.name.trim().length < 2) throw new Error(translate('institutions.validation.nameRequired'));
   if (!input.category) throw new Error(translate('institutions.validation.categoryRequired'));
@@ -122,7 +121,7 @@ function validate(input: FinancialInstitutionInput): void {
     if (!input.linkedMobile?.trim()) throw new Error(translate('institutions.validation.linkedMobileRequired'));
   }
 
-  if (input.upiId?.trim() && !UPI_ID_REGEX.test(input.upiId.trim())) {
+  if (input.upiId?.trim() && !isValidUpiId(input.upiId)) {
     throw new Error(translate('institutions.validation.upiIdInvalid'));
   }
 }
