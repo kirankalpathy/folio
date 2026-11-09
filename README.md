@@ -6,6 +6,7 @@
 
 
 **A simple, private place to keep track of what you own and owe — on your own device.**
+[![Build installers](https://github.com/kirankalpathy/folio/actions/workflows/build-installers.yml/badge.svg)](https://github.com/kirankalpathy/folio/actions/workflows/build-installers.yml)
 
 ## Table of Contents
 
