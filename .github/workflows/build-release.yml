@@ -104,6 +104,7 @@ jobs:
           {
             echo 'body<<EOF'
             cat /tmp/release-notes.md
+            printf '\n'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
