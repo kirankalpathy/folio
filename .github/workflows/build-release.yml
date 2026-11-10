@@ -53,7 +53,8 @@ jobs:
           const fs = require('fs');
           const path = require('path');
 
-          const version = process.env.VERSION || '';
+          const rawVersion = (process.env.VERSION || '').trim();
+          const version = rawVersion.replace(/^v/i, '');
           const candidates = [
             'RELEASE-NOTES.md',
             path.join('folio', 'RELEASE-NOTES.md'),
@@ -64,37 +65,36 @@ jobs:
           let body = defaultBody;
 
           const changelogPath = candidates.find((p) => fs.existsSync(p));
-          if (changelogPath) {
+          if (changelogPath && version) {
             try {
-              const changelog = fs.readFileSync(changelogPath, 'utf8');
-              const markers = [
-                '## `' + version + '`',
-                '## v' + version,
-                '## ' + version,
-              ];
-              let start = -1;
-              let markerLength = 0;
+              const changelog = fs.readFileSync(changelogPath, 'utf8').replace(/\r\n/g, '\n');
+              const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              // Accepts headings like: ## v0.1.3, ## `v0.1.3`, ## 0.1.3, ## `0.1.3`
+              const heading = new RegExp('^##\\s+`?v?' + escaped + '`?\\s*$', 'm');
+              const match = changelog.match(heading);
 
-              for (const m of markers) {
-                const idx = changelog.indexOf(m);
-                if (idx !== -1) {
-                  start = idx;
-                  markerLength = m.length;
-                  break;
-                }
-              }
-
-              if (start !== -1) {
-                const rest = changelog.slice(start + markerLength);
-                const next = rest.search(/\n##\s+/);
-                const extracted = (next === -1 ? rest : rest.slice(0, next)).trim();
+              if (match) {
+                const start = match.index + match[0].length;
+                const rest = changelog.slice(start);
+                const nextHeading = rest.search(/\n##\s+/);
+                const extracted = (nextHeading === -1 ? rest : rest.slice(0, nextHeading)).trim();
                 if (extracted.length > 0) {
                   body = extracted;
+                  console.error(`Release notes: matched "${match[0].trim()}" in ${changelogPath}`);
+                } else {
+                  console.error(`Release notes: heading "${match[0].trim()}" found in ${changelogPath} but section is empty`);
                 }
+              } else {
+                console.error(`Release notes: no heading found for version "${version}" in ${changelogPath}`);
               }
-            } catch {
+            } catch (err) {
+              console.error(`Release notes: failed to read ${changelogPath}: ${err.message}`);
               body = defaultBody;
             }
+          } else if (!changelogPath) {
+            console.error('Release notes: RELEASE-NOTES.md not found');
+          } else {
+            console.error('Release notes: package version is empty');
           }
 
           process.stdout.write(body);
