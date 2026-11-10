@@ -44,7 +44,7 @@ export default function SetupScreen() {
   return (
     <AuthShell eyebrow={t('auth.setup.eyebrow')} title={t('auth.setup.title')} description={t('auth.setup.description')}>
       <div className="mb-5 flex items-center gap-3 rounded-xl border border-folio-primary/15 bg-folio-primary/[0.05] px-3.5 py-3 dark:bg-folio-primary/10">
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-folio-primary/12 text-folio-primary dark:text-folio-accent"><ShieldCheck size={17} strokeWidth={1.75} /></span>
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-folio-primary/12 text-folio-primary dark:text-folio-accent"><ShieldCheck size={17} /></span>
         <p className="text-xs leading-5 text-folio-ink/55 dark:text-white/50">{t('auth.setup.banner')}</p>
       </div>
       {error && <Alert type="error" showIcon title={error} className="mb-4" closable={{ onClose: () => setError(null) }} />}

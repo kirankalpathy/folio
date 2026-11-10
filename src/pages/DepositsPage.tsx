@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, App as AntApp, Button, Checkbox, DatePicker, Input, Segmented, Select, Space, Tag, Tooltip } from 'antd';
+import { Alert, App as AntApp, Button, Checkbox, DatePicker, Input, Select, Space, Tag, Tooltip } from 'antd';
+import { cn } from '../utils/cn';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/common/toast/ToastProvider';
@@ -24,8 +25,8 @@ function OpIcon({ children, className }: { children: ReactNode; className?: stri
 function LessThanOrEqualIcon() {
   return (
     <span className="relative inline-flex h-4 w-4 items-center justify-center" aria-hidden="true">
-      <ChevronLeft size={12} strokeWidth={2.5} className="-translate-y-[1px]" />
-      <Minus size={9} strokeWidth={2.8} className="absolute bottom-0 left-1/2 -translate-x-1/2" />
+      <ChevronLeft size={12} className="-translate-y-[1px]" />
+      <Minus size={9} className="absolute bottom-0 left-1/2 -translate-x-1/2" />
     </span>
   );
 }
@@ -33,17 +34,17 @@ function LessThanOrEqualIcon() {
 function GreaterThanOrEqualIcon() {
   return (
     <span className="relative inline-flex h-4 w-4 items-center justify-center" aria-hidden="true">
-      <ChevronRight size={12} strokeWidth={2.5} className="-translate-y-[1px]" />
-      <Minus size={9} strokeWidth={2.8} className="absolute bottom-0 left-1/2 -translate-x-1/2" />
+      <ChevronRight size={12} className="-translate-y-[1px]" />
+      <Minus size={9} className="absolute bottom-0 left-1/2 -translate-x-1/2" />
     </span>
   );
 }
 
 const MATURITY_DATE_OPS: Array<{ value: MaturityDateOp; label: ReactNode }> = [
-  { value: '==', label: <OpIcon className="text-sky-600 dark:text-sky-400"><Equal size={14} strokeWidth={2.2} /></OpIcon> },
-  { value: '<>', label: <OpIcon className="text-amber-600 dark:text-amber-400"><EqualNot size={14} strokeWidth={2.2} /></OpIcon> },
-  { value: '<', label: <OpIcon className="text-violet-600 dark:text-violet-400"><ChevronLeft size={14} strokeWidth={2.4} /></OpIcon> },
-  { value: '>', label: <OpIcon className="text-emerald-600 dark:text-emerald-400"><ChevronRight size={14} strokeWidth={2.4} /></OpIcon> },
+  { value: '==', label: <OpIcon className="text-sky-600 dark:text-sky-400"><Equal size={14} /></OpIcon> },
+  { value: '<>', label: <OpIcon className="text-amber-600 dark:text-amber-400"><EqualNot size={14} /></OpIcon> },
+  { value: '<', label: <OpIcon className="text-violet-600 dark:text-violet-400"><ChevronLeft size={14} /></OpIcon> },
+  { value: '>', label: <OpIcon className="text-emerald-600 dark:text-emerald-400"><ChevronRight size={14} /></OpIcon> },
   { value: '<=', label: <OpIcon className="text-violet-600 dark:text-violet-400"><LessThanOrEqualIcon /></OpIcon> },
   { value: '>=', label: <OpIcon className="text-emerald-600 dark:text-emerald-400"><GreaterThanOrEqualIcon /></OpIcon> },
 ];
@@ -295,20 +296,38 @@ export default function DepositsPage() {
 
       <ResponsiveTable
         beforeFilters={
-          <Segmented
-            className="folio-view-tabs"
-            value={depositTab}
-            onChange={(value) => {
-              const tab = value as 'active' | 'closed';
-              setDepositTab(tab);
-              const allowed: DepositLifecycleStatus[] = tab === 'closed' ? ['matured', 'pre-closed'] : ['planned', 'active', 'in-lien'];
-              setLifecycleFilter((prev) => prev.filter((s) => allowed.includes(s)));
-            }}
-            options={[
-              { value: 'active', label: t('deposit.tab.active') },
-              { value: 'closed', label: t('deposit.tab.closed') },
-            ]}
-          />
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setDepositTab('active');
+                setLifecycleFilter((prev) => prev.filter((s) => ['planned', 'active', 'in-lien'].includes(s)));
+              }}
+              className={cn(
+                'flex min-w-[160px] items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors outline-none focus-visible:ring-2 md:min-w-0',
+                depositTab === 'active'
+                  ? 'bg-folio-primary/[0.09] text-folio-primary focus-visible:ring-folio-primary/40 dark:bg-folio-primary/15 dark:text-folio-accent'
+                  : 'text-folio-ink/65 hover:bg-folio-ink/[0.04] hover:text-folio-ink focus-visible:ring-folio-primary/40 dark:text-white/60 dark:hover:bg-white/[0.05] dark:hover:text-white/85',
+              )}
+            >
+              {t('deposit.tab.active')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDepositTab('closed');
+                setLifecycleFilter((prev) => prev.filter((s) => ['matured', 'pre-closed'].includes(s)));
+              }}
+              className={cn(
+                'flex min-w-[160px] items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors outline-none focus-visible:ring-2 md:min-w-0',
+                depositTab === 'closed'
+                  ? 'border border-folio-error-accent bg-folio-error-accent text-folio-paper shadow-sm hover:brightness-95 active:brightness-90 focus-visible:ring-folio-error-accent/40'
+                  : 'border border-folio-error-border bg-folio-error-bg/50 text-folio-error-text hover:bg-folio-error-bg/80 hover:text-folio-error-accent focus-visible:ring-folio-error-accent/40',
+              )}
+            >
+              {t('deposit.tab.closed')}
+            </button>
+          </div>
         }
         filters={
           <>

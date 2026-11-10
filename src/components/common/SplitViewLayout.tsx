@@ -113,13 +113,13 @@ export default function SplitViewLayout({ sections, defaultActiveId, activeId, o
                       isDanger
                         ? selected
                           ? 'border border-folio-error-accent bg-folio-error-accent text-folio-paper shadow-sm hover:brightness-95 active:brightness-90 focus-visible:ring-folio-error-accent/40'
-                          : 'border border-folio-error-accent bg-folio-error-accent text-folio-paper/95 shadow-sm hover:brightness-95 active:brightness-90 focus-visible:ring-folio-error-accent/40'
+                          : 'border border-folio-error-border bg-folio-error-bg/50 text-folio-error-text hover:bg-folio-error-bg/80 hover:text-folio-error-accent focus-visible:ring-folio-error-accent/40'
                         : selected
                           ? 'bg-folio-primary/[0.09] text-folio-primary focus-visible:ring-folio-primary/40 dark:bg-folio-primary/15 dark:text-folio-accent'
                           : 'text-folio-ink/65 hover:bg-folio-ink/[0.04] hover:text-folio-ink focus-visible:ring-folio-primary/40 dark:text-white/60 dark:hover:bg-white/[0.05] dark:hover:text-white/85',
                     )}
                   >
-                    <Icon size={16} strokeWidth={selected ? 2 : 1.7} className="shrink-0" />
+                    <Icon size={16} className="shrink-0" />
                     <span className="truncate">{section.label}</span>
                   </button>
                 </div>

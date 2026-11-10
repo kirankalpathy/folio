@@ -25,7 +25,7 @@ export default function EmptyState({
       }
     >
       <span className="grid h-11 w-11 place-items-center rounded-xl border border-folio-primary/20 bg-folio-primary/[0.07] text-folio-primary dark:text-folio-accent">
-        <Icon size={20} strokeWidth={1.6} />
+        <Icon size={20} />
       </span>
       <div className={compact ? '' : 'max-w-sm'}>
         <h3 className="text-sm font-semibold">{title}</h3>

@@ -60,7 +60,7 @@ This document summarizes the engineering and product conventions established for
 - **Busy indicator (global blocking)**: use the shared `BusyIndicator` (`BusyIndicatorProvider` / `useBusyIndicator().setBusyIndicator`) for operations that must block the UI until complete (e.g., backup/restore). **Important:** whenever `setBusyIndicator()` / `setBusyIndicator(true)` is called, the **same method/function must always call `setBusyIndicator(false)`** when the operation completes (use `try/finally`). Never leave the busy indicator active after the action finishes, or the app will remain stuck/spinning.
 - **Responsive layout / no forced scrollbars**: UI elements and sections (including combined split views like Settings left/right panes) must be **responsive**. Do not introduce fixed heights/min-heights or rigid sizing that force internal scrollbars when viewport/content size changes; layouts should adapt naturally and let scrolling occur only at the appropriate page/container level when truly necessary.
 - **Accessibility/interaction**: follow established UX rules (e.g., global text selection limited to editable/text-entry contexts; consistent focus/contrast; clear validation messages).
-- **Icons and components**: use existing libraries/patterns (Lucide icons, AntD components) consistently.
+- **Icons and components**: use existing libraries/patterns (Lucide icons, AntD components) consistently. Lucide icons inherit the global stroke weight from `--folio-icon-stroke-width` in `src/index.css`; do not set per-icon `strokeWidth` unless a documented exception is needed.
 
 ## 5. Internationalization (i18n)
 
@@ -105,6 +105,7 @@ This document summarizes the engineering and product conventions established for
 ## 10. Versioning, build numbers, and release notes
 
 - **Version bump → release notes**: whenever the app `version` is bumped (in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `Cargo.lock`), update `RELEASE-NOTES.md` with the notes for that version in the same change.
+- **Release notes format**: release notes must be **non-technical and end-user friendly**. Write them from the user's perspective, avoiding implementation details, internal file names, or developer jargon. Whenever a change is made, update `RELEASE-NOTES.md` **before completing the task**. Entries must be added **chronologically with the latest features first** within each section.
 - **Internal build number**: Folio keeps a build number in the top-level `build` field of `package.json` using the format `<yymmdd>.<increment>` (for example `261110.0`). It is independent of Git tags, GitHub Actions, and GitHub releases; it exists so builds of the same app version can be distinguished inside the app.
 - **Same-version commits/releases**: before committing or publishing another build with the same app `version`, increment the build number with `npm run build:bump` and include the updated `package.json`. The script increments the suffix on the same calendar day and resets it to `.0` on a new day.
 - The current build number is shown in **Settings → About**, immediately after the version.

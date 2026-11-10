@@ -54,7 +54,7 @@ function ToastViewport({ items }: { items: ToastItem[] }) {
             )}
             style={{ backgroundColor: bg, fontFamily: '"Inter Variable", Inter, system-ui, sans-serif' }}
           >
-            <Icon size={18} strokeWidth={2.25} className="shrink-0" aria-hidden="true" />
+            <Icon size={18} className="shrink-0" aria-hidden="true" />
             <span className="max-h-[96px] min-w-0 flex-1 overflow-y-auto text-[13px] font-semibold leading-[1.35]">{item.text}</span>
           </div>
         );

@@ -57,7 +57,7 @@ export default function AuthShell({
           {ASSURANCES.map(({ icon: Icon, label }) => (
             <li key={label} className="flex items-center gap-3 text-xs text-white/50">
               <span className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-folio-accent">
-                <Icon size={14} strokeWidth={1.75} />
+                <Icon size={14} />
               </span>
               {t(label)}
             </li>

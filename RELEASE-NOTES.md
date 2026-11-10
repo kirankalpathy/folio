@@ -14,7 +14,19 @@
 - **Window controls:** added custom minimize/maximize/restore/close controls in the titlebar for Windows/Linux (with maximize state tracking and drag-safe controls) while preserving macOS overlay/titlebar behavior.
 - **Launch behavior:** app now opens **maximized by default** on startup.
 
+### Legibility & layout
+- **Dark-mode checkbox fix:** checked checkboxes now show a clearly visible checkmark in dark mode, with proper contrast for enabled, disabled, and indeterminate states.
+- **Danger zone design:** the Settings → Danger Zone tab and its content area now use a distinct error-colored style so destructive actions are visually separated from the rest of the settings.
+- **Light-mode contrast:** raised the muted text and placeholder contrast globally (settings hints, form placeholders, table headers, sidebar labels, and other subtext) so grey text is easier to read on white.
+- **Net worth widget:** improved the Net worth and Liabilities labels in the header/title-bar widget in both light and dark themes, and renamed the setting from “ticker” to “widget”.
+- **Windows title-bar overlap:** the Net worth widget no longer overlaps the Folio brand when resizing the custom title bar on Windows; the widget hides at narrow widths.
+- **Experimental tag:** the Experimental tag now uses the semantic warning palette for stronger light-mode contrast.
+- **Icon weight & scale:** Lucide icons now use a 2.5px stroke width and a slightly larger global scale for clearer, more consistent iconography; both are controlled by theme variables.
+- **Typography:** switched to the Inter variable font (roman + italic) and shifted the type scale one step heavier for better legibility; all weights are controlled by global theme variables.
+- **Text scale:** added a global `--folio-text-scale` token (currently 1.06) so named and arbitrary text sizes can be tuned from one place; AntD’s base font size was raised to match.
+
 ### Deposits
+- **Active vs. Matured/Pre-closed view:** the Active and Matured/Pre-closed deposit views are now presented as clearly styled buttons, with the active view highlighted in a contrasting color and the Matured/Pre-closed view styled as a danger zone for easy identification.
 - **Deposit number format:** deposit numbers now accept the `/` character (in addition to letters, numbers, hyphens, and underscores), including normalization and validation updates, to support formats used by some financial institutions.
 
 ### CI/CD, releases & macOS distribution

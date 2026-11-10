@@ -26,7 +26,7 @@ export default function InfoIcon({ type = 'info', children, className, size = 14
       aria-label={typeof children === 'string' ? children : 'Info'}
       role={children ? 'img' : undefined}
     >
-      <Info size={size} strokeWidth={2} />
+      <Info size={size} />
     </span>
   );
 

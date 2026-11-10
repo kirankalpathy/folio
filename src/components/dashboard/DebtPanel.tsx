@@ -19,7 +19,7 @@ export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
           <h2 className="mt-1 text-sm font-semibold">{t('dashboard.debt.title')}</h2>
         </div>
         <span className="grid h-8 w-8 place-items-center rounded-lg border border-folio-primary/20 bg-folio-primary/[0.06] text-folio-primary dark:text-folio-accent">
-          <ReceiptText size={15} strokeWidth={1.7} />
+          <ReceiptText size={15} />
         </span>
       </div>
 

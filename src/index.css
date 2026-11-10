@@ -4,25 +4,17 @@
 
 @font-face {
   font-family: 'Inter';
-  src: url('/fonts/inter/Inter-Regular.ttf') format('truetype');
-  font-weight: 400;
+  src: url('/fonts/inter/Inter-Variable.ttf') format('truetype-variations');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
   font-family: 'Inter';
-  src: url('/fonts/inter/Inter-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Inter';
-  src: url('/fonts/inter/Inter-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
+  src: url('/fonts/inter/Inter-Italic-Variable.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: italic;
   font-display: swap;
 }
 
@@ -30,9 +22,29 @@
   :root {
     color-scheme: light;
     --folio-primary-rgb: 200 80 45;
+    --folio-ink-rgb: 42 26 20;
+    /* Global Lucide icon weight and scale. Override on a subtree if a surface needs different values. */
+    --folio-icon-stroke-width: 2.5;
+    --folio-icon-scale: 1.1;
+    /* Global text scale. Adjust this single token to resize all text. */
+    --folio-text-scale: 1.06;
+    /* Global type scale, shifted one step heavier for legibility. */
+    --folio-font-weight-thin: 200;
+    --folio-font-weight-extralight: 300;
+    --folio-font-weight-light: 400;
+    --folio-font-weight-normal: 500;
+    --folio-font-weight-medium: 600;
+    --folio-font-weight-semibold: 700;
+    --folio-font-weight-bold: 800;
+    --folio-font-weight-extrabold: 900;
+    --folio-font-weight-black: 900;
     --folio-cream: #F7EFE9;
     --folio-primary: #C8502D;
     --folio-primary-hover: #B44526;
+    /* Contrast text/icon color placed on a primary fill (e.g. checkbox checkmark). */
+    --folio-on-primary: #FFF7F2;
+    /* Contrast text/icon color placed on an error fill (e.g. danger button text). */
+    --folio-on-error: #FFF7F2;
     --folio-dark-surface: #1E1E1E;
     --folio-night: #141414;
     --folio-table-header-bg: #FAF6F3;
@@ -43,8 +55,8 @@
     --folio-role-bg-muted: #FBF8F6;
     --folio-role-surface: #FFFFFF;
     --folio-role-text: #2A1A14;
-    --folio-role-text-secondary: rgba(42, 26, 20, 0.55);
-    --folio-role-text-muted: rgba(42, 26, 20, 0.45);
+    --folio-role-text-secondary: rgba(42, 26, 20, 0.70);
+    --folio-role-text-muted: rgba(42, 26, 20, 0.62);
     --folio-role-border: rgba(42, 26, 20, 0.08);
     /* Semantic: Info (True Ocean Blue) */
     --folio-info-bg: #EDF5FF;
@@ -92,6 +104,8 @@
     --folio-error-border: #5C1D24;
     --folio-error-accent: #E5484D;
     --folio-error-text: #FFECEE;
+    /* Contrast text/icon color placed on an error fill (e.g. danger button text). */
+    --folio-on-error: #FFF7F2;
     --folio-warning-bg: #2B1900;
     --folio-warning-border: #5E3A00;
     --folio-warning-accent: #F5A623;
@@ -125,6 +139,8 @@
 
   body {
     @apply min-h-screen bg-folio-paper font-sans text-folio-ink antialiased;
+    font-size: calc(1rem * var(--folio-text-scale));
+    font-weight: var(--folio-font-weight-normal);
     text-rendering: optimizeLegibility;
     user-select: none;
     -webkit-user-select: none;
@@ -189,6 +205,36 @@
   }
 }
 
+/* Lucide adds `.lucide` to every icon, so this is the single global weight/scale control. */
+.lucide {
+  stroke-width: var(--folio-icon-stroke-width);
+  scale: var(--folio-icon-scale);
+}
+
+/* Keep AntD tags on the same global medium weight as the rest of the UI. */
+.ant-tag {
+  font-weight: var(--folio-font-weight-medium);
+}
+
+/* Keep arbitrary text sizes on the same global scale as the named sizes. */
+.text-\[9px\] { font-size: calc(9px * var(--folio-text-scale)); }
+.text-\[10px\] { font-size: calc(10px * var(--folio-text-scale)); }
+.text-\[11px\] { font-size: calc(11px * var(--folio-text-scale)); }
+.text-\[12px\] { font-size: calc(12px * var(--folio-text-scale)); }
+.text-\[13px\] { font-size: calc(13px * var(--folio-text-scale)); }
+.text-\[19px\] { font-size: calc(19px * var(--folio-text-scale)); }
+.text-\[1\.15rem\] { font-size: calc(1.15rem * var(--folio-text-scale)); }
+.text-\[1\.75rem\] { font-size: calc(1.75rem * var(--folio-text-scale)); }
+.text-\[2rem\] { font-size: calc(2rem * var(--folio-text-scale)); }
+.text-\[2\.6rem\] { font-size: calc(2.6rem * var(--folio-text-scale)); }
+.text-\[2\.75rem\] { font-size: calc(2.75rem * var(--folio-text-scale)); }
+
+@media (min-width: 640px) {
+  .sm\:text-\[11px\] { font-size: calc(11px * var(--folio-text-scale)); }
+  .sm\:text-\[1\.75rem\] { font-size: calc(1.75rem * var(--folio-text-scale)); }
+  .sm\:text-\[2\.75rem\] { font-size: calc(2.75rem * var(--folio-text-scale)); }
+}
+
 @layer components {
   .folio-card {
     @apply overflow-hidden rounded-2xl border border-folio-ink/10 bg-white shadow-folio dark:border-white/10 dark:bg-[var(--folio-dark-surface)];
@@ -222,7 +268,7 @@
   }
 
   .ant-form-item-label > label {
-    @apply text-[11px] font-medium !text-folio-ink/60 dark:!text-white/50;
+    @apply text-[11px] font-medium !text-folio-ink/70 dark:!text-white/50;
   }
 
   .ant-modal-title {
@@ -290,25 +336,6 @@
   .folio-card .ant-table-tbody > tr:last-child > td,
   .folio-card .ant-table-tbody > tr:last-child > th {
     border-bottom: none;
-  }
-
-  .folio-view-tabs.ant-segmented {
-    background: transparent;
-    padding: 0;
-  }
-  .folio-view-tabs .ant-segmented-group {
-    gap: 8px;
-  }
-  .folio-view-tabs .ant-segmented-item {
-    border-radius: 8px;
-  }
-  .folio-view-tabs .ant-segmented-item-selected {
-    font-weight: 600;
-    box-shadow: 0 1px 2px var(--folio-role-border);
-  }
-  .folio-view-tabs .ant-segmented-thumb {
-    border-radius: 8px;
-    box-shadow: 0 1px 2px var(--folio-role-border);
   }
 
   /* Keep fixed columns (e.g. actions) above row hover/scrolling content. */
@@ -394,6 +421,30 @@
   }
 }
 
+@layer utilities {
+  /*
+   * Light-mode legibility scale.
+   *
+   * Components express muted text with `text-folio-ink/<alpha>`. The original
+   * low opacities were below comfortable contrast on white. Raise the whole
+   * light-mode scale in one place so every screen stays consistent; dark mode
+   * continues to use the existing `dark:text-white/<alpha>` utilities.
+   */
+  html:not(.dark) .text-folio-ink\/25 { color: rgb(var(--folio-ink-rgb) / 0.45); }
+  html:not(.dark) .text-folio-ink\/30 { color: rgb(var(--folio-ink-rgb) / 0.50); }
+  html:not(.dark) .text-folio-ink\/35 { color: rgb(var(--folio-ink-rgb) / 0.56); }
+  html:not(.dark) .text-folio-ink\/40 { color: rgb(var(--folio-ink-rgb) / 0.60); }
+  html:not(.dark) .text-folio-ink\/45 { color: rgb(var(--folio-ink-rgb) / 0.64); }
+  html:not(.dark) .text-folio-ink\/50 { color: rgb(var(--folio-ink-rgb) / 0.67); }
+  html:not(.dark) .text-folio-ink\/55 { color: rgb(var(--folio-ink-rgb) / 0.70); }
+  html:not(.dark) .text-folio-ink\/60 { color: rgb(var(--folio-ink-rgb) / 0.72); }
+  html:not(.dark) .text-folio-ink\/65 { color: rgb(var(--folio-ink-rgb) / 0.74); }
+  html:not(.dark) .text-folio-ink\/70 { color: rgb(var(--folio-ink-rgb) / 0.76); }
+  html:not(.dark) .text-folio-ink\/75 { color: rgb(var(--folio-ink-rgb) / 0.78); }
+  html:not(.dark) .text-folio-ink\/80 { color: rgb(var(--folio-ink-rgb) / 0.82); }
+  html:not(.dark) .text-folio-ink\/85 { color: rgb(var(--folio-ink-rgb) / 0.86); }
+}
+
 .ant-message {
   pointer-events: none;
 }
@@ -415,7 +466,7 @@
     0 8px 18px -10px rgba(42, 26, 20, 0.2) !important;
   font-family: Inter, "Inter Variable", system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--folio-font-weight-semibold);
   line-height: 1.35;
   max-width: min(420px, calc(100vw - 32px));
   color: #ffffff !important;
@@ -466,7 +517,7 @@
 .ant-notification .ant-notification-notice-message {
   color: #2a1a14 !important;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--folio-font-weight-semibold);
   margin-bottom: 0 !important;
 }
 
@@ -638,60 +689,78 @@
   padding: 0 !important;
 }
 
-/* Checkbox visibility/contrast in dark mode */
-html.dark .ant-checkbox-wrapper:not(.ant-checkbox-wrapper-disabled):hover .ant-checkbox-inner,
-html.dark .ant-checkbox-wrapper .ant-checkbox:hover .ant-checkbox-inner,
-html.dark .ant-checkbox-wrapper .ant-checkbox-input:focus + .ant-checkbox-inner,
-.dark .ant-checkbox-wrapper:not(.ant-checkbox-wrapper-disabled):hover .ant-checkbox-inner,
-.dark .ant-checkbox-wrapper .ant-checkbox:hover .ant-checkbox-inner,
-.dark .ant-checkbox-wrapper .ant-checkbox-input:focus + .ant-checkbox-inner {
-  border-color: rgba(225, 159, 140, 0.85) !important;
-}
-html.dark .ant-checkbox-wrapper .ant-checkbox .ant-checkbox-inner,
-.dark .ant-checkbox-wrapper .ant-checkbox .ant-checkbox-inner {
+/* Checkbox visibility/contrast in dark mode (AntD 6 puts the box + checkmark on `.ant-checkbox`). */
+html.dark .ant-checkbox-wrapper .ant-checkbox,
+.dark .ant-checkbox-wrapper .ant-checkbox {
   background-color: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.4) !important;
 }
-html.dark .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner,
-html.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled) .ant-checkbox-inner,
-.dark .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner,
-.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled) .ant-checkbox-inner {
-  background-color: #C8502D !important;
-  border-color: #C8502D !important;
+html.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled),
+.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled) {
+  background-color: var(--folio-primary) !important;
+  border-color: var(--folio-primary) !important;
 }
-html.dark .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after,
-html.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled) .ant-checkbox-inner::after,
-.dark .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after,
-.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled) .ant-checkbox-inner::after {
-  border: 2px solid #FFFFFF !important;
+html.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled)::after,
+.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled)::after {
+  border-color: var(--folio-on-primary) !important;
   border-top: 0 !important;
-  border-left: 0 !important;
   border-inline-start: 0 !important;
-  border-right-color: #FFFFFF !important;
-  border-bottom-color: #FFFFFF !important;
-  border-inline-end-color: #FFFFFF !important;
-  border-block-end-color: #FFFFFF !important;
   opacity: 1 !important;
 }
-html.dark .ant-checkbox-wrapper .ant-checkbox-checked.ant-checkbox-disabled .ant-checkbox-inner::after,
-.dark .ant-checkbox-wrapper .ant-checkbox-checked.ant-checkbox-disabled .ant-checkbox-inner::after {
-  border-color: rgba(255, 255, 255, 0.7) !important;
+html.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled):hover,
+.dark .ant-checkbox-wrapper .ant-checkbox-checked:not(.ant-checkbox-disabled):hover {
+  background-color: var(--folio-primary-hover) !important;
+  border-color: var(--folio-primary-hover) !important;
 }
-html.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate .ant-checkbox-inner::after,
-.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate .ant-checkbox-inner::after {
-  background-color: #FFFFFF !important;
+html.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate:not(.ant-checkbox-disabled),
+.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate:not(.ant-checkbox-disabled) {
+  background-color: var(--folio-primary) !important;
+  border-color: var(--folio-primary) !important;
+}
+html.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate:not(.ant-checkbox-disabled)::after,
+.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate:not(.ant-checkbox-disabled)::after {
+  background-color: var(--folio-on-primary) !important;
+  border: 0 !important;
+  opacity: 1 !important;
+}
+html.dark .ant-checkbox-wrapper .ant-checkbox-checked.ant-checkbox-disabled,
+.dark .ant-checkbox-wrapper .ant-checkbox-checked.ant-checkbox-disabled,
+html.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate.ant-checkbox-disabled,
+.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate.ant-checkbox-disabled {
+  background-color: var(--folio-role-bg-muted) !important;
+  border-color: var(--folio-role-border) !important;
+}
+html.dark .ant-checkbox-wrapper .ant-checkbox-checked.ant-checkbox-disabled::after,
+.dark .ant-checkbox-wrapper .ant-checkbox-checked.ant-checkbox-disabled::after {
+  border-color: var(--folio-role-text-secondary) !important;
+  opacity: 1 !important;
+}
+html.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate.ant-checkbox-disabled::after,
+.dark .ant-checkbox-wrapper .ant-checkbox-indeterminate.ant-checkbox-disabled::after {
+  background-color: var(--folio-role-text-secondary) !important;
+  opacity: 1 !important;
+}
+html.dark .ant-checkbox-wrapper:not(.ant-checkbox-wrapper-disabled):hover .ant-checkbox:not(.ant-checkbox-checked):not(.ant-checkbox-indeterminate),
+html.dark .ant-checkbox-wrapper .ant-checkbox:not(.ant-checkbox-checked):not(.ant-checkbox-indeterminate):hover,
+.dark .ant-checkbox-wrapper:not(.ant-checkbox-wrapper-disabled):hover .ant-checkbox:not(.ant-checkbox-checked):not(.ant-checkbox-indeterminate),
+.dark .ant-checkbox-wrapper .ant-checkbox:not(.ant-checkbox-checked):not(.ant-checkbox-indeterminate):hover {
+  border-color: var(--folio-accent) !important;
+}
+html.dark .ant-checkbox-wrapper .ant-checkbox:has(.ant-checkbox-input:focus-visible),
+.dark .ant-checkbox-wrapper .ant-checkbox:has(.ant-checkbox-input:focus-visible) {
+  border-color: var(--folio-accent) !important;
 }
 html.dark .ant-checkbox-wrapper,
-html.dark .ant-checkbox-wrapper > span:last-child,
+html.dark .ant-checkbox-wrapper .ant-checkbox-label,
 .dark .ant-checkbox-wrapper,
-.dark .ant-checkbox-wrapper > span:last-child {
-  color: rgba(243, 244, 246, 0.92) !important;
+.dark .ant-checkbox-wrapper .ant-checkbox-label {
+  color: var(--folio-role-text) !important;
 }
 html.dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled,
-html.dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled > span,
+html.dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled .ant-checkbox-label,
 .dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled,
-.dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled > span {
-  color: rgba(243, 244, 246, 0.38) !important;
+.dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled .ant-checkbox-label {
+  color: var(--folio-role-text-muted) !important;
 }
 
 /* Deposit/pagination: "Items per page: {dropdown}  1-5 of 6" */

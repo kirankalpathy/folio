@@ -100,7 +100,7 @@ export default function Sidebar({
                             {isActive && (
                               <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-folio-primary dark:bg-folio-accent" />
                             )}
-                            <Icon size={16} strokeWidth={isActive ? 2 : 1.7} className="shrink-0" />
+                            <Icon size={16} className="shrink-0" />
                             <span className={cn('min-w-0 flex-1 truncate', collapsed && 'lg:hidden')}>
                               {t(item.label)}
                             </span>

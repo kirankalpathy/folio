@@ -79,7 +79,7 @@ export default function DepositStats({
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <StatCard
         label={summary.count === 0 ? t('deposit.stats.noAccountsFound') : t('deposit.stats.accountsCount', { count: summary.count })}
-        icon={<Hash size={16} strokeWidth={1.6} />}
+        icon={<Hash size={16} />}
         value={
           summary.count === 0 ? (
             'N/A'
@@ -119,7 +119,7 @@ export default function DepositStats({
       />
       <StatCard
         label={t('deposit.stats.accountsByCategory')}
-        icon={<Layers size={16} strokeWidth={1.6} />}
+        icon={<Layers size={16} />}
         value={portfolioDeposits.length === 0 ? 'N/A' : (
           <span className="flex flex-wrap gap-1.5">
             {ACCOUNT_TYPE_FILTER_OPTIONS.map(({ value, labelKey }) => {
@@ -158,13 +158,13 @@ export default function DepositStats({
         label={t('deposit.stats.principal')}
         value={formatINR(summary.totalPrincipal)}
         hint={t('deposit.stats.capitalCommitted')}
-        icon={<PiggyBank size={16} strokeWidth={1.6} />}
+        icon={<PiggyBank size={16} />}
       />
       <StatCard
         label={t('deposit.stats.averageRoi')}
         value={formatPercent(summary.weightedAverageRate, 2)}
         hint={t('deposit.stats.weightedAverage')}
-        icon={<Percent size={16} strokeWidth={1.6} />}
+        icon={<Percent size={16} />}
       />
       <StatCard
         label={t('deposit.stats.maturingDeposits')}
@@ -194,7 +194,7 @@ export default function DepositStats({
           </span>
         }
         tone="accent"
-        icon={<CalendarClock size={16} strokeWidth={1.6} />}
+        icon={<CalendarClock size={16} />}
         onValueClick={onMaturingClick && maturingCount > 0 ? () => onMaturingClick(maturityDays) : undefined}
         valueAriaLabel={`${t('deposit.stats.maturingDeposits')} ${t('deposit.stats.inNext')} ${maturityDays} ${t('deposit.stats.daysSuffix')}`}
       />

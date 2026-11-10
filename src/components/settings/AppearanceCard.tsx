@@ -6,6 +6,15 @@ import { useToast } from '../common/toast/ToastProvider';
 import type { ColorMode } from '../../theme/ThemeProvider';
 import { HeaderBarPosition } from '../../types';
 
+function ExperimentalTag() {
+  const { t } = useI18n();
+  return (
+    <Tag className="!m-0 !rounded-full !border !border-folio-warning-border !bg-folio-warning-bg !px-2 !py-0 !text-[9px] !font-medium !text-folio-warning-text uppercase tracking-[0.04em]">
+      {t('settings.appearance.experimental')}
+    </Tag>
+  );
+}
+
 export default function AppearanceCard() {
   const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
@@ -20,7 +29,7 @@ export default function AppearanceCard() {
     }
   };
 
-  const handleTicker = async (checked: boolean) => {
+  const handleWidget = async (checked: boolean) => {
     try {
       await updateSettings({ showHeaderTicker: checked });
       toast.success(t('settings.appearance.saved'));
@@ -86,23 +95,21 @@ export default function AppearanceCard() {
       </div>
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
         <div className="min-w-0">
-          <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerTicker')}</label>
+          <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerWidget')}</label>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
-            {t('settings.appearance.headerTickerHint')}
+            {t('settings.appearance.headerWidgetHint')}
           </p>
         </div>
         <Switch
           checked={settings.showHeaderTicker}
-          onChange={(checked) => void handleTicker(checked)}
-          aria-label={t('settings.appearance.headerTicker')}
+          onChange={(checked) => void handleWidget(checked)}
+          aria-label={t('settings.appearance.headerWidget')}
         />
       </div>
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
-              {t('settings.appearance.experimental')}
-            </Tag>
+            <ExperimentalTag />
             <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.customTitleBar')}</label>
           </div>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
@@ -118,9 +125,7 @@ export default function AppearanceCard() {
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
-              {t('settings.appearance.experimental')}
-            </Tag>
+            <ExperimentalTag />
             <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerBarPosition')}</label>
           </div>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
@@ -137,9 +142,7 @@ export default function AppearanceCard() {
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
-              {t('settings.appearance.experimental')}
-            </Tag>
+            <ExperimentalTag />
             <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.smartTables')}</label>
           </div>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">

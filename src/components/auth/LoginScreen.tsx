@@ -49,7 +49,7 @@ export default function LoginScreen() {
               : undefined
           }
         >
-          {!profile?.photo && profile ? getInitials(profile) : <LockKeyhole size={17} strokeWidth={1.75} />}
+          {!profile?.photo && profile ? getInitials(profile) : <LockKeyhole size={17} />}
         </Avatar>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{profile ? profileDisplayName(profile) : t('app.localLedger')}</p>

@@ -15,7 +15,7 @@ const isDevChannel = (pkg as { versionChannel?: string }).versionChannel === 'de
 
 function ThemedApplication() {
   const { theme } = useTheme();
-  const dropdownArrow = <ChevronDown size={16} strokeWidth={1.8} className="text-folio-ink/45 dark:text-white/40" />;
+  const dropdownArrow = <ChevronDown size={16} className="text-folio-ink/45 dark:text-white/40" />;
 
   useEffect(() => {
     if (isDevChannel) return;

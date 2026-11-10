@@ -129,8 +129,8 @@ export default function Layout() {
   });
 
   const titleBarControls = isIntegratedHeader && titleBarSlot ? createPortal(
-    <div data-tauri-drag-region="deep" className="flex h-full w-full items-center gap-1">
-      <div className="flex min-w-0 flex-1 items-center justify-start gap-1 overflow-hidden">
+    <div data-tauri-drag-region="deep" className="grid h-full w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
+      <div className="flex min-w-0 items-center justify-start gap-1 overflow-hidden">
         <Button
           type="text"
           size="small"
@@ -162,7 +162,7 @@ export default function Layout() {
         </Tooltip>
       </div>
 
-      <div className="pointer-events-none absolute left-1/2 top-1/2 flex min-w-0 max-w-[40%] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 overflow-hidden px-2 sm:max-w-[45%]">
+      <div className="pointer-events-none flex min-w-0 max-w-[45vw] items-center justify-center gap-2 overflow-hidden px-2">
         <img
           src="/folio-icon-color.svg"
           alt=""
@@ -182,16 +182,16 @@ export default function Layout() {
         </span>
       </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-hidden">
+      <div className="flex min-w-0 items-center justify-end gap-1 overflow-hidden">
         {settings.showHeaderTicker && (
-          <div className="flex shrink-0 items-center gap-2 rounded-lg border border-folio-ink/[0.08] bg-white/60 px-1.5 py-0.5 dark:border-white/[0.08] dark:bg-white/[0.03] sm:gap-3 sm:px-2">
+          <div className="hidden shrink-0 items-center gap-2 rounded-lg border border-folio-ink/[0.08] bg-white/60 px-1.5 py-0.5 dark:border-white/[0.08] dark:bg-white/[0.03] sm:gap-3 sm:px-2 lg:flex">
             <div className="flex items-baseline gap-1 sm:gap-1.5">
-              <span className="hidden font-mono text-[8px] uppercase tracking-[0.14em] text-folio-ink/35 dark:text-white/30 md:inline">{t('header.netWorth')}</span>
+              <span className="hidden font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-folio-ink/70 dark:text-white/65 md:inline">{t('header.netWorth')}</span>
               <span className="folio-value text-[10px] sm:text-[11px]">{isLoading ? '—' : formatINRCompact(summary.netWorth)}</span>
             </div>
             <span className="h-4 w-px bg-folio-ink/[0.08] dark:bg-white/[0.08]" />
             <div className="flex items-baseline gap-1 sm:gap-1.5">
-              <span className="hidden font-mono text-[8px] uppercase tracking-[0.14em] text-folio-ink/35 dark:text-white/30 md:inline">{t('header.liabilities')}</span>
+              <span className="hidden font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-folio-ink/70 dark:text-white/65 md:inline">{t('header.liabilities')}</span>
               <span className="folio-value text-[10px] text-folio-primary dark:text-folio-accent sm:text-[11px]">{isLoading ? '—' : formatINRCompact(summary.totalLiabilities)}</span>
             </div>
           </div>

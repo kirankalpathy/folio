@@ -36,6 +36,8 @@ export const palette = {
     other: { base: '#64748b', text: '#475569' },
   },
   avatarOnPrimary: '#FFF7F2',
+  onPrimary: '#FFF7F2',
+  onError: '#FFF7F2',
   semanticLight: {
     info: '#1890FF',
     success: '#128937',

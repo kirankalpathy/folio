@@ -31,7 +31,7 @@ async function loadInterFonts(): Promise<{ regular: string; bold: string } | nul
       try {
         const [regRes, boldRes] = await Promise.all([
           fetch('/fonts/inter/Inter-Regular.ttf'),
-          fetch('/fonts/inter/Inter-SemiBold.ttf'),
+          fetch('/fonts/inter/Inter-Bold.ttf'),
         ]);
         if (!regRes.ok || !boldRes.ok) return null;
         const [regBuf, boldBuf] = await Promise.all([regRes.arrayBuffer(), boldRes.arrayBuffer()]);
@@ -49,8 +49,8 @@ export async function registerInterFont(doc: jsPDF): Promise<string> {
   if (!fonts) return 'helvetica';
   doc.addFileToVFS('Inter-Regular.ttf', fonts.regular);
   doc.addFont('Inter-Regular.ttf', 'Inter', 'normal');
-  doc.addFileToVFS('Inter-SemiBold.ttf', fonts.bold);
-  doc.addFont('Inter-SemiBold.ttf', 'Inter', 'bold');
+  doc.addFileToVFS('Inter-Bold.ttf', fonts.bold);
+  doc.addFont('Inter-Bold.ttf', 'Inter', 'bold');
   return 'Inter';
 }
 

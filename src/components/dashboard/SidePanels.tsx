@@ -73,7 +73,7 @@ export function OnboardingPanel({ onRestore }: { onRestore: () => void }) {
         {STEPS.map(({ icon: Icon, title, copy }) => (
           <div key={title} className="flex gap-3">
             <span className="mt-0.5 text-folio-primary dark:text-folio-accent">
-              <Icon size={15} strokeWidth={1.7} />
+              <Icon size={15} />
             </span>
             <div>
               <p className="text-xs font-medium">{t(title)}</p>

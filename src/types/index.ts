@@ -470,6 +470,7 @@ export interface AppSettings {
   numberFormatId: import('../utils/finance').NumberFormatId;
   dateFormatId: import('../utils/date').DateFormatId;
   colorMode: 'system' | 'light' | 'dark';
+  /** Show the Net worth widget in the header/title bar. (Persisted key kept as showHeaderTicker for backward compatibility.) */
   showHeaderTicker: boolean;
   /** Use Folio's experimental custom title bar (with native window controls). */
   customTitleBarEnabled?: boolean;
