@@ -4,7 +4,6 @@ import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-route
 import { Badge, Button, Tooltip } from 'antd';
 import { ArrowLeft, Bell, Menu, Moon, PanelLeft, PanelLeftClose, Sun, X } from 'lucide-react';
 import { isTauri } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { useI18n } from '../../i18n';
 import { cn } from '../../utils/cn';
@@ -107,25 +106,14 @@ export default function Layout() {
     });
   };
 
-  const hasTitleBar = isTauri();
+  const isTauriApp = isTauri();
+  const hasTitleBar = isTauriApp && (settings.customTitleBarEnabled ?? true);
   const titleBarOffset = hasTitleBar ? FOLIO_TITLEBAR_HEIGHT : 0;
   const isIntegratedHeader = hasTitleBar && (settings.headerBarPosition ?? HeaderBarPosition.Integrated) === HeaderBarPosition.Integrated;
 
   const handleToggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     void updateSettings({ colorMode: next });
-  };
-
-  const handleTitleBarMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hasTitleBar) return;
-    if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest('button, a, input, [role="button"], .ant-btn, .ant-dropdown-trigger')) return;
-    const appWindow = getCurrentWindow();
-    if (e.detail === 2) {
-      void appWindow.toggleMaximize();
-    } else {
-      void appWindow.startDragging();
-    }
   };
 
   const [titleBarSlot, setTitleBarSlot] = useState<HTMLElement | null>(null);
@@ -141,7 +129,7 @@ export default function Layout() {
   });
 
   const titleBarControls = isIntegratedHeader && titleBarSlot ? createPortal(
-    <div className="flex h-full w-full items-center gap-1" onMouseDown={handleTitleBarMouseDown}>
+    <div data-tauri-drag-region="deep" className="flex h-full w-full items-center gap-1">
       <div className="flex min-w-0 flex-1 items-center justify-start gap-1 overflow-hidden">
         <Button
           type="text"
@@ -237,7 +225,7 @@ export default function Layout() {
     <div
       className={cn(
         'bg-folio-paper text-folio-ink dark:bg-folio-night dark:text-folio-dark-text',
-        hasTitleBar ? 'h-screen overflow-hidden' : 'min-h-screen',
+        isTauriApp ? 'h-screen overflow-hidden' : 'min-h-screen',
       )}
       style={hasTitleBar ? ({ ['--folio-titlebar-height' as string]: `${titleBarOffset}px` } as CSSProperties) : undefined}
     >
@@ -265,7 +253,7 @@ export default function Layout() {
       <div
         className={cn(
           'flex flex-col transition-[padding] duration-200',
-          hasTitleBar ? 'h-full overflow-hidden' : 'min-h-screen',
+          isTauriApp ? 'h-full overflow-hidden' : 'min-h-screen',
           collapsed ? 'lg:pl-[80px]' : 'lg:pl-[264px]',
         )}
       >
@@ -281,19 +269,29 @@ export default function Layout() {
         */}
         <div className="relative flex min-h-0 flex-1 flex-col">
           {!isIntegratedHeader && (
-            <div
-              className="absolute inset-x-0 z-[200]"
-              style={{ top: titleBarOffset }}
-            >
+            hasTitleBar ? (
+              <div
+                className="absolute inset-x-0 z-[200]"
+                style={{ top: titleBarOffset }}
+              >
+                <Header
+                  summary={summary}
+                  isLoading={isLoading}
+                  onOpenSidebar={() => setMobileOpen(true)}
+                  onBack={handleBack}
+                  canGoBack={canGoBack}
+                  stickyTop={0}
+                />
+              </div>
+            ) : (
               <Header
                 summary={summary}
                 isLoading={isLoading}
                 onOpenSidebar={() => setMobileOpen(true)}
                 onBack={handleBack}
                 canGoBack={canGoBack}
-                stickyTop={0}
               />
-            </div>
+            )
           )}
 
           <div className="flex-1 overflow-y-auto">

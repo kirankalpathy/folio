@@ -101,11 +101,12 @@ jobs:
           NODE
           echo "Release notes prepared:"
           cat /tmp/release-notes.md
+          DELIMITER="EOF_${RANDOM}${RANDOM}"
           {
-            echo 'body<<EOF'
+            echo "body<<$DELIMITER"
             cat /tmp/release-notes.md
             printf '\n'
-            echo 'EOF'
+            echo "$DELIMITER"
           } >> "$GITHUB_OUTPUT"
 
       - name: 5. Install Rust Toolchain
@@ -127,10 +128,35 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
+          tagName: v${{ steps.version.outputs.version }}
           releaseName: 'Folio v${{ steps.version.outputs.version }}'
           releaseBody: ${{ steps.release_notes.outputs.body || 'Release notes not maintained' }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+      - name: 9. Sync Version Tag & Release Notes
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          # Keep the version tag pointing at the commit that produced these assets.
+          git tag -f "$TAG" "$GITHUB_SHA"
+          for attempt in 1 2 3; do
+            if git push --force origin "refs/tags/$TAG"; then
+              break
+            fi
+            sleep 2
+          done
+
+          # tauri-action replaces same-named assets on an existing release but does
+          # not update the release name/body, so sync them for same-version re-releases.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "Folio v${VERSION}" \
+              --notes-file /tmp/release-notes.md
+          fi

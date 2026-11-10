@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { Copy, Minus, Moon, Square, Sun, X } from 'lucide-react';
 import { isTauri } from '@tauri-apps/api/core';
@@ -12,6 +12,7 @@ const TITLEBAR_HEIGHT = 36;
 export const FOLIO_TITLEBAR_HEIGHT = TITLEBAR_HEIGHT;
 export const FOLIO_TITLEBAR_SLOT_ID = 'folio-titlebar-slot';
 const HEADER_BAR_POSITION_KEY = 'folio:headerBarPosition';
+const CUSTOM_TITLE_BAR_KEY = 'folio:customTitleBarEnabled';
 
 function isMacPlatform() {
   if (typeof navigator === 'undefined') return false;
@@ -37,6 +38,18 @@ function readHeaderBarPosition(): 'integrated' | 'standalone' {
   }
 }
 
+function readCustomTitleBarEnabled(): boolean {
+  try {
+    return localStorage.getItem(CUSTOM_TITLE_BAR_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+function runWindowAction(action: () => Promise<void>) {
+  void action().catch((error) => console.error('Window action failed', error));
+}
+
 export default function TitleBar() {
   const tauri = isTauri();
   const { status } = useAuth();
@@ -44,6 +57,7 @@ export default function TitleBar() {
   const { t } = useI18n();
   const insets = getPlatformInsets();
   const [headerBarPosition, setHeaderBarPosition] = useState<'integrated' | 'standalone'>(readHeaderBarPosition);
+  const [customTitleBar, setCustomTitleBar] = useState(readCustomTitleBarEnabled);
   const [isMaximized, setIsMaximized] = useState(false);
   const mac = isMacPlatform();
 
@@ -59,7 +73,43 @@ export default function TitleBar() {
   }, []);
 
   useEffect(() => {
-    if (!tauri || mac) return;
+    const sync = () => setCustomTitleBar(readCustomTitleBarEnabled());
+    sync();
+    window.addEventListener('storage', sync);
+    window.addEventListener('folio:customtitlebar', sync as EventListener);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('folio:customtitlebar', sync as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tauri) return;
+    const appWindow = getCurrentWindow();
+    const apply = async () => {
+      try {
+        if (customTitleBar) {
+          if (mac) {
+            await appWindow.setTitleBarStyle('overlay');
+            await appWindow.setDecorations(true);
+          } else {
+            await appWindow.setDecorations(false);
+          }
+        } else {
+          await appWindow.setDecorations(true);
+          if (mac) {
+            await appWindow.setTitleBarStyle('visible');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to apply title bar style', error);
+      }
+    };
+    void apply();
+  }, [tauri, mac, customTitleBar]);
+
+  useEffect(() => {
+    if (!tauri || mac || !customTitleBar) return;
     const appWindow = getCurrentWindow();
     let unlisten: (() => void) | undefined;
     const sync = async () => {
@@ -76,47 +126,41 @@ export default function TitleBar() {
     return () => {
       unlisten?.();
     };
-  }, [tauri, mac]);
+  }, [tauri, mac, customTitleBar]);
 
   useEffect(() => {
     if (!tauri) return;
     const root = document.documentElement;
-    root.style.setProperty('--folio-titlebar-height', `${TITLEBAR_HEIGHT}px`);
-    root.classList.add('has-folio-titlebar');
+    if (customTitleBar) {
+      root.style.setProperty('--folio-titlebar-height', `${TITLEBAR_HEIGHT}px`);
+      root.classList.add('has-folio-titlebar');
+    } else {
+      root.style.removeProperty('--folio-titlebar-height');
+      root.classList.remove('has-folio-titlebar');
+    }
     return () => {
       root.style.removeProperty('--folio-titlebar-height');
       root.classList.remove('has-folio-titlebar');
     };
-  }, [tauri]);
+  }, [tauri, customTitleBar]);
 
-  const handleDragMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!tauri) return;
-      if (e.button !== 0) return;
-      if ((e.target as HTMLElement).closest('button, a, input, [role="button"], .ant-btn, .ant-dropdown-trigger, [data-no-drag]')) return;
-      const appWindow = getCurrentWindow();
-      if (e.detail === 2) {
-        void appWindow.toggleMaximize();
-      } else {
-        void appWindow.startDragging();
-      }
-    },
-    [tauri],
-  );
-
-  if (!tauri) return null;
+  if (!tauri || !customTitleBar) return null;
 
   const isUnlocked = status === 'unlocked';
   const showIntegratedSlot = isUnlocked && headerBarPosition === 'integrated';
   const appWindow = getCurrentWindow();
 
   const windowControls = !mac ? (
-    <div data-no-drag className="absolute right-0 top-0 flex h-full items-stretch">
+    <div
+      data-no-drag
+      data-tauri-drag-region="false"
+      className="absolute right-0 top-0 flex h-full items-stretch"
+    >
       <button
         type="button"
         aria-label="Minimize"
         className="inline-flex h-full w-[46px] items-center justify-center text-folio-ink/70 transition-colors hover:bg-folio-ink/[0.06] hover:text-folio-ink dark:text-white/70 dark:hover:bg-white/[0.08] dark:hover:text-white"
-        onClick={() => void appWindow.minimize()}
+        onClick={() => runWindowAction(() => appWindow.minimize())}
       >
         <Minus size={14} />
       </button>
@@ -124,7 +168,7 @@ export default function TitleBar() {
         type="button"
         aria-label={isMaximized ? 'Restore' : 'Maximize'}
         className="inline-flex h-full w-[46px] items-center justify-center text-folio-ink/70 transition-colors hover:bg-folio-ink/[0.06] hover:text-folio-ink dark:text-white/70 dark:hover:bg-white/[0.08] dark:hover:text-white"
-        onClick={() => void appWindow.toggleMaximize()}
+        onClick={() => runWindowAction(() => appWindow.toggleMaximize())}
       >
         {isMaximized ? <Copy size={13} /> : <Square size={12} />}
       </button>
@@ -132,7 +176,7 @@ export default function TitleBar() {
         type="button"
         aria-label="Close"
         className="inline-flex h-full w-[46px] items-center justify-center text-folio-ink/70 transition-colors hover:bg-red-500/90 hover:text-white dark:text-white/70"
-        onClick={() => void appWindow.close()}
+        onClick={() => runWindowAction(() => appWindow.close())}
       >
         <X size={15} />
       </button>
@@ -141,9 +185,9 @@ export default function TitleBar() {
 
   return (
     <div
+      data-tauri-drag-region="deep"
       className="fixed inset-x-0 top-0 z-[500] flex h-9 select-none items-center border-b border-folio-ink/[0.07] bg-folio-shell/95 text-folio-ink backdrop-blur-sm dark:border-white/[0.07] dark:bg-folio-dark-surface/95 dark:text-folio-dark-text"
       style={{ height: TITLEBAR_HEIGHT }}
-      onMouseDown={handleDragMouseDown}
     >
       {showIntegratedSlot ? (
         <div

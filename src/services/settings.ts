@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dateFormatId: 'DD MMM YYYY',
   colorMode: 'light',
   showHeaderTicker: true,
+  customTitleBarEnabled: true,
   headerBarPosition: HeaderBarPosition.Integrated,
   smartTablesEnabled: true,
 };
@@ -45,6 +46,7 @@ function normalizeAllocationColors(raw: unknown): AppSettings['allocationColors'
 
 function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSettings {
   const colorMode = raw?.colorMode === 'system' || raw?.colorMode === 'dark' || raw?.colorMode === 'light' ? raw.colorMode : DEFAULT_SETTINGS.colorMode;
+  const customTitleBarEnabled = typeof raw?.customTitleBarEnabled === 'boolean' ? raw.customTitleBarEnabled : (DEFAULT_SETTINGS.customTitleBarEnabled ?? true);
   const headerBarPosition = raw?.headerBarPosition === HeaderBarPosition.Standalone ? HeaderBarPosition.Standalone : HeaderBarPosition.Integrated;
   const updatesLastCheckedAt = typeof raw?.updatesLastCheckedAt === 'string' && raw.updatesLastCheckedAt ? raw.updatesLastCheckedAt : undefined;
   return {
@@ -53,6 +55,7 @@ function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSet
     dateFormatId: (raw?.dateFormatId as DateFormatId) || DEFAULT_SETTINGS.dateFormatId,
     colorMode,
     showHeaderTicker: typeof raw?.showHeaderTicker === 'boolean' ? raw.showHeaderTicker : DEFAULT_SETTINGS.showHeaderTicker,
+    customTitleBarEnabled,
     headerBarPosition,
     updatesLastCheckedAt,
     smartTablesEnabled: typeof raw?.smartTablesEnabled === 'boolean' ? raw.smartTablesEnabled : (DEFAULT_SETTINGS.smartTablesEnabled ?? true),
@@ -62,13 +65,16 @@ function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSet
 }
 
 export const HEADER_BAR_POSITION_KEY = 'folio:headerBarPosition';
+export const CUSTOM_TITLE_BAR_KEY = 'folio:customTitleBarEnabled';
 
 export function applySettings(settings: AppSettings): void {
   setNumberFormat(settings.numberFormatId);
   setDateFormat(settings.dateFormatId);
   try {
     localStorage.setItem(HEADER_BAR_POSITION_KEY, settings.headerBarPosition ?? HeaderBarPosition.Integrated);
+    localStorage.setItem(CUSTOM_TITLE_BAR_KEY, String(settings.customTitleBarEnabled ?? true));
     window.dispatchEvent(new Event('folio:headerbarposition'));
+    window.dispatchEvent(new Event('folio:customtitlebar'));
   } catch {
     // optional
   }

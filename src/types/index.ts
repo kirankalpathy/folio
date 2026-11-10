@@ -471,6 +471,8 @@ export interface AppSettings {
   dateFormatId: import('../utils/date').DateFormatId;
   colorMode: 'system' | 'light' | 'dark';
   showHeaderTicker: boolean;
+  /** Use Folio's experimental custom title bar (with native window controls). */
+  customTitleBarEnabled?: boolean;
   headerBarPosition?: HeaderBarPosition;
   /** ISO timestamp of the last update check. */
   updatesLastCheckedAt?: string;

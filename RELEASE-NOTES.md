@@ -8,6 +8,8 @@
 
 ### Windows & app shell
 - **Single titlebar on Windows:** removed the duplicate native Windows titlebar by using Windows-specific window configuration (decorations disabled), keeping only Folio’s custom titlebar design.
+- **Customized title bar setting:** added **Customized Title Bar (Experimental)** in Settings. Turning it off restores the native window title bar and hides the Integrated Shell Bar option.
+- **Window controls fix:** custom title bar minimize, maximize/restore, close, and drag/move now work on Windows (added the missing window permissions and switched to Tauri drag regions).
 - **Window controls:** added custom minimize/maximize/restore/close controls in the titlebar for Windows/Linux (with maximize state tracking and drag-safe controls) while preserving macOS overlay/titlebar behavior.
 - **Launch behavior:** app now opens **maximized by default** on startup.
 
@@ -19,11 +21,12 @@
 - **Release notes output fix:** ensured multiline GitHub Actions output delimiters are written correctly (trailing newline before `EOF`) to prevent release-notes publishing failures.
 - **Fallback:** if release notes cannot be found or extracted for the current version, the workflow defaults to **“Release notes not maintained”** so users still receive a clear message.
 - **Release naming:** release name now uses the app version (e.g. `Folio v0.1.3`) instead of branch/ref names like `Folio main`.
-- **macOS packaging:** macOS releases are published as unsigned DMG builds (no Apple Developer signing/notarization). Users may need to remove quarantine attributes or allow the app in macOS Privacy & Security when opening a downloaded build.
+- **Versioned releases:** the workflow now derives the tag and release from the app version (`v{version}`). A bumped version creates a new tag/release; re-running the same version replaces the existing release assets and notes.
+- **macOS packaging:** macOS builds are now ad-hoc signed (`signingIdentity: "-"`) so the `.app` bundle has a valid sealed signature on Apple Silicon, fixing the “Folio is damaged and can’t be opened” Gatekeeper error. No Apple Developer signing/notarization is performed, so users may still need to allow the app in macOS Privacy & Security on first launch.
 
 ### Version & verification
 - Bumped to **`0.1.3`** in `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
-- Recommended runtime verification in Tauri (Windows titlebar/controls, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). For macOS unsigned DMG builds, verify download/install/open flow and document quarantine/Gatekeeper steps if needed.
+- Recommended runtime verification in Tauri (Windows titlebar minimize/maximize/close/drag, Customized Title Bar toggle, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). For macOS ad-hoc signed DMG builds, verify download/install/open flow and document the Privacy & Security allow step if needed.
 
 ## `v0.1.2`
 

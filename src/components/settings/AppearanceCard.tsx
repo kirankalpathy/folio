@@ -38,6 +38,15 @@ export default function AppearanceCard() {
     }
   };
 
+  const handleCustomTitleBar = async (checked: boolean) => {
+    try {
+      await updateSettings({ customTitleBarEnabled: checked });
+      toast.success(t('settings.appearance.saved'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('settings.appearance.error'));
+    }
+  };
+
   const handleSmartTables = async (checked: boolean) => {
     try {
       await updateSettings({
@@ -58,6 +67,8 @@ export default function AppearanceCard() {
       toast.error(err instanceof Error ? err.message : t('settings.appearance.error'));
     }
   };
+
+  const customTitleBarEnabled = settings.customTitleBarEnabled ?? true;
 
   return (
     <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
@@ -92,6 +103,24 @@ export default function AppearanceCard() {
             <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
               {t('settings.appearance.experimental')}
             </Tag>
+            <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.customTitleBar')}</label>
+          </div>
+          <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
+            {t('settings.appearance.customTitleBarHint')}
+          </p>
+        </div>
+        <Switch
+          checked={customTitleBarEnabled}
+          onChange={(checked) => void handleCustomTitleBar(checked)}
+          aria-label={t('settings.appearance.customTitleBar')}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
+              {t('settings.appearance.experimental')}
+            </Tag>
             <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerBarPosition')}</label>
           </div>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
@@ -99,8 +128,9 @@ export default function AppearanceCard() {
           </p>
         </div>
         <Switch
-          checked={(settings.headerBarPosition ?? HeaderBarPosition.Integrated) === HeaderBarPosition.Integrated}
+          checked={customTitleBarEnabled && (settings.headerBarPosition ?? HeaderBarPosition.Integrated) === HeaderBarPosition.Integrated}
           onChange={(checked) => void handleHeaderBarPosition(checked)}
+          disabled={!customTitleBarEnabled}
           aria-label={t('settings.appearance.headerBarPosition')}
         />
       </div>

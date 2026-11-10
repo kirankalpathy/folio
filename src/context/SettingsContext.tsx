@@ -38,6 +38,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       dateFormatId: merged.dateFormatId,
       colorMode: merged.colorMode,
       showHeaderTicker: merged.showHeaderTicker,
+      customTitleBarEnabled: merged.customTitleBarEnabled,
       headerBarPosition: merged.headerBarPosition,
       updatesLastCheckedAt: merged.updatesLastCheckedAt,
       smartTablesEnabled: merged.smartTablesEnabled,
