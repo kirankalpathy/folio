@@ -134,7 +134,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Folio ${{ github.ref_name }}'
+          releaseName: 'Folio v${{ steps.version.outputs.version }}'
           releaseBody: ${{ steps.release_notes.outputs.body || 'Release notes not maintained' }}
           releaseDraft: false
           prerelease: false
