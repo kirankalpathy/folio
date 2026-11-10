@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'antd';
-import { Moon, Sun } from 'lucide-react';
+import { Copy, Minus, Moon, Square, Sun, X } from 'lucide-react';
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useAuth } from '../../context/AuthContext';
@@ -13,16 +13,20 @@ export const FOLIO_TITLEBAR_HEIGHT = TITLEBAR_HEIGHT;
 export const FOLIO_TITLEBAR_SLOT_ID = 'folio-titlebar-slot';
 const HEADER_BAR_POSITION_KEY = 'folio:headerBarPosition';
 
-function getPlatformInsets() {
-  if (typeof navigator === 'undefined') return { left: 12, right: 12 };
+function isMacPlatform() {
+  if (typeof navigator === 'undefined') return false;
   const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
   const platform = nav.userAgentData?.platform ?? navigator.platform ?? navigator.userAgent;
-  const isMac = /mac/i.test(platform);
-  if (isMac) {
+  return /mac/i.test(platform);
+}
+
+function getPlatformInsets() {
+  if (typeof navigator === 'undefined') return { left: 12, right: 12 };
+  if (isMacPlatform()) {
     return { left: 78, right: 12 };
   }
-  // Windows/Linux: reserve space for native caption controls on the right (overlay)
-  return { left: 12, right: 140 };
+  // Windows/Linux: reserve space for custom caption controls
+  return { left: 12, right: 138 };
 }
 
 function readHeaderBarPosition(): 'integrated' | 'standalone' {
@@ -40,6 +44,8 @@ export default function TitleBar() {
   const { t } = useI18n();
   const insets = getPlatformInsets();
   const [headerBarPosition, setHeaderBarPosition] = useState<'integrated' | 'standalone'>(readHeaderBarPosition);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const mac = isMacPlatform();
 
   useEffect(() => {
     const sync = () => setHeaderBarPosition(readHeaderBarPosition());
@@ -51,6 +57,26 @@ export default function TitleBar() {
       window.removeEventListener('folio:headerbarposition', sync as EventListener);
     };
   }, []);
+
+  useEffect(() => {
+    if (!tauri || mac) return;
+    const appWindow = getCurrentWindow();
+    let unlisten: (() => void) | undefined;
+    const sync = async () => {
+      try {
+        setIsMaximized(await appWindow.isMaximized());
+      } catch {
+        // ignore
+      }
+    };
+    void sync();
+    void appWindow.onResized(() => void sync()).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [tauri, mac]);
 
   useEffect(() => {
     if (!tauri) return;
@@ -67,7 +93,7 @@ export default function TitleBar() {
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!tauri) return;
       if (e.button !== 0) return;
-      if ((e.target as HTMLElement).closest('button, a, input, [role="button"], .ant-btn, .ant-dropdown-trigger')) return;
+      if ((e.target as HTMLElement).closest('button, a, input, [role="button"], .ant-btn, .ant-dropdown-trigger, [data-no-drag]')) return;
       const appWindow = getCurrentWindow();
       if (e.detail === 2) {
         void appWindow.toggleMaximize();
@@ -82,6 +108,36 @@ export default function TitleBar() {
 
   const isUnlocked = status === 'unlocked';
   const showIntegratedSlot = isUnlocked && headerBarPosition === 'integrated';
+  const appWindow = getCurrentWindow();
+
+  const windowControls = !mac ? (
+    <div data-no-drag className="absolute right-0 top-0 flex h-full items-stretch">
+      <button
+        type="button"
+        aria-label="Minimize"
+        className="inline-flex h-full w-[46px] items-center justify-center text-folio-ink/70 transition-colors hover:bg-folio-ink/[0.06] hover:text-folio-ink dark:text-white/70 dark:hover:bg-white/[0.08] dark:hover:text-white"
+        onClick={() => void appWindow.minimize()}
+      >
+        <Minus size={14} />
+      </button>
+      <button
+        type="button"
+        aria-label={isMaximized ? 'Restore' : 'Maximize'}
+        className="inline-flex h-full w-[46px] items-center justify-center text-folio-ink/70 transition-colors hover:bg-folio-ink/[0.06] hover:text-folio-ink dark:text-white/70 dark:hover:bg-white/[0.08] dark:hover:text-white"
+        onClick={() => void appWindow.toggleMaximize()}
+      >
+        {isMaximized ? <Copy size={13} /> : <Square size={12} />}
+      </button>
+      <button
+        type="button"
+        aria-label="Close"
+        className="inline-flex h-full w-[46px] items-center justify-center text-folio-ink/70 transition-colors hover:bg-red-500/90 hover:text-white dark:text-white/70"
+        onClick={() => void appWindow.close()}
+      >
+        <X size={15} />
+      </button>
+    </div>
+  ) : null;
 
   return (
     <div
@@ -136,6 +192,7 @@ export default function TitleBar() {
           )}
         </>
       )}
+      {windowControls}
     </div>
   );
 }

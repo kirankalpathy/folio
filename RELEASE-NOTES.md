@@ -1,5 +1,27 @@
 # RELEASE NOTES
 
+## `v0.1.3`
+
+### In-app updates
+- **Update same version:** added an **“Update same version”** action in **Settings → Updates** (shown when already up to date) to fetch and install the latest available build for the current platform even when the app version/tag is unchanged. This supports micro-deliveries where fixes are merged without a version bump.
+- **Force-update backend:** added a Tauri command to perform a forced updater check (bypassing version comparison) so same-version builds can be offered and installed through the existing download/install/restart flow.
+
+### Windows & app shell
+- **Single titlebar on Windows:** removed the duplicate native Windows titlebar by using Windows-specific window configuration (decorations disabled), keeping only Folio’s custom titlebar design.
+- **Window controls:** added custom minimize/maximize/restore/close controls in the titlebar for Windows/Linux (with maximize state tracking and drag-safe controls) while preserving macOS overlay/titlebar behavior.
+- **Launch behavior:** app now opens **maximized by default** on startup.
+
+### Deposits
+- **Deposit number format:** deposit numbers now accept the `/` character (in addition to letters, numbers, hyphens, and underscores), including normalization and validation updates, to support formats used by some financial institutions.
+
+### CI/CD & release notes
+- **Release notes delivery fix:** GitHub Actions release workflow now always extracts release notes (no longer skipped on non-tag runs), resolves `RELEASE-NOTES.md` from reliable paths, and publishes notes to GitHub Releases/updater metadata.
+- **Fallback:** if release notes cannot be found or extracted for the current version, the workflow defaults to **“Release notes not maintained”** so users still receive a clear message.
+
+### Version & verification
+- Bumped to **`0.1.3`** in `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
+- Recommended runtime verification in Tauri (Windows titlebar/controls, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts).
+
 ## `v0.1.2`
 
 ### Dashboard & overview
