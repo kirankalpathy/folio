@@ -19,11 +19,11 @@
 - **Release notes output fix:** ensured multiline GitHub Actions output delimiters are written correctly (trailing newline before `EOF`) to prevent release-notes publishing failures.
 - **Fallback:** if release notes cannot be found or extracted for the current version, the workflow defaults to **“Release notes not maintained”** so users still receive a clear message.
 - **Release naming:** release name now uses the app version (e.g. `Folio v0.1.3`) instead of branch/ref names like `Folio main`.
-- **macOS signing/notarization readiness:** workflow now passes Apple signing/notarization environment variables to the Tauri build action (when configured in repository secrets) and enables macOS hardened runtime in bundle config to support properly signed/notarized DMG releases. This addresses the “app is damaged/corrupted” Gatekeeper issue for future signed releases (previous unsigned releases cannot be fixed retroactively).
+- **macOS packaging:** macOS releases are published as unsigned DMG builds (no Apple Developer signing/notarization). Users may need to remove quarantine attributes or allow the app in macOS Privacy & Security when opening a downloaded build.
 
 ### Version & verification
 - Bumped to **`0.1.3`** in `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
-- Recommended runtime verification in Tauri (Windows titlebar/controls, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). If Apple signing/notarization secrets are configured, verify DMG install/open behavior on macOS without quarantine warnings.
+- Recommended runtime verification in Tauri (Windows titlebar/controls, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). For macOS unsigned DMG builds, verify download/install/open flow and document quarantine/Gatekeeper steps if needed.
 
 ## `v0.1.2`
 
