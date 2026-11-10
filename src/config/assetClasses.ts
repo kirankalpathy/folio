@@ -140,3 +140,10 @@ export function getAllocationMeta(key: AllocationKey): AllocationMeta {
   const meta = ASSET_CLASS_META[key as AssetClassKey];
   return { label: meta.label, path: meta.path, color: meta.color };
 }
+
+export function getAllocationColor(
+  key: AllocationKey | AssetClassKey,
+  allocationColors?: Partial<Record<AllocationKey, string>>,
+): string {
+  return allocationColors?.[key as AllocationKey] ?? getAllocationMeta(key as AllocationKey).color;
+}

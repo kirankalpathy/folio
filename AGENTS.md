@@ -58,6 +58,7 @@ This document summarizes the engineering and product conventions established for
 - **Semantic colors**: use the semantic color system (CSS variables in `src/index.css`, Tailwind semantic mappings, and AntD theme alignment) for info/success/warning/error states (including status tags, alerts, and semantic surfaces). Do not introduce ad-hoc semantic colors when a semantic token exists.
 - **No hardcoded colors**: do not hardcode colors (hex/rgb/hsl, named CSS colors, or arbitrary color values) in components, pages, utilities, or styles. Keep colors centralized in theme tokens/CSS variables (`src/index.css`), Tailwind theme/config mappings, and AntD theme configuration. Use existing semantic or brand tokens/classes; if a new color is truly needed, add it centrally first rather than inlining it.
 - **Busy indicator (global blocking)**: use the shared `BusyIndicator` (`BusyIndicatorProvider` / `useBusyIndicator().setBusyIndicator`) for operations that must block the UI until complete (e.g., backup/restore). **Important:** whenever `setBusyIndicator()` / `setBusyIndicator(true)` is called, the **same method/function must always call `setBusyIndicator(false)`** when the operation completes (use `try/finally`). Never leave the busy indicator active after the action finishes, or the app will remain stuck/spinning.
+- **Responsive layout / no forced scrollbars**: UI elements and sections (including combined split views like Settings left/right panes) must be **responsive**. Do not introduce fixed heights/min-heights or rigid sizing that force internal scrollbars when viewport/content size changes; layouts should adapt naturally and let scrolling occur only at the appropriate page/container level when truly necessary.
 - **Accessibility/interaction**: follow established UX rules (e.g., global text selection limited to editable/text-entry contexts; consistent focus/contrast; clear validation messages).
 - **Icons and components**: use existing libraries/patterns (Lucide icons, AntD components) consistently.
 
@@ -93,3 +94,10 @@ This document summarizes the engineering and product conventions established for
 - Inspect existing implementations before adding new patterns.
 - Prefer consistency with the current codebase over novel abstractions.
 - If a rule conflicts with a new product requirement, implement the requirement clearly and update this `AGENTS.md` to reflect the new decision.
+
+## 9. Git and version control (manual-only)
+
+- **Never use any git commands** such as `git commit`, `git add`, staging files, pushing to GitHub/remotes, creating tags/releases, or any other VCS-mutating git operations.
+- These are **strictly manual actions**. No agent is allowed to perform them, **even if the user explicitly commands it**.
+- You may only **guide the user** in performing the necessary actions (explain what to run, suggest commit messages, list affected files/steps), but execution is **STRICTLY manual** by the user.
+- Read-only inspection commands (e.g., `git status`, `git diff`, `git log`, `git show`) may be used when needed to understand the working tree or provide guidance, but never to modify repository state.

@@ -28,7 +28,7 @@ export default function AuthShell({
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-folio-shell dark:bg-folio-night lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="min-h-screen bg-folio-shell pt-[var(--folio-titlebar-height,0px)] dark:bg-folio-night lg:grid lg:grid-cols-[1.05fr_0.95fr]">
       <aside className="relative hidden overflow-hidden bg-folio-ink px-12 py-12 text-folio-cream lg:flex lg:flex-col lg:justify-between">
         <div
           className="pointer-events-none absolute -right-28 top-24 h-80 w-80 rounded-full border border-folio-primary/25"
@@ -65,7 +65,7 @@ export default function AuthShell({
         </ul>
       </aside>
 
-      <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:min-h-0 lg:px-12">
+      <main className="flex min-h-[calc(100vh-var(--folio-titlebar-height,0px))] items-center justify-center px-4 py-10 sm:px-6 lg:min-h-full lg:px-12">
         <div className="w-full max-w-[430px] animate-fade-in">
           <div className="mb-8 lg:hidden">
             <img src="/folio-horizontal-color.svg" alt="Folio" className="h-14 w-auto" decoding="async" />

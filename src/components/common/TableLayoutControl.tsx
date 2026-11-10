@@ -82,10 +82,12 @@ export function useTableLayout(tableId: string, columns: TableLayoutColumnDef[])
 export default function TableLayoutControl({ tableId, columns, placement = 'bottomRight', className, onReset }: Props) {
   const { t } = useI18n();
   const { toast } = useToast();
+  const { settings } = useSettings();
   const { layout, saveLayout } = useTableLayout(tableId, columns);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const defs = useMemo(() => new Map(columns.map((c) => [c.key, c])), [columns]);
+  const enabled = settings.smartTablesEnabled ?? true;
 
   const setVisible = (key: string, visible: boolean) => {
     const def = defs.get(key);
@@ -129,6 +131,8 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
     ? customizable.filter((c) => (defs.get(c.key)?.label ?? '').toLowerCase().includes(normalizedQuery))
     : customizable;
 
+  if (!enabled) return null;
+
   return (
     <Popover
       trigger="click"
@@ -138,6 +142,8 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
         setOpen(next);
         if (!next) setQuery('');
       }}
+      autoAdjustOverflow
+      getPopupContainer={() => document.body}
       overlayInnerStyle={{ padding: 12, width: 320, maxWidth: 'min(92vw, 320px)' }}
       content={
         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>

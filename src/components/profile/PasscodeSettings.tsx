@@ -202,45 +202,48 @@ export default function PasscodeSettings() {
   };
 
   return (
-    <section className="folio-card overflow-hidden">
-      <div className="flex items-start gap-3 border-b border-folio-ink/10 px-4 py-4 dark:border-white/[0.07]">
-        <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl bg-folio-primary/[0.08] text-folio-primary dark:bg-folio-primary/15 dark:text-folio-accent">
-          <KeyRound size={17} />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold">{t('profile.passcode.title')}</h2>
-          <p className="mt-1 text-[12px] leading-5 text-folio-ink/55 dark:text-white/50">
-            {t('profile.passcode.description')}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-4">
+      {!passcodeProtected && (
+        <Alert
+          type="warning"
+          showIcon
+          title={t('profile.passcode.notSetError')}
+        />
+      )}
 
-      <div className="p-4 sm:p-5">
-        {!passcodeProtected && (
-          <Alert
-            type="warning"
-            showIcon
-            title={t('profile.passcode.notSetError')}
-            className="folio-message-strip folio-message-strip-warning mb-4"
-          />
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          {!passcodeProtected ? (
+      <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
+        {!passcodeProtected ? (
+          <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+            <div className="min-w-0">
+              <span className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('profile.passcode.title')}</span>
+              <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">{t('profile.passcode.description')}</p>
+            </div>
             <Button type="primary" icon={<ShieldCheck size={14} />} onClick={() => openModal('set')}>
               {t('profile.passcode.setSubmit')}
             </Button>
-          ) : (
-            <>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+              <div className="min-w-0">
+                <span className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('profile.passcode.changeTitle')}</span>
+                <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">{t('profile.passcode.description')}</p>
+              </div>
               <Button icon={<KeyRound size={14} />} onClick={() => openModal('change')}>
                 {t('profile.passcode.changeTitle')}
               </Button>
+            </div>
+            <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+              <div className="min-w-0">
+                <span className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('profile.passcode.disableAction')}</span>
+                <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">{t('profile.passcode.disableWarning')}</p>
+              </div>
               <Button danger icon={<ShieldOff size={14} />} onClick={() => openModal('remove')}>
                 {t('profile.passcode.disableAction')}
               </Button>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
       <Modal
@@ -377,6 +380,6 @@ export default function PasscodeSettings() {
           </div>
         </Form>
       </Modal>
-    </section>
+    </div>
   );
 }

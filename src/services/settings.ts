@@ -1,4 +1,5 @@
 import type { AppSettings } from '../types';
+import { HeaderBarPosition } from '../types';
 import type { NumberFormatId } from '../utils/finance';
 import { setNumberFormat } from '../utils/finance';
 import type { DateFormatId } from '../utils/date';
@@ -11,6 +12,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dateFormatId: 'DD MMM YYYY',
   colorMode: 'light',
   showHeaderTicker: true,
+  headerBarPosition: HeaderBarPosition.Integrated,
+  smartTablesEnabled: true,
 };
 
 function normalizeTableLayouts(raw: unknown): AppSettings['tableLayouts'] {
@@ -29,21 +32,46 @@ function normalizeTableLayouts(raw: unknown): AppSettings['tableLayouts'] {
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+function normalizeAllocationColors(raw: unknown): AppSettings['allocationColors'] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: NonNullable<AppSettings['allocationColors']> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value.trim())) {
+      out[key as keyof NonNullable<AppSettings['allocationColors']>] = value.trim();
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSettings {
   const colorMode = raw?.colorMode === 'system' || raw?.colorMode === 'dark' || raw?.colorMode === 'light' ? raw.colorMode : DEFAULT_SETTINGS.colorMode;
+  const headerBarPosition = raw?.headerBarPosition === HeaderBarPosition.Standalone ? HeaderBarPosition.Standalone : HeaderBarPosition.Integrated;
+  const updatesLastCheckedAt = typeof raw?.updatesLastCheckedAt === 'string' && raw.updatesLastCheckedAt ? raw.updatesLastCheckedAt : undefined;
   return {
     id: 'primary',
     numberFormatId: (raw?.numberFormatId as NumberFormatId) || DEFAULT_SETTINGS.numberFormatId,
     dateFormatId: (raw?.dateFormatId as DateFormatId) || DEFAULT_SETTINGS.dateFormatId,
     colorMode,
     showHeaderTicker: typeof raw?.showHeaderTicker === 'boolean' ? raw.showHeaderTicker : DEFAULT_SETTINGS.showHeaderTicker,
+    headerBarPosition,
+    updatesLastCheckedAt,
+    smartTablesEnabled: typeof raw?.smartTablesEnabled === 'boolean' ? raw.smartTablesEnabled : (DEFAULT_SETTINGS.smartTablesEnabled ?? true),
     tableLayouts: normalizeTableLayouts(raw?.tableLayouts),
+    allocationColors: normalizeAllocationColors(raw?.allocationColors),
   };
 }
+
+export const HEADER_BAR_POSITION_KEY = 'folio:headerBarPosition';
 
 export function applySettings(settings: AppSettings): void {
   setNumberFormat(settings.numberFormatId);
   setDateFormat(settings.dateFormatId);
+  try {
+    localStorage.setItem(HEADER_BAR_POSITION_KEY, settings.headerBarPosition ?? HeaderBarPosition.Integrated);
+    window.dispatchEvent(new Event('folio:headerbarposition'));
+  } catch {
+    // optional
+  }
 }
 
 export async function loadSettings(): Promise<AppSettings> {

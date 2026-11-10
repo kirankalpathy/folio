@@ -4,6 +4,7 @@ import type { NetWorthSummary } from '../../types';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useSettings } from '../../context/SettingsContext';
 import { useI18n } from '../../i18n';
+import { cn } from '../../utils/cn';
 import { formatINRCompact } from '../../utils/finance';
 import UserMenu from './UserMenu';
 
@@ -13,9 +14,11 @@ interface HeaderProps {
   onOpenSidebar: () => void;
   onBack?: () => void;
   canGoBack?: boolean;
+  stickyTop?: number;
+  sticky?: boolean;
 }
 
-export default function Header({ summary, isLoading, onOpenSidebar, onBack, canGoBack }: HeaderProps) {
+export default function Header({ summary, isLoading, onOpenSidebar, onBack, canGoBack, stickyTop = 0, sticky = false }: HeaderProps) {
   const { theme } = useTheme();
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n();
@@ -26,7 +29,13 @@ export default function Header({ summary, isLoading, onOpenSidebar, onBack, canG
   };
 
   return (
-    <header className="sticky top-0 z-[200] border-b border-folio-ink/[0.07] bg-white/85 backdrop-blur-md dark:border-white/[0.07] dark:bg-folio-night/85">
+    <header
+      className={cn(
+        'z-[200] shrink-0 border-b border-folio-ink/[0.07] bg-white/85 backdrop-blur-md dark:border-white/[0.07] dark:bg-folio-night/85',
+        sticky && 'sticky',
+      )}
+      style={sticky ? { top: stickyTop } : undefined}
+    >
       <div className="flex h-16 items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Button
           type="text"
