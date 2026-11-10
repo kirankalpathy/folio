@@ -66,6 +66,34 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Extract release notes
+        id: release_notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          BODY=$(node <<'NODE'
+          const fs = require('fs');
+          const version = process.env.VERSION || '';
+          const changelog = fs.readFileSync('plans/CHANGELOG.md', 'utf8');
+          const marker = `## \`${version}\``;
+          const start = changelog.indexOf(marker);
+          let body = 'See CHANGELOG.md for details.';
+          if (start !== -1) {
+            const rest = changelog.slice(start + marker.length);
+            const next = rest.search(/\n## `/);
+            body = (marker + (next === -1 ? rest : rest.slice(0, next))).trim();
+          }
+          process.stdout.write(body);
+          NODE
+          )
+          {
+            echo 'body<<EOF'
+            echo "$BODY"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
       - name: Build Tauri app (release + updater)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: tauri-apps/tauri-action@v0
@@ -76,7 +104,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Folio ${{ github.ref_name }}'
-          releaseBody: 'See CHANGELOG.md for details.'
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

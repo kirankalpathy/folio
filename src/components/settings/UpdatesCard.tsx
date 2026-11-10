@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Alert, Button, Collapse, Progress } from 'antd';
 import { Download, RefreshCw, RotateCw } from 'lucide-react';
 import { isTauri } from '@tauri-apps/api/core';
@@ -7,14 +7,79 @@ import { useSettings } from '../../context/SettingsContext';
 import { formatDateTime } from '../../utils/date';
 import { useBusyIndicator } from '../common/BusyIndicator';
 
+function renderInline(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold text-folio-role-text">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={i} className="rounded bg-folio-ink/[0.06] px-1 py-0.5 font-mono text-[11px] dark:bg-white/[0.08]">{part.slice(1, -1)}</code>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function ReleaseNotes({ body }: { body: string }) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n');
+  const blocks: ReactNode[] = [];
+  let list: string[] = [];
+  let key = 0;
+
+  const flushList = () => {
+    if (list.length === 0) return;
+    blocks.push(
+      <ul key={`ul-${key++}`} className="ml-4 list-disc space-y-1">
+        {list.map((item, idx) => (
+          <li key={idx}>{renderInline(item)}</li>
+        ))}
+      </ul>,
+    );
+    list = [];
+  };
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const t = line.trim();
+    if (!t) {
+      flushList();
+      continue;
+    }
+    if (t.startsWith('### ')) {
+      flushList();
+      blocks.push(<h4 key={`h4-${key++}`} className="mt-3 text-xs font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(4))}</h4>);
+      continue;
+    }
+    if (t.startsWith('## ')) {
+      flushList();
+      blocks.push(<h3 key={`h3-${key++}`} className="mt-3 text-sm font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(3))}</h3>);
+      continue;
+    }
+    if (t.startsWith('# ')) {
+      flushList();
+      blocks.push(<h3 key={`h1-${key++}`} className="mt-3 text-sm font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(2))}</h3>);
+      continue;
+    }
+    if (t.startsWith('- ') || t.startsWith('* ')) {
+      list.push(t.slice(2).trim());
+      continue;
+    }
+    flushList();
+    blocks.push(<p key={`p-${key++}`} className="leading-5">{renderInline(t)}</p>);
+  }
+  flushList();
+
+  return <div className="max-h-48 overflow-auto text-xs text-folio-ink/75 dark:text-white/70">{blocks}</div>;
+}
+
 type UpdateState =
   | { status: 'idle' }
   | { status: 'checking' }
   | { status: 'upToDate' }
   | { status: 'available'; version: string; body?: string; install: (onProgress: (pct: number) => void) => Promise<void> }
-  | { status: 'downloading'; version: string; progress: number }
-  | { status: 'installing'; version: string }
-  | { status: 'ready'; version: string }
+  | { status: 'downloading'; version: string; progress: number; body?: string }
+  | { status: 'installing'; version: string; body?: string }
+  | { status: 'ready'; version: string; body?: string }
   | { status: 'error'; detail: string };
 
 export default function UpdatesCard() {
@@ -73,11 +138,11 @@ export default function UpdatesCard() {
 
   const downloadAndInstall = useCallback(async () => {
     if (updateState.status !== 'available') return;
-    const { version, install } = updateState;
+    const { version, body, install } = updateState;
     try {
-      setUpdateState({ status: 'downloading', version, progress: 0 });
-      await install((pct) => setUpdateState({ status: 'downloading', version, progress: pct }));
-      setUpdateState({ status: 'ready', version });
+      setUpdateState({ status: 'downloading', version, progress: 0, body });
+      await install((pct) => setUpdateState({ status: 'downloading', version, progress: pct, body }));
+      setUpdateState({ status: 'ready', version, body });
     } catch (err) {
       setUpdateState({ status: 'error', detail: err instanceof Error ? err.message : String(err) });
     }
@@ -175,14 +240,14 @@ export default function UpdatesCard() {
       {updateState.status === 'upToDate' && (
         <Alert type="success" showIcon title={t('settings.about.updates.upToDate')} />
       )}
-      {updateState.status === 'available' && updateState.body && (
+      {((updateState.status === 'available' || updateState.status === 'ready') && updateState.body) && (
         <Collapse
           size="small"
           items={[
             {
               key: 'release-notes',
               label: t('settings.about.updates.changelog'),
-              children: <div className="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-folio-ink/75 dark:text-white/70">{updateState.body}</div>,
+              children: <ReleaseNotes body={updateState.body} />,
             },
           ]}
         />
