@@ -13,9 +13,10 @@ interface HeaderProps {
   onOpenSidebar: () => void;
   onBack?: () => void;
   canGoBack?: boolean;
+  stickyTop?: number;
 }
 
-export default function Header({ summary, isLoading, onOpenSidebar, onBack, canGoBack }: HeaderProps) {
+export default function Header({ summary, isLoading, onOpenSidebar, onBack, canGoBack, stickyTop = 0 }: HeaderProps) {
   const { theme } = useTheme();
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n();
@@ -26,7 +27,10 @@ export default function Header({ summary, isLoading, onOpenSidebar, onBack, canG
   };
 
   return (
-    <header className="sticky top-0 z-[200] border-b border-folio-ink/[0.07] bg-white/85 backdrop-blur-md dark:border-white/[0.07] dark:bg-folio-night/85">
+    <header
+      className="sticky z-[200] border-b border-folio-ink/[0.07] bg-white/85 backdrop-blur-md dark:border-white/[0.07] dark:bg-folio-night/85"
+      style={{ top: stickyTop }}
+    >
       <div className="flex h-16 items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Button
           type="text"

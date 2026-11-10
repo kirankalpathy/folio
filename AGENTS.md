@@ -93,3 +93,10 @@ This document summarizes the engineering and product conventions established for
 - Inspect existing implementations before adding new patterns.
 - Prefer consistency with the current codebase over novel abstractions.
 - If a rule conflicts with a new product requirement, implement the requirement clearly and update this `AGENTS.md` to reflect the new decision.
+
+## 9. Git and version control (manual-only)
+
+- **Never use any git commands** such as `git commit`, `git add`, staging files, pushing to GitHub/remotes, creating tags/releases, or any other VCS-mutating git operations.
+- These are **strictly manual actions**. No agent is allowed to perform them, **even if the user explicitly commands it**.
+- You may only **guide the user** in performing the necessary actions (explain what to run, suggest commit messages, list affected files/steps), but execution is **STRICTLY manual** by the user.
+- Read-only inspection commands (e.g., `git status`, `git diff`, `git log`, `git show`) may be used when needed to understand the working tree or provide guidance, but never to modify repository state.

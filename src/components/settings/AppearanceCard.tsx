@@ -1,9 +1,11 @@
-import { Segmented } from 'antd';
+import { Segmented, Switch, Tag } from 'antd';
 import { Monitor, Moon, Palette, Sun } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../common/toast/ToastProvider';
 import type { ColorMode } from '../../theme/ThemeProvider';
+import { HeaderBarPosition } from '../../types';
+import InfoIcon from '../common/InfoIcon';
 
 export default function AppearanceCard() {
   const { t } = useI18n();
@@ -19,9 +21,18 @@ export default function AppearanceCard() {
     }
   };
 
-  const handleTicker = async (value: 'enabled' | 'disabled') => {
+  const handleTicker = async (checked: boolean) => {
     try {
-      await updateSettings({ showHeaderTicker: value === 'enabled' });
+      await updateSettings({ showHeaderTicker: checked });
+      toast.success(t('settings.appearance.saved'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('settings.appearance.error'));
+    }
+  };
+
+  const handleHeaderBarPosition = async (checked: boolean) => {
+    try {
+      await updateSettings({ headerBarPosition: checked ? HeaderBarPosition.Integrated : HeaderBarPosition.Standalone });
       toast.success(t('settings.appearance.saved'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('settings.appearance.error'));
@@ -42,8 +53,8 @@ export default function AppearanceCard() {
         </div>
       </div>
       <div className="grid gap-5 p-4 sm:grid-cols-2">
-        <div>
-          <label className="folio-label mb-2 block">{t('settings.appearance.colorMode')}</label>
+        <div className="sm:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.colorMode')}</label>
           <Segmented<ColorMode>
             block
             value={settings.colorMode}
@@ -55,20 +66,32 @@ export default function AppearanceCard() {
             ]}
           />
         </div>
-        <div>
-          <label className="folio-label mb-2 block">{t('settings.appearance.headerTicker')}</label>
-          <Segmented<'enabled' | 'disabled'>
-            block
-            value={settings.showHeaderTicker ? 'enabled' : 'disabled'}
-            onChange={(val) => void handleTicker(val)}
-            options={[
-              { value: 'enabled', label: t('settings.appearance.enabled') },
-              { value: 'disabled', label: t('settings.appearance.disabled') },
-            ]}
-          />
-          <p className="mt-2 text-[11px] leading-4 text-folio-ink/45 dark:text-white/40">
-            {t('settings.appearance.headerTickerHint')}
-          </p>
+        <div className="sm:col-span-2 grid gap-5 sm:grid-cols-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <label className="mb-0 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerTicker')}</label>
+              <InfoIcon>{t('settings.appearance.headerTickerHint')}</InfoIcon>
+            </div>
+            <Switch
+              checked={settings.showHeaderTicker}
+              onChange={(checked) => void handleTicker(checked)}
+              aria-label={t('settings.appearance.headerTicker')}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <label className="mb-0 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerBarPosition')}</label>
+              <InfoIcon>{t('settings.appearance.headerBarPositionHint')}</InfoIcon>
+              <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
+                {t('settings.appearance.experimental')}
+              </Tag>
+            </div>
+            <Switch
+              checked={(settings.headerBarPosition ?? HeaderBarPosition.Integrated) === HeaderBarPosition.Integrated}
+              onChange={(checked) => void handleHeaderBarPosition(checked)}
+              aria-label={t('settings.appearance.headerBarPosition')}
+            />
+          </div>
         </div>
       </div>
     </section>

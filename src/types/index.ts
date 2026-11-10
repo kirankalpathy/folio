@@ -459,12 +459,19 @@ export interface TableLayoutPrefs {
   columns: TableColumnLayout[];
 }
 
+export const HeaderBarPosition = {
+  Integrated: 'integrated',
+  Standalone: 'standalone',
+} as const;
+export type HeaderBarPosition = (typeof HeaderBarPosition)[keyof typeof HeaderBarPosition];
+
 export interface AppSettings {
   id: 'primary';
   numberFormatId: import('../utils/finance').NumberFormatId;
   dateFormatId: import('../utils/date').DateFormatId;
   colorMode: 'system' | 'light' | 'dark';
   showHeaderTicker: boolean;
+  headerBarPosition?: HeaderBarPosition;
   /** Per-table column visibility and order (keyed by table id). */
   tableLayouts?: Record<string, TableLayoutPrefs>;
 }

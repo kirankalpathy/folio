@@ -42,7 +42,7 @@ export default function RegionalFormattingCard() {
       </div>
       <div className="grid gap-4 p-4 sm:grid-cols-2">
         <div>
-          <label className="folio-label mb-1.5 block">{t('settings.regional.numberFormat')}</label>
+          <label className="mb-1.5 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.regional.numberFormat')}</label>
           <Select
             value={settings.numberFormatId}
             onChange={handleNumberFormat}
@@ -51,7 +51,7 @@ export default function RegionalFormattingCard() {
           />
         </div>
         <div>
-          <label className="folio-label mb-1.5 block">{t('settings.regional.dateFormat')}</label>
+          <label className="mb-1.5 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.regional.dateFormat')}</label>
           <Select
             value={settings.dateFormatId}
             onChange={handleDateFormat}

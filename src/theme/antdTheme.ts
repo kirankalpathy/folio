@@ -92,6 +92,7 @@ export function createFolioTheme(mode: Theme): ThemeConfig {
       },
       Tooltip: {
         colorBgSpotlight: isDark ? palette.darkElevated : palette.ink,
+        colorTextLightSolid: isDark ? palette.darkText : palette.paper,
       },
       Form: {
         itemMarginBottom: 16,

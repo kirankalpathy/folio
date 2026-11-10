@@ -1,4 +1,5 @@
 import type { AppSettings } from '../types';
+import { HeaderBarPosition } from '../types';
 import type { NumberFormatId } from '../utils/finance';
 import { setNumberFormat } from '../utils/finance';
 import type { DateFormatId } from '../utils/date';
@@ -11,6 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dateFormatId: 'DD MMM YYYY',
   colorMode: 'light',
   showHeaderTicker: true,
+  headerBarPosition: HeaderBarPosition.Integrated,
 };
 
 function normalizeTableLayouts(raw: unknown): AppSettings['tableLayouts'] {
@@ -31,19 +33,29 @@ function normalizeTableLayouts(raw: unknown): AppSettings['tableLayouts'] {
 
 function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSettings {
   const colorMode = raw?.colorMode === 'system' || raw?.colorMode === 'dark' || raw?.colorMode === 'light' ? raw.colorMode : DEFAULT_SETTINGS.colorMode;
+  const headerBarPosition = raw?.headerBarPosition === HeaderBarPosition.Standalone ? HeaderBarPosition.Standalone : HeaderBarPosition.Integrated;
   return {
     id: 'primary',
     numberFormatId: (raw?.numberFormatId as NumberFormatId) || DEFAULT_SETTINGS.numberFormatId,
     dateFormatId: (raw?.dateFormatId as DateFormatId) || DEFAULT_SETTINGS.dateFormatId,
     colorMode,
     showHeaderTicker: typeof raw?.showHeaderTicker === 'boolean' ? raw.showHeaderTicker : DEFAULT_SETTINGS.showHeaderTicker,
+    headerBarPosition,
     tableLayouts: normalizeTableLayouts(raw?.tableLayouts),
   };
 }
 
+export const HEADER_BAR_POSITION_KEY = 'folio:headerBarPosition';
+
 export function applySettings(settings: AppSettings): void {
   setNumberFormat(settings.numberFormatId);
   setDateFormat(settings.dateFormatId);
+  try {
+    localStorage.setItem(HEADER_BAR_POSITION_KEY, settings.headerBarPosition ?? HeaderBarPosition.Integrated);
+    window.dispatchEvent(new Event('folio:headerbarposition'));
+  } catch {
+    // optional
+  }
 }
 
 export async function loadSettings(): Promise<AppSettings> {

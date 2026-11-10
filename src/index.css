@@ -119,6 +119,10 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  *[data-tauri-drag-region] {
+    app-region: drag;
+  }
+
   body {
     @apply min-h-screen bg-folio-paper font-sans text-folio-ink antialiased;
     text-rendering: optimizeLegibility;
@@ -155,6 +159,10 @@
 
   * {
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover {
     scrollbar-color: rgb(var(--folio-primary-rgb) / 0.3) transparent;
   }
 
@@ -164,10 +172,20 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--folio-primary-rgb) / 0.28);
+    background: transparent;
     background-clip: content-box;
     border: 3px solid transparent;
     border-radius: 999px;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    background: rgb(var(--folio-primary-rgb) / 0.28);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--folio-primary-rgb) / 0.45);
+    background-clip: content-box;
   }
 }
 
