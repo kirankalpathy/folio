@@ -269,37 +269,30 @@ export default function Layout() {
         */}
         <div className="relative flex min-h-0 flex-1 flex-col">
           {!isIntegratedHeader && (
-            hasTitleBar ? (
-              <div
-                className="absolute inset-x-0 z-[200]"
-                style={{ top: titleBarOffset }}
-              >
-                <Header
-                  summary={summary}
-                  isLoading={isLoading}
-                  onOpenSidebar={() => setMobileOpen(true)}
-                  onBack={handleBack}
-                  canGoBack={canGoBack}
-                  stickyTop={0}
-                />
-              </div>
-            ) : (
+            <div
+              className="absolute inset-x-0 z-[200]"
+              style={{ top: titleBarOffset }}
+            >
               <Header
                 summary={summary}
                 isLoading={isLoading}
                 onOpenSidebar={() => setMobileOpen(true)}
                 onBack={handleBack}
                 canGoBack={canGoBack}
+                stickyTop={0}
               />
-            )
+            </div>
           )}
 
           <div className="flex-1 overflow-y-auto">
             <main
               className={cn(
                 'mx-auto w-full max-w-[1440px] px-4 pb-6 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8',
-                hasTitleBar && isIntegratedHeader ? 'pt-[calc(var(--folio-titlebar-height)+1.5rem)] lg:pt-[calc(var(--folio-titlebar-height)+2rem)]' : 'pt-6 lg:pt-8',
-                hasTitleBar && !isIntegratedHeader && 'pt-[calc(var(--folio-titlebar-height)+5.5rem)] lg:pt-[calc(var(--folio-titlebar-height)+6rem)]',
+                hasTitleBar && isIntegratedHeader
+                  ? 'pt-[calc(var(--folio-titlebar-height)+1.5rem)] lg:pt-[calc(var(--folio-titlebar-height)+2rem)]'
+                  : hasTitleBar
+                    ? 'pt-[calc(var(--folio-titlebar-height)+5.5rem)] lg:pt-[calc(var(--folio-titlebar-height)+6rem)]'
+                    : 'pt-[5.5rem] lg:pt-[6rem]',
               )}
             >
               <Outlet />
