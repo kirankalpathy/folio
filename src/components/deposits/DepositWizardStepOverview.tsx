@@ -31,7 +31,7 @@ function AccountTypeLabel({ type, label }: { type: DepositType; label: string })
 }
 
 function normalizeDepositNumber(value: string): string {
-  return (value ?? '').toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+  return (value ?? '').toUpperCase().replace(/[^A-Z0-9_/-]/g, '');
 }
 
 function operationTypeIcon(type: DepositOperationType): ReactNode {
@@ -136,7 +136,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
         label={t('deposit.fields.depositNumber')}
         rules={[
           { required: true, message: t('deposit.validation.depositNumberRequired') },
-          { pattern: /^[A-Z0-9_-]*$/, message: t('deposit.validation.depositNumberInvalid') },
+          { pattern: /^[A-Z0-9_/-]*$/, message: t('deposit.validation.depositNumberInvalid') },
           {
             validator: async (_, value: string) => {
               const normalized = normalizeDepositNumber(value ?? '');

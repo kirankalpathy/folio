@@ -351,6 +351,9 @@ export const en = {
   'settings.about.updates.timeout': 'Update check timed out. Please check your connection and try again.',
   'settings.about.updates.lastChecked': 'Last checked on {dateTime}',
   'settings.about.updates.changelog': 'Release notes',
+  'settings.about.updates.updateSameVersion': 'Update same version',
+  'settings.about.updates.forceChecking': 'Checking for latest build…',
+  'settings.about.updates.forceUnavailable': 'Latest build is not available for this platform.',
 
   'backup.preparing': 'Preparing backup…',
   'backup.saved.one': 'Backup saved · {count} record.',
@@ -532,7 +535,7 @@ export const en = {
   'deposit.extra.autoComputed': 'Auto-computed from principal, rate and dates.',
   'deposit.suffix.rate': '% p.a.',
   'deposit.validation.depositNumberRequired': 'Enter a deposit number.',
-  'deposit.validation.depositNumberInvalid': 'Use only letters, numbers, hyphens, and underscores (no spaces or special characters).',
+  'deposit.validation.depositNumberInvalid': 'Use only letters, numbers, slashes, hyphens, and underscores (no spaces or other special characters).',
   'deposit.validation.depositNumberDuplicate': 'This deposit number is already in use.',
   'deposit.validation.nameRequired': 'Name this deposit.',
   'deposit.validation.institutionRequired': 'Choose a bank or institution.',

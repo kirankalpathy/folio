@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { Alert, Button, Collapse, Progress } from 'antd';
 import { Download, RefreshCw, RotateCw } from 'lucide-react';
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n';
 import { useSettings } from '../../context/SettingsContext';
 import { formatDateTime } from '../../utils/date';
@@ -148,6 +148,62 @@ export default function UpdatesCard() {
     }
   }, [updateState]);
 
+  const forceUpdateSameVersion = useCallback(async () => {
+    setBusyIndicator(true);
+    try {
+      if (!isTauri()) {
+        setUpdateState({ status: 'error', detail: t('settings.about.updates.desktopOnly') });
+        return;
+      }
+      setUpdateState({ status: 'checking' });
+      try {
+        const metadata = await invoke<{
+          rid: number;
+          currentVersion: string;
+          version: string;
+          date?: string;
+          body?: string;
+          rawJson: Record<string, unknown>;
+        } | null>('force_update_check');
+        const checkedAt = new Date().toISOString();
+        if (!metadata) {
+          setUpdateState({ status: 'error', detail: t('settings.about.updates.forceUnavailable') });
+        } else {
+          const { Update } = await import('@tauri-apps/plugin-updater');
+          const update = new Update(metadata);
+          setUpdateState({
+            status: 'available',
+            version: update.version ?? metadata.version ?? '',
+            body: update.body ?? metadata.body ?? undefined,
+            install: async (onProgress) => {
+              let downloaded = 0;
+              let contentLength = 0;
+              await update.downloadAndInstall((event) => {
+                if (event.event === 'Started') {
+                  contentLength = event.data.contentLength ?? 0;
+                } else if (event.event === 'Progress') {
+                  downloaded += event.data.chunkLength ?? 0;
+                  const pct = contentLength > 0 ? Math.min(100, Math.round((downloaded / contentLength) * 100)) : 0;
+                  onProgress(pct);
+                }
+              });
+            },
+          });
+        }
+        await updateSettings({ updatesLastCheckedAt: checkedAt });
+      } catch (err) {
+        setUpdateState({ status: 'error', detail: err instanceof Error ? err.message : String(err) });
+        try {
+          await updateSettings({ updatesLastCheckedAt: new Date().toISOString() });
+        } catch {
+          // Ignore persistence errors so the check result remains visible.
+        }
+      }
+    } finally {
+      setBusyIndicator(false);
+    }
+  }, [setBusyIndicator, t, updateSettings]);
+
   const restartApp = useCallback(async () => {
     try {
       const { relaunch } = await import('@tauri-apps/plugin-process');
@@ -158,11 +214,23 @@ export default function UpdatesCard() {
   }, []);
 
   const actionButton = (() => {
-    if (updateState.status === 'idle' || updateState.status === 'error' || updateState.status === 'upToDate') {
+    if (updateState.status === 'idle' || updateState.status === 'error') {
       return (
         <Button icon={<RefreshCw size={14} />} onClick={() => void checkForUpdates()}>
           {t('settings.about.updates.check')}
         </Button>
+      );
+    }
+    if (updateState.status === 'upToDate') {
+      return (
+        <div className="flex items-center gap-2">
+          <Button icon={<RefreshCw size={14} />} onClick={() => void checkForUpdates()}>
+            {t('settings.about.updates.check')}
+          </Button>
+          <Button icon={<Download size={14} />} onClick={() => void forceUpdateSameVersion()}>
+            {t('settings.about.updates.updateSameVersion')}
+          </Button>
+        </div>
       );
     }
     if (updateState.status === 'checking') {

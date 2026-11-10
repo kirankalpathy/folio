@@ -43,45 +43,64 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Extracted version: $VERSION"
 
-      - name: 4. Extract Release Notes from Parent Directory
+      - name: 4. Extract Release Notes
         id: release_notes
-        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           node <<'NODE' > /tmp/release-notes.md
           const fs = require('fs');
+          const path = require('path');
+
           const version = process.env.VERSION || '';
-          const changelogPath = '../RELEASE-NOTES.md';
-          
-          let body = 'Release notes not published for this version.';
-          if (fs.existsSync(changelogPath)) {
-            const changelog = fs.readFileSync(changelogPath, 'utf8');
-            const markers = ['## `' + version + '`', '## v' + version, '## ' + version];
-            let start = -1;
-            let markerLength = 0;
-            
-            for (const m of markers) {
-              const idx = changelog.indexOf(m);
-              if (idx !== -1) {
-                start = idx;
-                markerLength = m.length;
-                break;
+          const candidates = [
+            'RELEASE-NOTES.md',
+            path.join('folio', 'RELEASE-NOTES.md'),
+            '../RELEASE-NOTES.md',
+          ];
+
+          const defaultBody = 'Release notes not maintained';
+          let body = defaultBody;
+
+          const changelogPath = candidates.find((p) => fs.existsSync(p));
+          if (changelogPath) {
+            try {
+              const changelog = fs.readFileSync(changelogPath, 'utf8');
+              const markers = [
+                '## `' + version + '`',
+                '## v' + version,
+                '## ' + version,
+              ];
+              let start = -1;
+              let markerLength = 0;
+
+              for (const m of markers) {
+                const idx = changelog.indexOf(m);
+                if (idx !== -1) {
+                  start = idx;
+                  markerLength = m.length;
+                  break;
+                }
               }
-            }
-            
-            if (start !== -1) {
-              const rest = changelog.slice(start + markerLength);
-              const next = rest.search(/\n##\s+/);
-              const extracted = (rest.slice(0, next === -1 ? rest.length : next)).trim();
-              if (extracted.length > 0) {
-                body = extracted;
+
+              if (start !== -1) {
+                const rest = changelog.slice(start + markerLength);
+                const next = rest.search(/\n##\s+/);
+                const extracted = (next === -1 ? rest : rest.slice(0, next)).trim();
+                if (extracted.length > 0) {
+                  body = extracted;
+                }
               }
+            } catch {
+              body = defaultBody;
             }
           }
+
           process.stdout.write(body);
           NODE
+          echo "Release notes prepared:"
+          cat /tmp/release-notes.md
           {
             echo 'body<<EOF'
             cat /tmp/release-notes.md
@@ -109,7 +128,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Folio ${{ github.ref_name }}'
-          releaseBody: ${{ steps.release_notes.outputs.body }}
+          releaseBody: ${{ steps.release_notes.outputs.body || 'Release notes not maintained' }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

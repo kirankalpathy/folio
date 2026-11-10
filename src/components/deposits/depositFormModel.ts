@@ -294,7 +294,7 @@ export function toDepositInput(
     ? computed.interestPayoutAmount
     : undefined;
   return {
-    depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, ''),
+    depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_/-]/g, ''),
     name: values.name.trim(),
     bankName: values.bankName.trim(),
     financialInstitutionId: values.financialInstitutionId || undefined,
