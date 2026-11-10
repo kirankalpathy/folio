@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Form, Input } from 'antd';
-import { UserRound } from 'lucide-react';
 import type { ProfileInput } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
@@ -90,41 +89,53 @@ export default function IdentityForm() {
   };
 
   return (
-    <section className="folio-card overflow-hidden">
-      <div className="flex items-start gap-3 border-b border-folio-ink/10 px-4 py-4 dark:border-white/[0.07]">
-        <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl bg-folio-primary/[0.08] text-folio-primary dark:bg-folio-primary/15 dark:text-folio-accent">
-          <UserRound size={17} />
+    <div className="space-y-4">
+      {saving && (
+        <div className="flex justify-end">
+          <span className="text-[11px] text-folio-ink/45 dark:text-white/40">{t('common.saving')}</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">{t('profile.identity.title')}</h2>
-            {saving && <span className="text-[11px] text-folio-ink/45 dark:text-white/40">{t('common.saving')}</span>}
+      )}
+      {error && <Alert type="error" showIcon title={error} closable onClose={() => setError(null)} />}
+      <Form<IdentityValues> form={form} layout="vertical" requiredMark onValuesChange={handleValuesChange} autoComplete="off" className="[&_.ant-form-item]:mb-0">
+        <div className="space-y-4">
+          <div className="flex justify-center pb-1">
+            <div>
+              <ProfilePhotoField profile={profile} photo={photo} onChange={handlePhotoChange} />
+              <Form.Item name="photo" hidden><Input /></Form.Item>
+            </div>
           </div>
-          <p className="mt-1 text-[12px] leading-5 text-folio-ink/55 dark:text-white/50">
-            {t('profile.identity.description')}
-          </p>
+          <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
+            <div className="grid gap-4 py-3 first:pt-0 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('form.firstName')}</label>
+                <Form.Item name="firstName" className="!mb-0" rules={[{ required: true, whitespace: true, message: t('validation.firstNameRequired') }]}>
+                  <Input placeholder={t('placeholder.firstName')} maxLength={60} />
+                </Form.Item>
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('form.lastName')}</label>
+                <Form.Item name="lastName" className="!mb-0">
+                  <Input placeholder={t('placeholder.lastName')} maxLength={60} />
+                </Form.Item>
+              </div>
+            </div>
+            <div className="grid gap-4 py-3 last:pb-0 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('form.email')}</label>
+                <Form.Item name="email" className="!mb-0" rules={[{ required: true, whitespace: true, message: t('validation.emailRequired') }, { type: 'email', message: t('validation.emailInvalid') }]}>
+                  <Input maxLength={120} />
+                </Form.Item>
+              </div>
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('form.phone')}</label>
+                <Form.Item name="phone" className="!mb-0" rules={mobileInputRules(t as never)}>
+                  <MobileInput />
+                </Form.Item>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="p-4 sm:p-5">
-        {error && <Alert type="error" showIcon title={error} className="mb-4" closable onClose={() => setError(null)} />}
-        <Form<IdentityValues> form={form} layout="vertical" requiredMark onValuesChange={handleValuesChange} autoComplete="off">
-          <ProfilePhotoField profile={profile} photo={photo} onChange={handlePhotoChange} />
-          <Form.Item name="photo" hidden><Input /></Form.Item>
-          <div className="grid gap-x-4 sm:grid-cols-2">
-            <Form.Item label={t('form.firstName')} name="firstName" rules={[{ required: true, whitespace: true, message: t('validation.firstNameRequired') }]}><Input placeholder={t('placeholder.firstName')} maxLength={60} /></Form.Item>
-            <Form.Item label={t('form.lastName')} name="lastName"><Input placeholder={t('placeholder.lastName')} maxLength={60} /></Form.Item>
-            <Form.Item label={t('form.email')} name="email" rules={[{ required: true, whitespace: true, message: t('validation.emailRequired') }, { type: 'email', message: t('validation.emailInvalid') }]}><Input maxLength={120} /></Form.Item>
-            <Form.Item
-              label={t('form.phone')}
-              name="phone"
-              rules={mobileInputRules(t as never)}
-            >
-              <MobileInput />
-            </Form.Item>
-          </div>
-        </Form>
-      </div>
-    </section>
+      </Form>
+    </div>
   );
 }

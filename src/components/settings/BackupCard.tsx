@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { App as AntApp, Button } from 'antd';
-import { Archive, Download, RotateCcw } from 'lucide-react';
+import { Download, RotateCcw } from 'lucide-react';
 import { useBackup } from '../../hooks/useBackup';
 import { useI18n } from '../../i18n';
 import { showBackupErrorDialog, showBackupReportDialog } from './BackupReportDialog';
@@ -38,32 +38,23 @@ export default function BackupCard() {
   };
 
   return (
-    <section className="folio-card overflow-hidden">
-      <div className="flex items-start gap-3 border-b border-folio-ink/10 px-4 py-4 dark:border-white/[0.07]">
-        <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl bg-folio-primary/[0.08] text-folio-primary dark:bg-folio-primary/15 dark:text-folio-accent">
-          <Archive size={17} />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold">{t('settings.backup.title')}</h2>
-          <p className="mt-1 text-[12px] leading-5 text-folio-ink/55 dark:text-white/50">
-            {t('settings.backup.body')}
-          </p>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-5">
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={(event) => {
-            void handleFile(event.target.files?.[0]);
-            event.target.value = '';
-          }}
-        />
-
-        <div className="flex flex-wrap gap-2">
+    <div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(event) => {
+          void handleFile(event.target.files?.[0]);
+          event.target.value = '';
+        }}
+      />
+      <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
+        <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+          <div className="min-w-0">
+            <span className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.backup.download')}</span>
+            <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">{t('settings.backup.downloadSubtext')}</p>
+          </div>
           <Button
             type="primary"
             icon={<Download size={14} />}
@@ -71,18 +62,28 @@ export default function BackupCard() {
             disabled={pending === 'restore'}
             onClick={() => void handleExport()}
           >
-            {t('settings.backup.download')}
+            {t('settings.backup.downloadButton')}
           </Button>
+        </div>
+        <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+          <div className="min-w-0">
+            <span className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.backup.restore')}</span>
+            <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
+              {t('settings.backup.restoreSubtextBefore')}
+              <strong>{t('settings.backup.restoreSubtextReplace')}</strong>
+              {t('settings.backup.restoreSubtextAfter')}
+            </p>
+          </div>
           <Button
             icon={<RotateCcw size={14} />}
             loading={pending === 'restore'}
             disabled={pending === 'export'}
             onClick={() => inputRef.current?.click()}
           >
-            {t('settings.backup.restore')}
+            {t('settings.backup.restoreButton')}
           </Button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

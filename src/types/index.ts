@@ -472,6 +472,10 @@ export interface AppSettings {
   colorMode: 'system' | 'light' | 'dark';
   showHeaderTicker: boolean;
   headerBarPosition?: HeaderBarPosition;
+  /** ISO timestamp of the last update check. */
+  updatesLastCheckedAt?: string;
+  /** Enable customizable data table columns/order. */
+  smartTablesEnabled?: boolean;
   /** Per-table column visibility and order (keyed by table id). */
   tableLayouts?: Record<string, TableLayoutPrefs>;
 }

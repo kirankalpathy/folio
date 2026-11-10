@@ -30,33 +30,40 @@ export default function AboutCard() {
     typeof (pkg as { versionChannel?: string }).versionChannel === 'string'
       ? (pkg as { versionChannel?: string }).versionChannel
       : '';
+  const channelLabel = channel === 'dev' ? 'DEVELOPMENT' : channel;
 
   return (
-    <section role="region" aria-labelledby="settings-about" className="folio-card overflow-hidden">
-      <div className="border-b border-folio-ink/10 px-4 py-4 dark:border-white/[0.07]">
-        <h2 id="settings-about" className="text-sm font-semibold">{t('settings.about.title')}</h2>
+    <div role="region" aria-labelledby="settings-about" className="space-y-4">
+      <div id="settings-about" className="flex items-center justify-center pb-1 pt-1">
+        <img src="/folio-color.svg" alt="Folio" className="h-20 w-auto dark:hidden" />
+        <img src="/folio-inverse.svg" alt="Folio" className="hidden h-20 w-auto dark:block" />
       </div>
-      <div className="flex flex-col items-center px-4 py-6 text-center sm:px-5">
-        <img src="/folio-color.svg" alt="Folio" className="h-24 w-auto dark:hidden" />
-        <img src="/folio-inverse.svg" alt="Folio" className="hidden h-24 w-auto dark:block" />
-        <div className="mt-3 flex items-center gap-2">
-          <span className="font-mono text-sm font-medium">{t('settings.about.version')} {version}</span>
-          {channel && (
+      <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
+        <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+          <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.version')}</span>
+          <span className="font-mono text-sm text-folio-ink/80 dark:text-white/80">{version}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+          <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.channel')}</span>
+          {channelLabel ? (
             <Tag
               color="blue"
               className="!m-0 !rounded-full !border-0 !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]"
             >
-              {channel}
+              {channelLabel}
             </Tag>
+          ) : (
+            <span className="text-sm text-folio-ink/50 dark:text-white/45">—</span>
           )}
         </div>
-        <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-folio-ink/55 dark:text-white/50">
-          <span>{t('settings.about.madeWith')}</span>
-          <Heart size={13} className="fill-rose-500 text-rose-500" aria-label="love" />
-          <span>{t('settings.about.inIndia')}</span>
-          <IndianFlagIcon />
-        </p>
       </div>
-    </section>
+      <p className="flex items-center justify-center gap-1.5 pt-1 text-[12px] text-folio-ink/55 dark:text-white/50">
+        <span>{t('settings.about.madeWith')}</span>
+        <Heart size={13} className="fill-rose-500 text-rose-500" aria-label="love" />
+        <span>{t('settings.about.inIndia')}</span>
+        <span>India</span>
+        <IndianFlagIcon />
+      </p>
+    </div>
   );
 }

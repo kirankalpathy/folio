@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   colorMode: 'light',
   showHeaderTicker: true,
   headerBarPosition: HeaderBarPosition.Integrated,
+  smartTablesEnabled: true,
 };
 
 function normalizeTableLayouts(raw: unknown): AppSettings['tableLayouts'] {
@@ -34,6 +35,7 @@ function normalizeTableLayouts(raw: unknown): AppSettings['tableLayouts'] {
 function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSettings {
   const colorMode = raw?.colorMode === 'system' || raw?.colorMode === 'dark' || raw?.colorMode === 'light' ? raw.colorMode : DEFAULT_SETTINGS.colorMode;
   const headerBarPosition = raw?.headerBarPosition === HeaderBarPosition.Standalone ? HeaderBarPosition.Standalone : HeaderBarPosition.Integrated;
+  const updatesLastCheckedAt = typeof raw?.updatesLastCheckedAt === 'string' && raw.updatesLastCheckedAt ? raw.updatesLastCheckedAt : undefined;
   return {
     id: 'primary',
     numberFormatId: (raw?.numberFormatId as NumberFormatId) || DEFAULT_SETTINGS.numberFormatId,
@@ -41,6 +43,8 @@ function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSet
     colorMode,
     showHeaderTicker: typeof raw?.showHeaderTicker === 'boolean' ? raw.showHeaderTicker : DEFAULT_SETTINGS.showHeaderTicker,
     headerBarPosition,
+    updatesLastCheckedAt,
+    smartTablesEnabled: typeof raw?.smartTablesEnabled === 'boolean' ? raw.smartTablesEnabled : (DEFAULT_SETTINGS.smartTablesEnabled ?? true),
     tableLayouts: normalizeTableLayouts(raw?.tableLayouts),
   };
 }

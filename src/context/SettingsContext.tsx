@@ -39,6 +39,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       colorMode: merged.colorMode,
       showHeaderTicker: merged.showHeaderTicker,
       headerBarPosition: merged.headerBarPosition,
+      updatesLastCheckedAt: merged.updatesLastCheckedAt,
+      smartTablesEnabled: merged.smartTablesEnabled,
       tableLayouts: merged.tableLayouts,
     });
     setSettings(next);

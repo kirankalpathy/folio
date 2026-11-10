@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { App as AntApp, Button } from 'antd';
+import { Alert, App as AntApp, Button } from 'antd';
 import { useToast } from '../../components/common/toast/ToastProvider';
-import { ShieldAlert, ShieldX, Trash2 } from 'lucide-react';
+import { ShieldX, Trash2 } from 'lucide-react';
 import { useBackup } from '../../hooks/useBackup';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 
-export default function ClearDataCard() {
+interface ClearDataCardProps {
+  onNavigateToBackup?: () => void;
+}
+
+export default function ClearDataCard({ onNavigateToBackup }: ClearDataCardProps) {
   const { modal } = AntApp.useApp();
   const { toast } = useToast();
   const { clearLedger, isWorking, state } = useBackup();
@@ -56,35 +60,37 @@ export default function ClearDataCard() {
   };
 
   return (
-    <section
-      role="region"
-      aria-labelledby="settings-danger-zone"
-      className="folio-card overflow-hidden !border-folio-error-border !bg-folio-error-bg"
-    >
-      <div className="flex items-start gap-3 border-b border-folio-error-border bg-folio-error-bg px-4 py-4">
-        <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-xl border border-folio-error-border bg-folio-error-bg text-folio-error-accent">
-          <ShieldAlert size={17} />
-        </div>
-        <div>
-          <h2 id="settings-danger-zone" className="text-sm font-semibold text-folio-error-text">
-            {t('settings.danger.label')}
-          </h2>
-          <p className="mt-1 text-[12px] leading-5 text-folio-error-text/80">
+    <div role="region" aria-labelledby="settings-danger-zone" className="space-y-4">
+      <Alert
+        type="warning"
+        showIcon
+        title={
+          <>
             {t('settings.danger.description')}
-          </p>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-5">
-        <div>
-          <h3 className="text-sm font-semibold text-folio-error-text">{t('settings.danger.clearTitle')}</h3>
-          <p className="mt-1.5 text-[11px] leading-5 text-folio-error-text/75">
-            {t('settings.danger.clearBody')}
-          </p>
+            <br />
+            <strong>
+              {t('settings.danger.descriptionBackupPrefix')}
+              <button
+                type="button"
+                onClick={onNavigateToBackup}
+                className="rounded-sm underline underline-offset-2 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-folio-primary/40"
+              >
+                {t('settings.danger.descriptionBackupLink')}
+              </button>
+              {t('settings.danger.descriptionBackupSuffix')}
+            </strong>
+          </>
+        }
+      />
+      <div className="divide-y divide-folio-error-border/70">
+        <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+          <div className="min-w-0">
+            <span id="settings-danger-zone" className="block text-sm font-medium text-folio-error-text">{t('settings.danger.clearTitle')}</span>
+            <p className="mt-0.5 text-xs leading-5 text-folio-error-text/75">{t('settings.danger.clearBody')}</p>
+          </div>
           <Button
             danger
             icon={<Trash2 size={14} />}
-            className="mt-4"
             onClick={handleClear}
             loading={isWorking && !deleting}
             disabled={deleting}
@@ -92,17 +98,15 @@ export default function ClearDataCard() {
             {t('settings.danger.clearButton')}
           </Button>
         </div>
-
-        <div className="mt-5 border-t border-folio-error-border pt-5">
-          <h3 className="text-sm font-semibold text-folio-error-text">{t('settings.danger.deleteTitle')}</h3>
-          <p className="mt-1.5 text-[11px] leading-5 text-folio-error-text/75">
-            {t('settings.danger.deleteBody')}
-          </p>
+        <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+          <div className="min-w-0">
+            <span className="block text-sm font-medium text-folio-error-text">{t('settings.danger.deleteTitle')}</span>
+            <p className="mt-0.5 text-xs leading-5 text-folio-error-text/75">{t('settings.danger.deleteBody')}</p>
+          </div>
           <Button
             danger
             type="primary"
             icon={<ShieldX size={14} />}
-            className="mt-4"
             onClick={handleDelete}
             loading={deleting}
             disabled={isWorking}
@@ -111,6 +115,6 @@ export default function ClearDataCard() {
           </Button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

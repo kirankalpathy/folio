@@ -237,7 +237,7 @@ export default function Layout() {
     <div
       className={cn(
         'bg-folio-paper text-folio-ink dark:bg-folio-night dark:text-folio-dark-text',
-        hasTitleBar ? 'h-[calc(100vh-var(--folio-titlebar-height))] overflow-hidden' : 'min-h-screen',
+        hasTitleBar ? 'h-screen overflow-hidden' : 'min-h-screen',
       )}
       style={hasTitleBar ? ({ ['--folio-titlebar-height' as string]: `${titleBarOffset}px` } as CSSProperties) : undefined}
     >
@@ -279,21 +279,34 @@ export default function Layout() {
           stickyTop={0}
         />
         */}
-        {!isIntegratedHeader && (
-          <Header
-            summary={summary}
-            isLoading={isLoading}
-            onOpenSidebar={() => setMobileOpen(true)}
-            onBack={handleBack}
-            canGoBack={canGoBack}
-            stickyTop={0}
-          />
-        )}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          {!isIntegratedHeader && (
+            <div
+              className="absolute inset-x-0 z-[200]"
+              style={{ top: titleBarOffset }}
+            >
+              <Header
+                summary={summary}
+                isLoading={isLoading}
+                onOpenSidebar={() => setMobileOpen(true)}
+                onBack={handleBack}
+                canGoBack={canGoBack}
+                stickyTop={0}
+              />
+            </div>
+          )}
 
-        <div className={cn('flex-1', hasTitleBar ? 'overflow-y-auto' : undefined)}>
-          <main className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <Outlet />
-          </main>
+          <div className="flex-1 overflow-y-auto">
+            <main
+              className={cn(
+                'mx-auto w-full max-w-[1440px] px-4 pb-6 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8',
+                hasTitleBar && isIntegratedHeader ? 'pt-[calc(var(--folio-titlebar-height)+1.5rem)] lg:pt-[calc(var(--folio-titlebar-height)+2rem)]' : 'pt-6 lg:pt-8',
+                hasTitleBar && !isIntegratedHeader && 'pt-[calc(var(--folio-titlebar-height)+5.5rem)] lg:pt-[calc(var(--folio-titlebar-height)+6rem)]',
+              )}
+            >
+              <Outlet />
+            </main>
+          </div>
         </div>
       </div>
     </div>

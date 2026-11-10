@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Alert, Button, Form, Input } from 'antd';
+import { Alert, Avatar, Button, Form, Input } from 'antd';
 import { ArrowRight, LockKeyhole } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 import { profileDisplayName } from '../../types';
-import { getFirstName } from '../../utils/profile';
+import { getFirstName, getInitials } from '../../utils/profile';
+import { palette } from '../../theme/palette';
 import AuthShell from './AuthShell';
 import ResetPasscodeForm from './ResetPasscodeForm';
 
@@ -39,9 +40,17 @@ export default function LoginScreen() {
       footer={passcodeProtected ? t('auth.login.footer') : undefined}
     >
       <div className="mb-5 flex items-center gap-3 rounded-xl border border-folio-primary/15 bg-folio-primary/[0.05] px-3.5 py-3 dark:bg-folio-primary/10">
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-folio-primary/12 text-folio-primary dark:text-folio-accent">
-          <LockKeyhole size={17} strokeWidth={1.75} />
-        </span>
+        <Avatar
+          size={36}
+          src={profile?.photo}
+          style={
+            !profile?.photo
+              ? { backgroundColor: palette.primary, color: palette.avatarOnPrimary, fontWeight: 600 }
+              : undefined
+          }
+        >
+          {!profile?.photo && profile ? getInitials(profile) : <LockKeyhole size={17} strokeWidth={1.75} />}
+        </Avatar>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{profile ? profileDisplayName(profile) : t('app.localLedger')}</p>
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-folio-ink/40 dark:text-white/35">
