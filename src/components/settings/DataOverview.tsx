@@ -1,10 +1,23 @@
-import { ASSET_CLASS_META, ASSET_CLASS_ORDER } from '../../config/assetClasses';
+import { ColorPicker } from 'antd';
+import type { Color } from 'antd/es/color-picker';
+import { ASSET_CLASS_META, ASSET_CLASS_ORDER, getAllocationColor } from '../../config/assetClasses';
 import type { NetWorthSummary } from '../../types';
+import { useSettings } from '../../context/SettingsContext';
 import { useI18n } from '../../i18n';
 import { formatINRCompact } from '../../utils/finance';
 
 export default function DataOverview({ summary }: { summary: NetWorthSummary }) {
   const { t } = useI18n();
+  const { settings, updateSettings } = useSettings();
+
+  const setColor = (key: (typeof ASSET_CLASS_ORDER)[number], color: Color) => {
+    void updateSettings({
+      allocationColors: {
+        ...(settings.allocationColors ?? {}),
+        [key]: color.toHexString(),
+      },
+    });
+  };
 
   return (
     <section className="folio-card p-4 sm:p-5">
@@ -18,9 +31,22 @@ export default function DataOverview({ summary }: { summary: NetWorthSummary }) 
       <ul className="mt-4 divide-y divide-folio-ink/[0.06] text-xs dark:divide-white/[0.06]">
         {ASSET_CLASS_ORDER.map((key) => {
           const meta = ASSET_CLASS_META[key];
+          const color = getAllocationColor(key, settings.allocationColors);
           return (
             <li key={key} className="flex items-center gap-3 py-2">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.color }} />
+              <ColorPicker
+                value={color}
+                onChangeComplete={(c) => setColor(key, c)}
+                trigger="click"
+                getPopupContainer={(node) => node.parentElement ?? document.body}
+              >
+                <button
+                  type="button"
+                  className="h-2 w-2 shrink-0 rounded-full ring-offset-1 ring-offset-folio-paper transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-folio-primary/40 dark:ring-offset-folio-night"
+                  style={{ backgroundColor: color }}
+                  aria-label={`${t(meta.label)} color`}
+                />
+              </ColorPicker>
               <span className="flex-1">{t(meta.label)}</span>
               <span className="font-mono text-[10px] text-folio-ink/40 dark:text-white/35">
                 {summary.counts[key]}

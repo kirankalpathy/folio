@@ -478,4 +478,6 @@ export interface AppSettings {
   smartTablesEnabled?: boolean;
   /** Per-table column visibility and order (keyed by table id). */
   tableLayouts?: Record<string, TableLayoutPrefs>;
+  /** Custom colors for allocation/overview items (keyed by allocation key). */
+  allocationColors?: Partial<Record<AllocationKey, string>>;
 }

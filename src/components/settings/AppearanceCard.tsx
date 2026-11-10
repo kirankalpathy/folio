@@ -1,5 +1,5 @@
-import { Segmented, Switch, Tag } from 'antd';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Button, Segmented, Switch, Tag } from 'antd';
+import { Monitor, Moon, RotateCcw, Sun } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../common/toast/ToastProvider';
@@ -50,6 +50,15 @@ export default function AppearanceCard() {
     }
   };
 
+  const handleResetOverviewColors = async () => {
+    try {
+      await updateSettings({ allocationColors: undefined });
+      toast.success(t('settings.appearance.saved'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('settings.appearance.error'));
+    }
+  };
+
   return (
     <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
@@ -80,10 +89,10 @@ export default function AppearanceCard() {
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerBarPosition')}</label>
             <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
               {t('settings.appearance.experimental')}
             </Tag>
+            <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.headerBarPosition')}</label>
           </div>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
             {t('settings.appearance.headerBarPositionHint')}
@@ -98,10 +107,10 @@ export default function AppearanceCard() {
       <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.smartTables')}</label>
             <Tag color="orange" className="!m-0 !rounded-full !px-2 !py-0 !text-[9px] !font-medium uppercase tracking-[0.04em]">
               {t('settings.appearance.experimental')}
             </Tag>
+            <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.smartTables')}</label>
           </div>
           <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
             {t('settings.appearance.smartTablesHint')}
@@ -112,6 +121,21 @@ export default function AppearanceCard() {
           onChange={(checked) => void handleSmartTables(checked)}
           aria-label={t('settings.appearance.smartTables')}
         />
+      </div>
+      <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+        <div className="min-w-0">
+          <label className="block text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.appearance.overviewGraph')}</label>
+          <p className="mt-0.5 text-xs leading-5 text-folio-ink/55 dark:text-white/50">
+            {t('settings.appearance.overviewGraphHint')}
+          </p>
+        </div>
+        <Button
+          icon={<RotateCcw size={14} />}
+          onClick={() => void handleResetOverviewColors()}
+          disabled={!settings.allocationColors || Object.keys(settings.allocationColors).length === 0}
+        >
+          {t('settings.appearance.resetColors')}
+        </Button>
       </div>
     </div>
   );

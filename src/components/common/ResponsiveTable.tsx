@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 
@@ -58,7 +58,13 @@ export default function ResponsiveTable({
       <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="min-w-0 text-sm font-semibold">
-            {title} ({count})
+            {title} ({count}
+            {hasFilters ? (
+              <Tooltip title={t('common.filteredRecordsHint')}>
+                <span className="ml-0.5 cursor-help text-folio-warning-accent dark:text-folio-warning-accent" aria-label={t('common.filteredRecordsHint')}>*</span>
+              </Tooltip>
+            ) : null}
+            )
           </h2>
           {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
         </div>

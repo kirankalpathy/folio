@@ -42,6 +42,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       updatesLastCheckedAt: merged.updatesLastCheckedAt,
       smartTablesEnabled: merged.smartTablesEnabled,
       tableLayouts: merged.tableLayouts,
+      allocationColors: merged.allocationColors,
     });
     setSettings(next);
     setColorMode(next.colorMode);
