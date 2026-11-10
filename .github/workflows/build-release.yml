@@ -1,0 +1,116 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build ${{ github.ref_name }} (${{ matrix.name }})
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            name: macos
+            args: '--bundles app,dmg'
+          - platform: windows-latest
+            name: windows
+            args: '--bundles nsis'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 3. Read Package Version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Extracted version: $VERSION"
+
+      - name: 4. Extract Release Notes from Parent Directory
+        id: release_notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          node <<'NODE' > /tmp/release-notes.md
+          const fs = require('fs');
+          const version = process.env.VERSION || '';
+          const changelogPath = '../RELEASE-NOTES.md';
+          
+          let body = 'Release notes not published for this version.';
+          if (fs.existsSync(changelogPath)) {
+            const changelog = fs.readFileSync(changelogPath, 'utf8');
+            const markers = ['## `' + version + '`', '## v' + version, '## ' + version];
+            let start = -1;
+            let markerLength = 0;
+            
+            for (const m of markers) {
+              const idx = changelog.indexOf(m);
+              if (idx !== -1) {
+                start = idx;
+                markerLength = m.length;
+                break;
+              }
+            }
+            
+            if (start !== -1) {
+              const rest = changelog.slice(start + markerLength);
+              const next = rest.search(/\n##\s+/);
+              const extracted = (rest.slice(0, next === -1 ? rest.length : next)).trim();
+              if (extracted.length > 0) {
+                body = extracted;
+              }
+            }
+          }
+          process.stdout.write(body);
+          NODE
+          {
+            echo 'body<<EOF'
+            cat /tmp/release-notes.md
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 5. Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 6. Setup Rust Dependency Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          prefix-key: ${{ matrix.platform }}
+          workspaces: src-tauri
+
+      - name: 7. Install Frontend Dependencies
+        run: npm ci
+
+      - name: 8. Build Tauri App & Publish Release / Assets
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Folio ${{ github.ref_name }}'
+          releaseBody: ${{ steps.release_notes.outputs.body }}
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: ${{ matrix.args }}
