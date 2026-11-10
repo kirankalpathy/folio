@@ -14,13 +14,16 @@
 ### Deposits
 - **Deposit number format:** deposit numbers now accept the `/` character (in addition to letters, numbers, hyphens, and underscores), including normalization and validation updates, to support formats used by some financial institutions.
 
-### CI/CD & release notes
+### CI/CD, releases & macOS distribution
 - **Release notes delivery fix:** GitHub Actions release workflow now always extracts release notes (no longer skipped on non-tag runs), resolves `RELEASE-NOTES.md` from reliable paths, and publishes notes to GitHub Releases/updater metadata.
+- **Release notes output fix:** ensured multiline GitHub Actions output delimiters are written correctly (trailing newline before `EOF`) to prevent release-notes publishing failures.
 - **Fallback:** if release notes cannot be found or extracted for the current version, the workflow defaults to **“Release notes not maintained”** so users still receive a clear message.
+- **Release naming:** release name now uses the app version (e.g. `Folio v0.1.3`) instead of branch/ref names like `Folio main`.
+- **macOS signing/notarization readiness:** workflow now passes Apple signing/notarization environment variables to the Tauri build action (when configured in repository secrets) and enables macOS hardened runtime in bundle config to support properly signed/notarized DMG releases. This addresses the “app is damaged/corrupted” Gatekeeper issue for future signed releases (previous unsigned releases cannot be fixed retroactively).
 
 ### Version & verification
 - Bumped to **`0.1.3`** in `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
-- Recommended runtime verification in Tauri (Windows titlebar/controls, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts).
+- Recommended runtime verification in Tauri (Windows titlebar/controls, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). If Apple signing/notarization secrets are configured, verify DMG install/open behavior on macOS without quarantine warnings.
 
 ## `v0.1.2`
 
