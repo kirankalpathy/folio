@@ -4,6 +4,7 @@ import AppearanceCard from '../components/settings/AppearanceCard';
 import BackupCard from '../components/settings/BackupCard';
 import RegionalFormattingCard from '../components/settings/RegionalFormattingCard';
 import ClearDataCard from '../components/settings/ClearDataCard';
+import UpdatesCard from '../components/settings/UpdatesCard';
 import AboutCard from '../components/settings/AboutCard';
 
 export default function SettingsPage() {
@@ -22,6 +23,7 @@ export default function SettingsPage() {
         <RegionalFormattingCard />
         <BackupCard />
         <ClearDataCard />
+        <UpdatesCard />
         <AboutCard />
       </div>
     </div>
