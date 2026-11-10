@@ -18,15 +18,17 @@ function IndianFlagIcon({ className }: { className?: string }) {
   );
 }
 
-type UpdateState =
-  | { status: 'idle' }
-  | { status: 'checking' }
-  | { status: 'upToDate' }
-  | { status: 'available'; version: string; body?: string; install: (onProgress: (pct: number) => void) => Promise<void> }
-  | { status: 'downloading'; progress: number }
-  | { status: 'installing' }
-  | { status: 'ready' }
-  | { status: 'error'; detail: string };
+function IndianFlagIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-label="India" width="18" height="12" viewBox="0 0 18 12" className={className ?? 'overflow-hidden rounded-[2px] ring-1 ring-black/10 dark:ring-white/10'} xmlns="http://www.w3.org/2000/svg">
+      <rect width="18" height="4" y="0" fill={INDIA_FLAG_COLORS.saffron} />
+      <rect width="18" height="4" y="4" fill={INDIA_FLAG_COLORS.white} />
+      <rect width="18" height="4" y="8" fill={INDIA_FLAG_COLORS.green} />
+      <circle cx="9" cy="6" r="1.35" fill="none" stroke={INDIA_FLAG_COLORS.navy} strokeWidth="0.35" />
+      <circle cx="9" cy="6" r="0.2" fill={INDIA_FLAG_COLORS.navy} />
+    </svg>
+  );
+}
 
 export default function AboutCard() {
   const { t } = useI18n();
@@ -149,6 +151,12 @@ export default function AboutCard() {
             )}
           </div>
         </div>
+        <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-folio-ink/55 dark:text-white/50">
+          <span>{t('settings.about.madeWith')}</span>
+          <Heart size={13} className="fill-rose-500 text-rose-500" aria-label="love" />
+          <span>{t('settings.about.inIndia')}</span>
+          <IndianFlagIcon />
+        </p>
       </div>
     </section>
   );
