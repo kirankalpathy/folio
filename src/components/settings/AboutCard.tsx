@@ -26,6 +26,7 @@ function IndianFlagIcon({ className }: { className?: string }) {
 export default function AboutCard() {
   const { t } = useI18n();
   const version = typeof pkg.version === 'string' ? pkg.version : '';
+  const build = typeof pkg.build === 'string' ? pkg.build : '';
   const channel =
     typeof (pkg as { versionChannel?: string }).versionChannel === 'string'
       ? (pkg as { versionChannel?: string }).versionChannel
@@ -42,6 +43,10 @@ export default function AboutCard() {
         <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
           <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.version')}</span>
           <span className="font-mono text-sm text-folio-ink/80 dark:text-white/80">{version}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4 py-3">
+          <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.build')}</span>
+          <span className="font-mono text-sm text-folio-ink/80 dark:text-white/80">{build || '—'}</span>
         </div>
         <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
           <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.channel')}</span>

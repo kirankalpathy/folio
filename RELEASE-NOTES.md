@@ -8,7 +8,8 @@
 
 ### Windows & app shell
 - **Single titlebar on Windows:** removed the duplicate native Windows titlebar by using Windows-specific window configuration (decorations disabled), keeping only Folio’s custom titlebar design.
-- **Customized title bar setting:** added **Customized Title Bar (Experimental)** in Settings. Turning it off restores the native window title bar and hides the Integrated Shell Bar option.
+- **Customized title bar setting:** added **Customized Title Bar (Experimental)** in Settings. Turning it off restores the native window title bar and disables (rather than hides) the Integrated Shell Bar option.
+- **Header translucency:** the app header stays translucent in every title bar mode, including when the native title bar is used (content now scrolls behind the frosted header).
 - **Window controls fix:** custom title bar minimize, maximize/restore, close, and drag/move now work on Windows (added the missing window permissions and switched to Tauri drag regions).
 - **Window controls:** added custom minimize/maximize/restore/close controls in the titlebar for Windows/Linux (with maximize state tracking and drag-safe controls) while preserving macOS overlay/titlebar behavior.
 - **Launch behavior:** app now opens **maximized by default** on startup.
@@ -25,6 +26,7 @@
 - **macOS packaging:** macOS builds are now ad-hoc signed (`signingIdentity: "-"`) so the `.app` bundle has a valid sealed signature on Apple Silicon, fixing the “Folio is damaged and can’t be opened” Gatekeeper error. No Apple Developer signing/notarization is performed, so users may still need to allow the app in macOS Privacy & Security on first launch.
 
 ### Version & verification
+- **Internal build number:** added a `build` field in `package.json` (`<yymmdd>.<increment>`, e.g. `261110.0`) to distinguish builds of the same app version. It is independent of Git tags/GitHub releases, is shown in **Settings → About** after the version, and can be incremented with `npm run build:bump`.
 - Bumped to **`0.1.3`** in `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
 - Recommended runtime verification in Tauri (Windows titlebar minimize/maximize/close/drag, Customized Title Bar toggle, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). For macOS ad-hoc signed DMG builds, verify download/install/open flow and document the Privacy & Security allow step if needed.
 

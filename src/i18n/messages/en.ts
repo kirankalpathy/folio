@@ -334,6 +334,7 @@ export const en = {
 
   'settings.about.title': 'About',
   'settings.about.version': 'Version',
+  'settings.about.build': 'Build',
   'settings.about.channel': 'Channel',
   'settings.about.madeWith': 'Made with',
   'settings.about.inIndia': 'in',

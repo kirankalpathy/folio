@@ -101,3 +101,10 @@ This document summarizes the engineering and product conventions established for
 - These are **strictly manual actions**. No agent is allowed to perform them, **even if the user explicitly commands it**.
 - You may only **guide the user** in performing the necessary actions (explain what to run, suggest commit messages, list affected files/steps), but execution is **STRICTLY manual** by the user.
 - Read-only inspection commands (e.g., `git status`, `git diff`, `git log`, `git show`) may be used when needed to understand the working tree or provide guidance, but never to modify repository state.
+
+## 10. Versioning, build numbers, and release notes
+
+- **Version bump → release notes**: whenever the app `version` is bumped (in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `Cargo.lock`), update `RELEASE-NOTES.md` with the notes for that version in the same change.
+- **Internal build number**: Folio keeps a build number in the top-level `build` field of `package.json` using the format `<yymmdd>.<increment>` (for example `261110.0`). It is independent of Git tags, GitHub Actions, and GitHub releases; it exists so builds of the same app version can be distinguished inside the app.
+- **Same-version commits/releases**: before committing or publishing another build with the same app `version`, increment the build number with `npm run build:bump` and include the updated `package.json`. The script increments the suffix on the same calendar day and resets it to `.0` on a new day.
+- The current build number is shown in **Settings → About**, immediately after the version.
