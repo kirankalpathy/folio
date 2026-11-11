@@ -11,21 +11,14 @@ import type {
 import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../types';
 import { parseBackup } from '../utils/backupSchema';
 import { calculateDepositValues } from '../utils/deposits';
+import { folioFileName } from '../utils/fileNaming';
 import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
 
 const FINANCIAL_TABLES = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
 const ALL_TABLES = [...FINANCIAL_TABLES, 'profile', 'credentials'] as const;
 
 function backupFileName(exportedAt: string): string {
-  const date = new Date(exportedAt);
-  const pad = (value: number): string => String(value).padStart(2, '0');
-  const stamp = [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-  ].join('-');
-  const time = [pad(date.getHours()), pad(date.getMinutes()), pad(date.getSeconds())].join('');
-  return `folio-backup-${stamp}-${time}.json`;
+  return folioFileName('ledgerBackup', 'json', { date: new Date(exportedAt) });
 }
 
 export function totalRecords(counts: BackupRecordCounts): number {

@@ -6,7 +6,7 @@ import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { DepositHolding, FinancialInstitution } from '../types';
 import { translate } from '../i18n';
 import { formatDate } from '../utils/date';
-import { calculateDepositValues, formatDepositTenure, getDepositLifecycleStatus } from '../utils/deposits';
+import { calculateDepositValues, DepositLifecycleStatus, formatDepositTenure, getDepositLifecycleStatus } from '../utils/deposits';
 import { formatINR, formatNumber, formatPercent, getNumberFormat } from '../utils/finance';
 import { institutionLabel, listFinancialInstitutions } from './financialInstitutions';
 import {
@@ -15,9 +15,9 @@ import {
   exportDateTimeLabel,
   loadLogoDataUrl,
   registerInterFont,
-  stampName,
   type PdfSemanticColor,
 } from './pdfExportUtils';
+import { folioFileName, sanitizeFileNamePart } from '../utils/fileNaming';
 
 export type DepositExportFormat = 'xlsx' | 'csv' | 'pdf';
 
@@ -53,11 +53,11 @@ const OP_RGB: Record<NonNullable<DepositPdfFilter['op']>, [number, number, numbe
 
 function lifecycleLabel(status: ReturnType<typeof getDepositLifecycleStatus>): string {
   switch (status) {
-    case 'planned': return 'Planned';
-    case 'active': return 'Active';
-    case 'in-lien': return 'In Lien';
-    case 'matured': return 'Matured';
-    case 'pre-closed': return 'Pre-closed';
+    case DepositLifecycleStatus.Planned: return 'Planned';
+    case DepositLifecycleStatus.Active: return 'Active';
+    case DepositLifecycleStatus.InLien: return 'In Lien';
+    case DepositLifecycleStatus.Matured: return 'Matured';
+    case DepositLifecycleStatus.PreClosed: return 'Pre-closed';
     default: return '';
   }
 }
@@ -202,7 +202,7 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
   });
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
 
-  const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'xlsx'), filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }] });
+  const path = await save({ title: 'Export deposits', defaultPath: folioFileName('depositSummary', 'xlsx'), filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }] });
   if (!path) return false;
   const buffer = await workbook.xlsx.writeBuffer();
   await writeFile(path, buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer as ArrayBuffer));
@@ -228,7 +228,7 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
       formatNumber(r.interest, 2), formatNumber(r.realizedValue, 2), r.notes,
     ].map(csvEscape).join(','));
   }
-  const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'csv'), filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }] });
+  const path = await save({ title: 'Export deposits', defaultPath: folioFileName('depositSummary', 'csv'), filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }] });
   if (!path) return false;
   await writeTextFile(path, lines.join('\n'));
   return true;
@@ -479,7 +479,7 @@ async function exportPdf(
     doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 16, { align: 'center' });
   }
 
-  const path = await save({ title: 'Export deposits', defaultPath: stampName('folio-deposits', 'pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+  const path = await save({ title: 'Export deposits', defaultPath: folioFileName('depositSummary', 'pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
   if (!path) return false;
   const buffer = doc.output('arraybuffer');
   await writeFile(path, new Uint8Array(buffer));
@@ -507,20 +507,20 @@ import { ACCOUNT_OPTIONS, COMPOUNDING_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, OPE
 
 type Rgb = [number, number, number];
 
-const STATUS_SEMANTIC: Record<string, PdfSemanticColor> = {
-  planned: 'info',
-  active: 'success',
-  matured: 'warning',
-  'pre-closed': 'error',
-  'in-lien': 'error',
+const STATUS_SEMANTIC: Record<DepositLifecycleStatus, PdfSemanticColor> = {
+  [DepositLifecycleStatus.Planned]: 'info',
+  [DepositLifecycleStatus.Active]: 'success',
+  [DepositLifecycleStatus.Matured]: 'warning',
+  [DepositLifecycleStatus.PreClosed]: 'error',
+  [DepositLifecycleStatus.InLien]: 'error',
 };
 
-const STATUS_LABEL_KEYS: Record<string, string> = {
-  planned: 'deposit.lifecycle.planned',
-  active: 'deposit.lifecycle.active',
-  matured: 'deposit.lifecycle.matured',
-  'pre-closed': 'deposit.lifecycle.preClosed',
-  'in-lien': 'deposit.lifecycle.inLien',
+const STATUS_LABEL_KEYS: Record<DepositLifecycleStatus, string> = {
+  [DepositLifecycleStatus.Planned]: 'deposit.lifecycle.planned',
+  [DepositLifecycleStatus.Active]: 'deposit.lifecycle.active',
+  [DepositLifecycleStatus.Matured]: 'deposit.lifecycle.matured',
+  [DepositLifecycleStatus.PreClosed]: 'deposit.lifecycle.preClosed',
+  [DepositLifecycleStatus.InLien]: 'deposit.lifecycle.inLien',
 };
 
 const ACCOUNT_TYPE_RGB: Record<string, { bg: Rgb; border: Rgb; text: Rgb }> = {
@@ -957,9 +957,10 @@ export async function exportDepositDetailPdf(
     doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 14, { align: 'center' });
   }
 
+  const depositNumber = record.depositNumber ? sanitizeFileNamePart(record.depositNumber) : undefined;
   const path = await save({
     title: 'Export deposit',
-    defaultPath: stampName(options?.filePrefix ?? 'folio-deposit-detail', 'pdf'),
+    defaultPath: folioFileName('depositDetail', 'pdf', { suffix: depositNumber }),
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   });
   if (!path) return false;

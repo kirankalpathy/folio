@@ -10,7 +10,12 @@ import {
 import type { Theme } from '../types';
 import { palette } from './palette';
 
-export type ColorMode = 'system' | 'light' | 'dark';
+export const ColorMode = {
+  System: 'system',
+  Light: 'light',
+  Dark: 'dark',
+} as const;
+export type ColorMode = (typeof ColorMode)[keyof typeof ColorMode];
 
 interface ThemeContextValue {
   theme: Theme;

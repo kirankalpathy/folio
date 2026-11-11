@@ -16,7 +16,7 @@ import {
   toFormValues,
   type DepositFormValues,
 } from '../components/deposits/depositFormModel';
-import { calculateDepositValues, getDepositLifecycleStatus } from '../utils/deposits';
+import { calculateDepositValues, DepositLifecycleStatus, getDepositLifecycleStatus } from '../utils/deposits';
 import { createDeposit, getDeposit, updateDeposit } from '../services/deposits';
 import { exportDepositDetailPdf } from '../services/depositExport';
 
@@ -143,7 +143,6 @@ export default function DepositFormPage() {
     try {
       const saved = await exportDepositDetailPdf(record, {
         title: t('deposit.export.detailTitle'),
-        filePrefix: 'folio-deposit-detail',
       });
       if (saved) toast.success(t('deposit.export.detailSuccess'));
     } catch (err) {
@@ -155,14 +154,14 @@ export default function DepositFormPage() {
   };
 
   const lifecycle = record ? getDepositLifecycleStatus(record) : null;
-  const isSpecialEdit = isEdit && isSpecialEditRequested && Boolean(lifecycle && lifecycle !== 'planned');
-  const isActiveLocked = isEdit && !isSpecialEdit && (lifecycle === 'active' || lifecycle === 'in-lien');
-  const isTerminalLocked = isEdit && !isSpecialEdit && (lifecycle === 'matured' || lifecycle === 'pre-closed');
+  const isSpecialEdit = isEdit && isSpecialEditRequested && Boolean(lifecycle && lifecycle !== DepositLifecycleStatus.Planned);
+  const isActiveLocked = isEdit && !isSpecialEdit && (lifecycle === DepositLifecycleStatus.Active || lifecycle === DepositLifecycleStatus.InLien);
+  const isTerminalLocked = isEdit && !isSpecialEdit && (lifecycle === DepositLifecycleStatus.Matured || lifecycle === DepositLifecycleStatus.PreClosed);
   const title = isView ? t('deposit.page.viewTitle') : isEdit ? t('deposit.page.editTitle') : t('deposit.page.addTitle');
 
   const lifecycleLabel = (state: NonNullable<typeof lifecycle>): string => {
-    if (state === 'in-lien') return t('deposit.lifecycle.inLien');
-    if (state === 'pre-closed') return t('deposit.lifecycle.preClosed');
+    if (state === DepositLifecycleStatus.InLien) return t('deposit.lifecycle.inLien');
+    if (state === DepositLifecycleStatus.PreClosed) return t('deposit.lifecycle.preClosed');
     return t((`deposit.lifecycle.${state}`) as 'deposit.lifecycle.active');
   };
 
@@ -265,7 +264,7 @@ export default function DepositFormPage() {
               saving={saving}
               activeLocked={isActiveLocked}
               terminalLocked={isTerminalLocked}
-              lienEditable={isEdit && lifecycle === 'in-lien'}
+              lienEditable={isEdit && lifecycle === DepositLifecycleStatus.InLien}
               isEdit={isEdit}
             />
           </Form>

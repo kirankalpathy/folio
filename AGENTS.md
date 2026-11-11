@@ -45,6 +45,7 @@ This document summarizes the engineering and product conventions established for
 - **Strict TypeScript**: follow the repo’s strict settings (`tsconfig.app.json` includes `strict`, `noUnusedLocals`, `noUnusedParameters`, etc.).
 - **No `any`**. Use precise types, generics, unions, and `unknown` + narrowing when needed.
 - **Enums for fixed value sets**: wherever a field has a known list of values (e.g., interest payout options/modes, deposit account types, operation types, statuses, frequencies, categories), define and use an **enum/enum-like constant** instead of scattering raw string literals. Prefer **JSON/SQLite-safe** patterns: TypeScript **string enums** or `as const` objects with a derived union type (e.g., `export const Foo = { Bar: 'bar' } as const; export type Foo = (typeof Foo)[keyof typeof Foo];`) so values serialize cleanly, comparisons stay type-safe, and adding a new value is centralized. Reuse the same enum/constants in types, validation, UI options, i18n key maps, backup schema, normalization, and calculations.
+- **Configurable enums**: enums and constants should be **centralized** in shared modules (e.g., `src/types/index.ts` for domain enums, `src/config/` for app-level constants). Avoid defining the same enum in multiple places. When a new enum value is needed, add it to the centralized definition and propagate. Prefer **configurable enums** — define enum values in a single location so they can be updated without touching consuming code. Where an enum maps to display labels, keep the mapping in i18n or a centralized label map, not inline in components.
 - Prefer type-safe domain modeling (e.g., lifecycle/status unions, typed IDs/inputs, discriminated patterns where helpful).
 - Keep imports/exports clean; avoid unused symbols (the compiler/config enforces this).
 - **Quality gate**: run `npm run typecheck` after meaningful changes.
@@ -89,6 +90,7 @@ This document summarizes the engineering and product conventions established for
 - Make minimal, targeted changes that fit existing patterns.
 - Do not introduce secrets, destructive behavior, or hidden data loss. For risky operations (clear/delete/restore/overwrite), follow existing confirmation/safeguard patterns.
 - Update documentation (`README.md`, and this file when conventions evolve) when behavior or workflows change.
+- **Commit discipline (one feature per commit):** whenever a feature or task is completed, it must be committed before moving on to the next. If the user requests work on a new feature or an unrelated change, first check whether the current changes have been committed. If not, suggest a commit message and ask the user to commit the existing changes before proceeding with the new work. Each feature should have its own commit. If a request involves multiple distinct changes, break them down and implement one at a time with individual commits. Never batch unrelated changes into a single commit.
 
 ## 8. When unsure
 

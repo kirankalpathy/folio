@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n';
 import { getDateFormatId } from '../../utils/date';
 import { DATE_PICKER_MIN, isDateOutsidePickerBounds } from '../../config/validationConfig';
 import { formatINR, formatNumber, getNumberFormat } from '../../utils/finance';
-import { calculateDepositValues, formatDepositTenure, type DepositLifecycleStatus } from '../../utils/deposits';
+import { calculateDepositValues, DepositLifecycleStatus, formatDepositTenure } from '../../utils/deposits';
 import {
   InterestPayoutOption,
   deriveCumulativeInterest,
@@ -110,23 +110,23 @@ export default function DepositWizardStepInvestment({
     if (!startDate?.isValid() || !maturityDate?.isValid()) return null;
     if (!isRd && markedAsLien) {
       const label = t('deposit.lifecycle.inLien');
-      return { status: 'in-lien', message: boldStatus(t('deposit.status.message.inLien'), label) };
+      return { status: DepositLifecycleStatus.InLien, message: boldStatus(t('deposit.status.message.inLien'), label) };
     }
     if (isEdit && preClosed) {
       const label = t('deposit.lifecycle.preClosed');
-      return { status: 'pre-closed', message: boldStatus(t('deposit.status.message.preClosed'), label) };
+      return { status: DepositLifecycleStatus.PreClosed, message: boldStatus(t('deposit.status.message.preClosed'), label) };
     }
     const today = dayjs().startOf('day');
     if (maturityDate.isBefore(today, 'day')) {
       const label = t('deposit.lifecycle.matured');
-      return { status: 'matured', message: boldStatus(t('deposit.status.message.matured'), label) };
+      return { status: DepositLifecycleStatus.Matured, message: boldStatus(t('deposit.status.message.matured'), label) };
     }
     if (startDate.isAfter(today, 'day')) {
       const label = t('deposit.lifecycle.planned');
-      return { status: 'planned', message: boldStatus(t('deposit.status.message.planned'), label) };
+      return { status: DepositLifecycleStatus.Planned, message: boldStatus(t('deposit.status.message.planned'), label) };
     }
     const label = t('deposit.lifecycle.active');
-    return { status: 'active', message: boldStatus(t('deposit.status.message.active'), label) };
+    return { status: DepositLifecycleStatus.Active, message: boldStatus(t('deposit.status.message.active'), label) };
   }, [startDate, maturityDate, preClosed, isEdit, markedAsLien, isRd, t]);
 
   const amountFormatter = (field: 'principal' | 'recurringAmount') => (value: unknown, info?: { input?: string }) => {

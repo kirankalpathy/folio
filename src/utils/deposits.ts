@@ -20,10 +20,17 @@ export interface DepositSummary {
   count: number;
 }
 
-export type DepositLifecycleStatus = 'planned' | 'active' | 'matured' | 'pre-closed' | 'in-lien';
+export const DepositLifecycleStatus = {
+  Planned: 'planned',
+  Active: 'active',
+  Matured: 'matured',
+  PreClosed: 'pre-closed',
+  InLien: 'in-lien',
+} as const;
+export type DepositLifecycleStatus = (typeof DepositLifecycleStatus)[keyof typeof DepositLifecycleStatus];
 
 /** Closed/reference-only statuses: excluded from portfolio/principal/stat calculations across the app. */
-export const CLOSED_DEPOSIT_STATUSES: ReadonlySet<DepositLifecycleStatus> = new Set(['matured', 'pre-closed']);
+export const CLOSED_DEPOSIT_STATUSES: ReadonlySet<DepositLifecycleStatus> = new Set([DepositLifecycleStatus.Matured, DepositLifecycleStatus.PreClosed]);
 
 export function isClosedDepositStatus(status: DepositLifecycleStatus | null | undefined): boolean {
   return status != null && CLOSED_DEPOSIT_STATUSES.has(status);

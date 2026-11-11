@@ -10,9 +10,9 @@ import {
   exportDateTimeLabel,
   loadLogoDataUrl,
   registerInterFont,
-  stampName,
   type PdfFilter,
 } from './pdfExportUtils';
+import { folioFileName } from '../utils/fileNaming';
 
 export type InstitutionExportFormat = 'xlsx' | 'csv' | 'pdf';
 
@@ -103,7 +103,7 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
   const path = await save({
     title: 'Export financial institutions',
-    defaultPath: stampName('folio-institutions', 'xlsx'),
+    defaultPath: folioFileName('financialInstitutions', 'xlsx'),
     filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
   });
   if (!path) return false;
@@ -122,7 +122,7 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
   }
   const path = await save({
     title: 'Export financial institutions',
-    defaultPath: stampName('folio-institutions', 'csv'),
+    defaultPath: folioFileName('financialInstitutions', 'csv'),
     filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }],
   });
   if (!path) return false;
@@ -223,7 +223,7 @@ async function exportPdf(
 
   const path = await save({
     title: 'Export financial institutions',
-    defaultPath: stampName('folio-institutions', 'pdf'),
+    defaultPath: folioFileName('financialInstitutions', 'pdf'),
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   });
   if (!path) return false;
