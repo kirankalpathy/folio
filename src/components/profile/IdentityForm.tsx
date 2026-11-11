@@ -92,7 +92,7 @@ export default function IdentityForm() {
     <div className="space-y-4">
       {saving && (
         <div className="flex justify-end">
-          <span className="text-[11px] text-folio-ink/45 dark:text-white/40">{t('common.saving')}</span>
+          <span className="text-[0.6875rem] text-folio-ink/45 dark:text-white/40">{t('common.saving')}</span>
         </div>
       )}
       {error && <Alert type="error" showIcon title={error} closable onClose={() => setError(null)} />}

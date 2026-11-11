@@ -53,7 +53,7 @@ export default function LoginScreen() {
         </Avatar>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{profile ? profileDisplayName(profile) : t('app.localLedger')}</p>
-          <p className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-folio-ink/40 dark:text-white/35">
+          <p className="truncate font-mono text-[0.625rem] uppercase tracking-[0.12em] text-folio-ink/40 dark:text-white/35">
             {profile?.email ?? t('auth.login.storedOnly')}
           </p>
         </div>

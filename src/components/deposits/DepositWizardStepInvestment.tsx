@@ -269,7 +269,7 @@ export default function DepositWizardStepInvestment({
                 {tenure && <span><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.tenure')}: </span><span className="font-mono font-semibold tabular-nums">{tenure}</span></span>}
                 {statusInfo && <span className="inline-flex items-center gap-1.5"><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.lifecycle')}:</span><DepositStatusTag status={statusInfo.status} /></span>}
               </div>
-              {statusInfo && <div className="text-[11px] text-folio-ink/60 dark:text-white/55">{statusInfo.message}</div>}
+              {statusInfo && <div className="text-[0.6875rem] text-folio-ink/60 dark:text-white/55">{statusInfo.message}</div>}
             </div>
           }
         />
@@ -354,7 +354,7 @@ export default function DepositWizardStepInvestment({
       )}
       {showPreClosure && preClosed && (
         <div className="sm:col-span-2 mt-2 rounded-xl border border-folio-ink/[0.06] bg-folio-paper/40 p-3 dark:border-white/[0.06] dark:bg-white/[0.02]">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.preClosure')}</p>
+          <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.preClosure')}</p>
           <div className="grid gap-x-4 sm:grid-cols-2">
             <Form.Item
               label={t('deposit.fields.preClosedDate')}
@@ -372,7 +372,7 @@ export default function DepositWizardStepInvestment({
             <Alert className="folio-message-strip folio-message-strip-warning mt-1" showIcon type="warning" title={
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.loss')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(Math.max(0, computed.realizedValue - (preClosureCreditedValue ?? 0)), { decimals: 2 })}</span></span>
-                {computed.realizedValue - (preClosureCreditedValue ?? 0) < 0 && <span className="text-[11px] text-emerald-700 dark:text-emerald-400">{t('deposit.preClosure.noLoss')}</span>}
+                {computed.realizedValue - (preClosureCreditedValue ?? 0) < 0 && <span className="text-[0.6875rem] text-emerald-700 dark:text-emerald-400">{t('deposit.preClosure.noLoss')}</span>}
               </div>
             } />
           )}

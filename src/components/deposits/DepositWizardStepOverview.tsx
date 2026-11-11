@@ -109,7 +109,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
           placeholder={t('deposit.placeholder.institution')}
           popupRender={(menu) => (
             <div className="flex flex-col gap-2 p-1">
-              <p className="px-2 pb-1 pt-1 text-[11px] leading-snug text-folio-ink/55 dark:text-white/45">
+              <p className="px-2 pb-1 pt-1 text-[0.6875rem] leading-snug text-folio-ink/55 dark:text-white/45">
                 <span className="font-semibold uppercase tracking-[0.08em] text-folio-info dark:text-folio-info">
                   {t('deposit.institution.dropdownHeader')}
                 </span>
@@ -184,7 +184,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
       {showJointHolders ? (
         <div className="sm:col-span-2 mt-1 rounded-2xl border border-folio-ink/[0.08] bg-folio-paper/30 p-4 dark:border-white/[0.08] dark:bg-white/[0.02]">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.jointHolders')}</h3>
+            <h3 className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.jointHolders')}</h3>
           </div>
           <Alert
             className="folio-message-strip folio-message-strip-info mb-3"
@@ -223,7 +223,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
                       label: (
                         <span className="flex items-center justify-between gap-3">
                           <span>{h.name}</span>
-                          <span className="text-[11px] text-folio-ink/45 dark:text-white/40">{t('deposit.jointHolder.previouslyUsed')}</span>
+                          <span className="text-[0.6875rem] text-folio-ink/45 dark:text-white/40">{t('deposit.jointHolder.previouslyUsed')}</span>
                         </span>
                       ),
                       holder: h,

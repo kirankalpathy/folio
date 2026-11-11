@@ -26,7 +26,7 @@ function UpiIdCell({ upiIdRaw }: { upiIdRaw?: string | null }) {
   const upiQrValue = `upi://pay?pa=${encodeURIComponent(upiId)}`;
   return (
     <span className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-      <span className="font-mono text-[11px]">{upiId}</span>
+      <span className="font-mono text-[0.6875rem]">{upiId}</span>
       <Popover
         trigger="click"
         placement="bottomLeft"
@@ -36,13 +36,13 @@ function UpiIdCell({ upiIdRaw }: { upiIdRaw?: string | null }) {
             <Alert
               type="warning"
               showIcon
-              className="folio-message-strip folio-message-strip-warning !text-[11px]"
+              className="folio-message-strip folio-message-strip-warning !text-[0.6875rem]"
               title={t('institutions.upi.qrWarning')}
             />
             <div className="flex justify-center rounded-lg bg-white p-2">
               <QRCodeSVG value={upiQrValue} size={160} includeMargin={false} />
             </div>
-            <p className="break-all text-center font-mono text-[12px] font-medium text-folio-ink dark:text-folio-dark-text">{upiId}</p>
+            <p className="break-all text-center font-mono text-[0.75rem] font-medium text-folio-ink dark:text-folio-dark-text">{upiId}</p>
           </div>
         }
       >

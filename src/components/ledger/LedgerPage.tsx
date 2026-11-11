@@ -43,7 +43,7 @@ export default function LedgerPage({ assetClass }: LedgerPageProps) {
         <div className="flex items-center justify-between gap-4 border-b border-folio-ink/10 px-4 py-3.5 dark:border-white/[0.07]">
           <div>
             <h2 className="text-sm font-semibold">{t('ledger.positions')}</h2>
-            <p className="mt-0.5 text-[11px] text-folio-ink/45 dark:text-white/40">
+            <p className="mt-0.5 text-[0.6875rem] text-folio-ink/45 dark:text-white/40">
               {t('ledger.count', { label: t(meta.countLabel), count: totals.count })}
             </p>
           </div>

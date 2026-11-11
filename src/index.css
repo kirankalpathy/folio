@@ -129,6 +129,7 @@
   }
 
   html {
+    font-size: calc(100% * var(--folio-text-scale));
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
@@ -139,7 +140,6 @@
 
   body {
     @apply min-h-screen bg-folio-paper font-sans text-folio-ink antialiased;
-    font-size: calc(1rem * var(--folio-text-scale));
     font-weight: var(--folio-font-weight-normal);
     text-rendering: optimizeLegibility;
     user-select: none;
@@ -158,6 +158,10 @@
   .ant-mentions > textarea {
     user-select: text;
     -webkit-user-select: text;
+  }
+
+  .ant-slider-mark-text {
+    font-size: 0.75rem;
   }
 
   .dark body {
@@ -242,7 +246,7 @@
   }
 
   .folio-label {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em];
+    @apply font-mono text-[0.625rem] font-medium uppercase tracking-[0.18em];
     color: var(--folio-role-text-muted);
   }
 
@@ -268,7 +272,7 @@
   }
 
   .ant-form-item-label > label {
-    @apply text-[11px] font-medium !text-folio-ink/70 dark:!text-white/50;
+    @apply text-[0.6875rem] font-medium !text-folio-ink/70 dark:!text-white/50;
   }
 
   .ant-modal-title {
@@ -295,7 +299,7 @@
   }
 
   .folio-card .ant-table-thead > tr > th {
-    @apply font-mono text-[9px] uppercase tracking-[0.14em];
+    @apply font-mono text-[0.5625rem] uppercase tracking-[0.14em];
     border-radius: 0 !important;
     border-start-start-radius: 0 !important;
     border-start-end-radius: 0 !important;
@@ -465,7 +469,7 @@
     0 18px 40px -18px rgba(42, 26, 20, 0.35),
     0 8px 18px -10px rgba(42, 26, 20, 0.2) !important;
   font-family: Inter, "Inter Variable", system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: var(--folio-font-weight-semibold);
   line-height: 1.35;
   max-width: min(420px, calc(100vw - 32px));
@@ -516,7 +520,7 @@
 
 .ant-notification .ant-notification-notice-message {
   color: #2a1a14 !important;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: var(--folio-font-weight-semibold);
   margin-bottom: 0 !important;
 }
@@ -776,7 +780,7 @@ html.dark .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled .ant-checkbox-labe
   align-items: center;
   gap: 12px;
   margin-inline-end: 0 !important;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: rgba(42, 26, 20, 0.55);
 }
 html.dark .ant-table-wrapper .ant-pagination .ant-pagination-total-text {

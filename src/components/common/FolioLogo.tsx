@@ -17,7 +17,7 @@ export default function FolioLogo({ compact = false, className }: FolioLogoProps
         decoding="async"
       />
       {!compact && (
-        <span className="font-sans text-[19px] font-semibold tracking-[-0.035em]">
+        <span className="font-sans text-[1.1875rem] font-semibold tracking-[-0.035em]">
           Folio<span className="text-folio-primary">.</span>
         </span>
       )}

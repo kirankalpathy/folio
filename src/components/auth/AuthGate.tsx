@@ -30,7 +30,7 @@ function BootScreen() {
       <div className="flex flex-col items-center gap-5">
         <FolioLogo />
         <Spin size="small" />
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-folio-ink/35 dark:text-white/30">
+        <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-folio-ink/35 dark:text-white/30">
           {t('auth.opening')}
         </p>
       </div>

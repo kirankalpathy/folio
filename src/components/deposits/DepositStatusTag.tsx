@@ -13,7 +13,7 @@ export const DEPOSIT_STATUS_SEMANTIC: Record<DepositLifecycleStatus, SemanticKin
   [DepositLifecycleStatus.InLien]: 'error',
 };
 
-export const FOLIO_TAG_CLASS = '!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]';
+export const FOLIO_TAG_CLASS = '!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[0.5625rem] !font-medium uppercase tracking-[0.06em]';
 
 export function semanticTagStyle(kind: SemanticKind): CSSProperties {
   return {

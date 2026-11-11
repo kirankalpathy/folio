@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dateFormatId: 'DD MMM YYYY',
   colorMode: 'light',
   showHeaderTicker: true,
+  boldText: true,
+  fontSize: 'medium',
   customTitleBarEnabled: true,
   headerBarPosition: HeaderBarPosition.Integrated,
   smartTablesEnabled: true,
@@ -49,12 +51,15 @@ function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSet
   const customTitleBarEnabled = typeof raw?.customTitleBarEnabled === 'boolean' ? raw.customTitleBarEnabled : (DEFAULT_SETTINGS.customTitleBarEnabled ?? true);
   const headerBarPosition = raw?.headerBarPosition === HeaderBarPosition.Standalone ? HeaderBarPosition.Standalone : HeaderBarPosition.Integrated;
   const updatesLastCheckedAt = typeof raw?.updatesLastCheckedAt === 'string' && raw.updatesLastCheckedAt ? raw.updatesLastCheckedAt : undefined;
+  const fontSize = raw?.fontSize === 'small' || raw?.fontSize === 'large' ? raw.fontSize : 'medium';
   return {
     id: 'primary',
     numberFormatId: (raw?.numberFormatId as NumberFormatId) || DEFAULT_SETTINGS.numberFormatId,
     dateFormatId: (raw?.dateFormatId as DateFormatId) || DEFAULT_SETTINGS.dateFormatId,
     colorMode,
     showHeaderTicker: typeof raw?.showHeaderTicker === 'boolean' ? raw.showHeaderTicker : DEFAULT_SETTINGS.showHeaderTicker,
+    boldText: typeof raw?.boldText === 'boolean' ? raw.boldText : (DEFAULT_SETTINGS.boldText ?? true),
+    fontSize,
     customTitleBarEnabled,
     headerBarPosition,
     updatesLastCheckedAt,
@@ -67,12 +72,47 @@ function normalizeSettings(raw: Partial<AppSettings> | null | undefined): AppSet
 export const HEADER_BAR_POSITION_KEY = 'folio:headerBarPosition';
 export const CUSTOM_TITLE_BAR_KEY = 'folio:customTitleBarEnabled';
 
+const BOLD_FONT_WEIGHTS = {
+  '--folio-font-weight-thin': '200',
+  '--folio-font-weight-extralight': '300',
+  '--folio-font-weight-light': '400',
+  '--folio-font-weight-normal': '500',
+  '--folio-font-weight-medium': '600',
+  '--folio-font-weight-semibold': '700',
+  '--folio-font-weight-bold': '800',
+  '--folio-font-weight-extrabold': '900',
+  '--folio-font-weight-black': '900',
+} as const;
+
+const NORMAL_FONT_WEIGHTS = {
+  '--folio-font-weight-thin': '100',
+  '--folio-font-weight-extralight': '200',
+  '--folio-font-weight-light': '300',
+  '--folio-font-weight-normal': '400',
+  '--folio-font-weight-medium': '500',
+  '--folio-font-weight-semibold': '600',
+  '--folio-font-weight-bold': '700',
+  '--folio-font-weight-extrabold': '800',
+  '--folio-font-weight-black': '900',
+} as const;
+
+const TEXT_SCALE_VALUES = {
+  small: '1.00',
+  medium: '1.06',
+  large: '1.12',
+} as const;
+
 export function applySettings(settings: AppSettings): void {
   setNumberFormat(settings.numberFormatId);
   setDateFormat(settings.dateFormatId);
   try {
     localStorage.setItem(HEADER_BAR_POSITION_KEY, settings.headerBarPosition ?? HeaderBarPosition.Integrated);
     localStorage.setItem(CUSTOM_TITLE_BAR_KEY, String(settings.customTitleBarEnabled ?? true));
+    const fontWeights = settings.boldText === false ? NORMAL_FONT_WEIGHTS : BOLD_FONT_WEIGHTS;
+    for (const [key, value] of Object.entries(fontWeights)) {
+      document.documentElement.style.setProperty(key, value);
+    }
+    document.documentElement.style.setProperty('--folio-text-scale', TEXT_SCALE_VALUES[settings.fontSize ?? 'medium'] ?? TEXT_SCALE_VALUES.medium);
     window.dispatchEvent(new Event('folio:headerbarposition'));
     window.dispatchEvent(new Event('folio:customtitlebar'));
   } catch {

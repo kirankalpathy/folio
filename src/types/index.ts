@@ -565,6 +565,10 @@ export interface AppSettings {
   colorMode: 'system' | 'light' | 'dark';
   /** Show the Net worth widget in the header/title bar. (Persisted key kept as showHeaderTicker for backward compatibility.) */
   showHeaderTicker: boolean;
+  /** Use heavier (current) font weights when enabled; use normal font weights when disabled. */
+  boldText?: boolean;
+  /** Global text size scale. Defaults to medium. */
+  fontSize?: 'small' | 'medium' | 'large';
   /** Use Folio's experimental custom title bar (with native window controls). */
   customTitleBarEnabled?: boolean;
   headerBarPosition?: HeaderBarPosition;

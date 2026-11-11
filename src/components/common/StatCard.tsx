@@ -57,7 +57,7 @@ export default function StatCard({
         )
       ) : null}
       {hint && (
-        <div className="mt-1.5 text-[11px] leading-5 text-folio-ink/45 dark:text-white/40">{hint}</div>
+        <div className="mt-1.5 text-[0.6875rem] leading-5 text-folio-ink/45 dark:text-white/40">{hint}</div>
       )}
     </div>
   );

@@ -41,7 +41,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="folio-card overflow-hidden">
       <div className="border-b border-folio-ink/10 px-4 py-3 dark:border-white/[0.07]">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{title}</h2>
+        <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{title}</h2>
       </div>
       <div className="p-4 sm:p-5">{children}</div>
     </section>
@@ -95,7 +95,7 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
         ]} />
         {operationType !== 'single' && record.jointHolders?.length ? (
           <div className="mt-4">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.jointHolders')}</h3>
+            <h3 className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.jointHolders')}</h3>
             <div className="space-y-2">
               {record.jointHolders.map((h, i) => (
                 <div key={`${h.name}-${i}`} className="rounded-xl border border-folio-ink/[0.07] bg-folio-paper/30 p-3 dark:border-white/[0.07] dark:bg-white/[0.02]">
@@ -183,7 +183,7 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
                       <span className="break-words whitespace-normal font-medium">
                         {t('deposit.interestCredit', { frequency: freqText, amount: formatINR(payoutAmount, { decimals: 2 }) })}
                       </span>
-                      <div className="mt-1 text-[12px] text-folio-primary dark:text-folio-accent">
+                      <div className="mt-1 text-[0.75rem] text-folio-primary dark:text-folio-accent">
                         {t('deposit.fields.totalInterestAccrued')}: {formatINR(computed.interest, { decimals: 2 })}
                       </div>
                     </>
@@ -202,7 +202,7 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
           <div className="space-y-4">
             {record.nominees?.length ? (
               <div>
-                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.nominees')}</h3>
+                <h3 className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.nominees')}</h3>
                 <div className="space-y-2">
                   {record.nominees.map((n, i) => {
                     const rel = NOMINEE_RELATIONSHIP_OPTIONS.find((o) => o.value === n.relationship);

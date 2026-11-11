@@ -93,7 +93,7 @@ export default function DepositStats({
                     key={key}
                     bordered={false}
                     style={semanticTagStyle(DEPOSIT_STATUS_SEMANTIC[key])}
-                    className={`!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]${onStatusClick ? ' cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                    className={`!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[0.5625rem] !font-medium uppercase tracking-[0.06em]${onStatusClick ? ' cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                     onClick={onStatusClick ? () => onStatusClick(key) : undefined}
                     tabIndex={onStatusClick ? 0 : undefined}
                     role={onStatusClick ? 'button' : undefined}

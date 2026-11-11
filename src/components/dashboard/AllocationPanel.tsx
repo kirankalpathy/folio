@@ -115,7 +115,7 @@ export default function AllocationPanel({ summary }: { summary: NetWorthSummary 
                     style={{ width: `${slice.percentage}%`, minWidth: slice.percentage > 0 ? 6 : 0 }}
                   >
                     {showTip && (
-                      <div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-md bg-folio-ink px-2 py-0.5 font-mono text-[10px] text-folio-cream shadow-lg dark:bg-folio-shell dark:text-folio-ink">
+                      <div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-md bg-folio-ink px-2 py-0.5 font-mono text-[0.625rem] text-folio-cream shadow-lg dark:bg-folio-shell dark:text-folio-ink">
                         {t(meta.label)} • {formatPercent(slice.percentage)}
                         <span className="absolute left-1/2 top-full -translate-x-1/2 border-x-4 border-t-4 border-x-transparent border-t-folio-ink dark:border-t-folio-shell" />
                       </div>
@@ -167,9 +167,9 @@ export default function AllocationPanel({ summary }: { summary: NetWorthSummary 
                 >
                   {t(meta.label)}
                 </Link>
-                <span className="hidden font-mono text-[10px] text-folio-ink/35 dark:text-white/30 sm:inline">{slice.count}</span>
+                <span className="hidden font-mono text-[0.625rem] text-folio-ink/35 dark:text-white/30 sm:inline">{slice.count}</span>
                 <span className="w-24 text-right font-mono text-xs tabular-nums">{formatINRCompact(slice.value)}</span>
-                <span className={isLiability ? 'w-14 text-right font-mono text-[10px] text-folio-primary dark:text-folio-accent' : 'w-14 text-right font-mono text-[10px] text-folio-ink/40 dark:text-white/35'}>
+                <span className={isLiability ? 'w-14 text-right font-mono text-[0.625rem] text-folio-primary dark:text-folio-accent' : 'w-14 text-right font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35'}>
                   {isLiability ? t('dashboard.allocation.liability') : formatPercent(slice.percentage)}
                 </span>
               </div>
@@ -187,9 +187,9 @@ export default function AllocationPanel({ summary }: { summary: NetWorthSummary 
               >
                 {t(ASSET_CLASS_META.deposits.label)}
               </Link>
-              <span className="hidden font-mono text-[10px] text-folio-ink/35 dark:text-white/30 sm:inline">{depositParent.count}</span>
+              <span className="hidden font-mono text-[0.625rem] text-folio-ink/35 dark:text-white/30 sm:inline">{depositParent.count}</span>
               <span className="w-24 text-right font-mono text-xs tabular-nums">{formatINRCompact(depositParent.value)}</span>
-              <span className="w-14 text-right font-mono text-[10px] text-folio-ink/40 dark:text-white/35">{formatPercent(depositParent.percentage)}</span>
+              <span className="w-14 text-right font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35">{formatPercent(depositParent.percentage)}</span>
             </div>
             <ul className="pb-1">
               {depositChildren.map((slice) => {
@@ -199,10 +199,10 @@ export default function AllocationPanel({ summary }: { summary: NetWorthSummary 
                     <div className="flex items-center gap-2 py-1.5 pl-4 pr-0 sm:pl-5">
                       <CornerDownRight size={12} className="shrink-0 text-folio-ink/30 dark:text-white/25" />
                       {renderColorDot(slice.key, 'sm')}
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-folio-ink/80 dark:text-white/75">{t(meta.label)}</span>
-                      <span className="hidden font-mono text-[10px] text-folio-ink/35 dark:text-white/30 sm:inline">{slice.count}</span>
-                      <span className="w-24 text-right font-mono text-[11px] tabular-nums text-folio-ink dark:text-folio-dark-text">{formatINRCompact(slice.value)}</span>
-                      <span className="w-14 text-right font-mono text-[10px] text-folio-ink/40 dark:text-white/35">{formatPercent(slice.percentage)}</span>
+                      <span className="min-w-0 flex-1 truncate text-[0.6875rem] font-medium text-folio-ink/80 dark:text-white/75">{t(meta.label)}</span>
+                      <span className="hidden font-mono text-[0.625rem] text-folio-ink/35 dark:text-white/30 sm:inline">{slice.count}</span>
+                      <span className="w-24 text-right font-mono text-[0.6875rem] tabular-nums text-folio-ink dark:text-folio-dark-text">{formatINRCompact(slice.value)}</span>
+                      <span className="w-14 text-right font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35">{formatPercent(slice.percentage)}</span>
                     </div>
                   </li>
                 );
@@ -212,7 +212,7 @@ export default function AllocationPanel({ summary }: { summary: NetWorthSummary 
         ) : null}
       </ul>
 
-      <p className="mt-3 border-t border-folio-ink/[0.06] pt-3 text-[11px] leading-5 text-folio-ink/40 dark:border-white/[0.06] dark:text-white/35">
+      <p className="mt-3 border-t border-folio-ink/[0.06] pt-3 text-[0.6875rem] leading-5 text-folio-ink/40 dark:border-white/[0.06] dark:text-white/35">
         {hasAssets
           ? t('dashboard.allocation.debtShare', {
               percent: formatPercent(

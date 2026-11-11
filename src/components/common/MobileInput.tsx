@@ -56,7 +56,7 @@ export default function MobileInput({ value, onChange, ...rest }: MobileInputPro
       inputMode="numeric"
       maxLength={10}
       addonBefore={
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] leading-none">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[0.75rem] leading-none">
           <svg aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" className="shrink-0 overflow-hidden rounded-[2px] ring-1 ring-black/10 dark:ring-white/10">
             <rect width="18" height="4" y="0" fill={INDIA_FLAG_COLORS.saffron} />
             <rect width="18" height="4" y="4" fill={INDIA_FLAG_COLORS.white} />

@@ -233,7 +233,7 @@ export default function BackupCard() {
           title: t('backup.report.exportPreviewTitle'),
           content: (
             <div className="space-y-3">
-              <p className="text-[13px] text-folio-ink/70 dark:text-white/60">{t('backup.report.exportPreviewBody')}</p>
+              <p className="text-[0.8125rem] text-folio-ink/70 dark:text-white/60">{t('backup.report.exportPreviewBody')}</p>
               <ReportTable report={report} t={t} mode="preview" />
             </div>
           ),
@@ -311,14 +311,14 @@ export default function BackupCard() {
           function RestoreErrorSummaryView() {
             return (
               <div className="space-y-3">
-                <p className="text-[13px] text-folio-ink/70 dark:text-white/60">
+                <p className="text-[0.8125rem] text-folio-ink/70 dark:text-white/60">
                   {t('backup.error.summaryBody')}
                 </p>
                 {summary.entities.length > 0 ? (
                   <ReportTable report={entityReport} t={t} mode="result" />
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-[13px]">
+                    <table className="w-full border-collapse text-[0.8125rem]">
                       <thead>
                         <tr className="border-b border-folio-ink/10 text-left text-folio-ink/60 dark:border-white/10 dark:text-white/55">
                           <th className="py-2 pr-3 font-medium">{t('backup.error.errorType')}</th>
@@ -380,7 +380,7 @@ export default function BackupCard() {
           title: t('backup.report.restorePreviewTitle'),
           content: (
             <div className="space-y-3">
-              <p className="text-[13px] text-folio-ink/70 dark:text-white/60">{t('backup.report.restorePreviewBody')}</p>
+              <p className="text-[0.8125rem] text-folio-ink/70 dark:text-white/60">{t('backup.report.restorePreviewBody')}</p>
               <ReportTable report={report} t={t} mode="preview" />
             </div>
           ),

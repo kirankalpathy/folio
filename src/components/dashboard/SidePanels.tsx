@@ -17,7 +17,7 @@ export function PrivacyPanel() {
       </p>
       <Link
         to="/settings"
-        className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium text-folio-primary dark:text-folio-accent"
+        className="mt-3 inline-flex items-center gap-1.5 text-[0.6875rem] font-medium text-folio-primary dark:text-folio-accent"
       >
         {t('dashboard.privacy.link')}
       </Link>
@@ -77,7 +77,7 @@ export function OnboardingPanel({ onRestore }: { onRestore: () => void }) {
             </span>
             <div>
               <p className="text-xs font-medium">{t(title)}</p>
-              <p className="mt-1 text-[11px] leading-5 text-folio-ink/45 dark:text-white/40">
+              <p className="mt-1 text-[0.6875rem] leading-5 text-folio-ink/45 dark:text-white/40">
                 {t(copy)}
               </p>
             </div>

@@ -32,7 +32,7 @@ function NetworkIcon({ network }: { network: CardNetwork }) {
   const short: Record<CardNetwork, string> = { VISA: 'VISA', MasterCard: 'MC', RuPay: 'RuPay', 'American Express': 'AMEX' };
   return (
     <span
-      className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white"
+      className="inline-flex items-center rounded px-1.5 py-0.5 text-[0.625rem] font-bold tracking-wide text-white"
       style={{ backgroundColor: CARD_NETWORK_COLORS[network] }}
     >
       {short[network]}

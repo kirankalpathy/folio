@@ -15,7 +15,7 @@ export function ReportTable({ report, t, mode = 'result' }: { report: BackupRepo
 
   return (
     <div className="mt-1 overflow-x-auto">
-      <table className="w-full border-collapse text-[13px]">
+      <table className="w-full border-collapse text-[0.8125rem]">
         <thead>
           <tr className="border-b border-folio-ink/10 text-left text-folio-ink/60 dark:border-white/10 dark:text-white/55">
             <th className="py-2 pr-3 font-medium">{t('backup.report.item')}</th>
@@ -65,7 +65,7 @@ export function ReportTable({ report, t, mode = 'result' }: { report: BackupRepo
                   <tr className="border-b border-folio-ink/[0.06] last:border-b-0 dark:border-white/[0.06]">
                     <td colSpan={colSpan} className="pb-3 pt-1">
                       <div className="rounded-md bg-folio-ink/[0.03] p-2 dark:bg-white/[0.04]">
-                        <table className="w-full border-collapse text-[12px]">
+                        <table className="w-full border-collapse text-[0.75rem]">
                           <thead>
                             <tr className="text-left text-folio-ink/55 dark:text-white/50">
                               <th className="py-1 pr-3 font-medium">{t('backup.error.errorType')}</th>
@@ -112,7 +112,7 @@ export function showBackupReportDialog(
 export function showBackupErrorDialog(modal: BackupDialogModal, t: Translate, message: string): void {
   modal.error({
     title: t('settings.backup.title'),
-    content: <div className="whitespace-pre-wrap text-[13px] text-folio-ink/80 dark:text-white/75">{message}</div>,
+    content: <div className="whitespace-pre-wrap text-[0.8125rem] text-folio-ink/80 dark:text-white/75">{message}</div>,
     okText: t('backup.report.ok'),
     centered: true,
     width: 520,

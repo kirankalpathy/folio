@@ -133,7 +133,7 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
                 <>
                   <span className="text-folio-ink/55 dark:text-white/50">{t('deposit.interestCredit', { frequency: payoutFrequencyText, amount: formatINR(computed.interestPayoutAmount, { decimals: 2 }) }).split(':')[0]}: </span>
                   <span className="font-mono font-semibold tabular-nums">{formatINR(computed.interestPayoutAmount, { decimals: 2 })}</span>
-                  <div className="mt-0.5 text-[12px] text-folio-ink/70 dark:text-white/65">
+                  <div className="mt-0.5 text-[0.75rem] text-folio-ink/70 dark:text-white/65">
                     {t('deposit.fields.totalInterestAccrued')}: {formatINR(computed.interest, { decimals: 2 })}
                   </div>
                 </>
@@ -145,7 +145,7 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
               )}
             </div>
             <div><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.realizedValue')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(computed.realizedValue, { decimals: 2 })}</span></div>
-            <div className="sm:col-span-2 text-[11px] text-folio-ink/45 dark:text-white/40">{t('deposit.extra.autoComputed')}</div>
+            <div className="sm:col-span-2 text-[0.6875rem] text-folio-ink/45 dark:text-white/40">{t('deposit.extra.autoComputed')}</div>
           </div>
         }
       />

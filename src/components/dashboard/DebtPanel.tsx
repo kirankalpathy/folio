@@ -25,7 +25,7 @@ export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
 
       <div className="mt-4">
         <p className="folio-value text-xl">{formatINR(debts.currentValue)}</p>
-        <p className="mt-1 text-[11px] text-folio-ink/40 dark:text-white/35">
+        <p className="mt-1 text-[0.6875rem] text-folio-ink/40 dark:text-white/35">
           {t(debts.count === 1 ? 'dashboard.debt.outstanding.one' : 'dashboard.debt.outstanding.other', {
             count: debts.count,
           })}
@@ -40,7 +40,7 @@ export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
         size="small"
         className="mt-4"
       />
-      <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-folio-ink/40 dark:text-white/35">
+      <div className="mt-2 flex items-center justify-between font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35">
         <span>{t('dashboard.debt.repaid', { percent: formatPercent(progress) })}</span>
         <span>
           {t('dashboard.debt.sanctioned', {
@@ -51,7 +51,7 @@ export default function DebtPanel({ summary }: { summary: NetWorthSummary }) {
 
       <Link
         to="/debts"
-        className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-medium text-folio-primary transition-colors hover:text-folio-primary-hover dark:text-folio-accent"
+        className="mt-4 inline-flex items-center gap-1.5 text-[0.6875rem] font-medium text-folio-primary transition-colors hover:text-folio-primary-hover dark:text-folio-accent"
       >
         {t('dashboard.debt.review')} <ArrowRight size={12} />
       </Link>

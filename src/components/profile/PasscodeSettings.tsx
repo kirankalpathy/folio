@@ -271,7 +271,7 @@ export default function PasscodeSettings() {
           </Form>
         ) : (
           <div className="space-y-3">
-            <p className="text-[13px] leading-5 text-folio-ink/60 dark:text-white/55">{t('profile.passcode.recoveryDescription')}</p>
+            <p className="text-[0.8125rem] leading-5 text-folio-ink/60 dark:text-white/55">{t('profile.passcode.recoveryDescription')}</p>
             {downloaded && <Alert type="success" showIcon title={t('auth.recovery.downloaded')} />}
             <Button block icon={<Download size={14} />} onClick={() => void handleDownloadRecovery()}>
               {t('auth.recovery.download')}
@@ -317,7 +317,7 @@ export default function PasscodeSettings() {
           </>
         ) : (
           <>
-            <p className="mb-3 text-[13px] leading-5 text-folio-ink/60 dark:text-white/55">{t('auth.reset.description')}</p>
+            <p className="mb-3 text-[0.8125rem] leading-5 text-folio-ink/60 dark:text-white/55">{t('auth.reset.description')}</p>
             <Form<ResetValues> form={resetForm} layout="vertical" requiredMark={false} onFinish={(v) => void handleReset(v)} autoComplete="off">
               <Form.Item label={t('auth.reset.file')} required>
                 <input
@@ -336,7 +336,7 @@ export default function PasscodeSettings() {
                   <Button icon={<FileKey size={14} />} loading={validatingResetFile} disabled={resetFileValid} onClick={() => resetFileRef.current?.click()}>
                     {t('auth.reset.selectFile')}
                   </Button>
-                  {resetFile && <span className="text-[12px] text-folio-ink/55 dark:text-white/50">{resetFile.name}</span>}
+                  {resetFile && <span className="text-[0.75rem] text-folio-ink/55 dark:text-white/50">{resetFile.name}</span>}
                 </div>
                 {resetFileValid && <Alert type="success" showIcon title={t('auth.reset.fileValid')} className="mt-2" />}
               </Form.Item>

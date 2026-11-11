@@ -20,7 +20,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="folio-card overflow-hidden">
       <div className="border-b border-folio-ink/10 px-4 py-3 dark:border-white/[0.07]">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{title}</h2>
+        <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{title}</h2>
       </div>
       <div className="p-4 sm:p-5">{children}</div>
     </section>
@@ -78,8 +78,8 @@ export default function FinancialInstitutionDetailPage() {
     size: 'small',
     colon: false,
     className: 'folio-desc-tight',
-    labelStyle: { color: 'var(--ant-color-text-secondary)', fontSize: 12, marginBottom: 1, paddingBottom: 0, lineHeight: 1 },
-    contentStyle: { fontSize: 13, fontWeight: 500, marginTop: 0, paddingTop: 0, paddingBottom: 0, lineHeight: 1.15 },
+    labelStyle: { color: 'var(--ant-color-text-secondary)', fontSize: '0.75rem', marginBottom: 1, paddingBottom: 0, lineHeight: 1 },
+    contentStyle: { fontSize: '0.8125rem', fontWeight: 500, marginTop: 0, paddingTop: 0, paddingBottom: 0, lineHeight: 1.15 },
   };
 
   const overviewItems: DescriptionsProps['items'] = [
@@ -94,7 +94,7 @@ export default function FinancialInstitutionDetailPage() {
     const upiQrValue = `upi://pay?pa=${encodeURIComponent(upiId)}`;
     return (
       <span className="inline-flex items-center gap-2">
-        <span className="font-mono text-[13px]">{upiId}</span>
+        <span className="font-mono text-[0.8125rem]">{upiId}</span>
         <Popover
           trigger="click"
           placement="bottomLeft"
@@ -104,13 +104,13 @@ export default function FinancialInstitutionDetailPage() {
               <Alert
                 type="warning"
                 showIcon
-                className="folio-message-strip folio-message-strip-warning !text-[11px]"
+                className="folio-message-strip folio-message-strip-warning !text-[0.6875rem]"
                 title={t('institutions.upi.qrWarning')}
               />
               <div className="flex justify-center rounded-lg bg-white p-2">
                 <QRCodeSVG value={upiQrValue} size={160} includeMargin={false} />
               </div>
-              <p className="text-center font-mono text-[12px] font-medium text-folio-ink dark:text-folio-dark-text break-all">{upiId}</p>
+              <p className="text-center font-mono text-[0.75rem] font-medium text-folio-ink dark:text-folio-dark-text break-all">{upiId}</p>
             </div>
           }
         >
