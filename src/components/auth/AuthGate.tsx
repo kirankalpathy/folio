@@ -3,6 +3,7 @@ import { Alert, Button, Modal, Spin } from 'antd';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SettingsProvider } from '../../context/SettingsContext';
+import { UpdateProvider } from '../../context/UpdateContext';
 import { useI18n } from '../../i18n';
 import { resetLocalLedgerData } from '../../services/sqlite';
 import Layout from '../layout/Layout';
@@ -98,32 +99,34 @@ export default function AuthGate() {
 
   return (
     <SettingsProvider>
-      <HashRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="stocks" element={<LedgerPage assetClass="stocks" />} />
-            <Route path="bonds" element={<LedgerPage assetClass="bonds" />} />
-            <Route path="pf" element={<LedgerPage assetClass="pf" />} />
-            <Route path="deposits" element={<DepositsPage />} />
-            <Route path="deposits/new" element={<DepositFormPage />} />
-            <Route path="deposits/:id/edit" element={<DepositFormPage />} />
-            <Route path="deposits/:id" element={<DepositFormPage />} />
-            <Route path="assets" element={<LedgerPage assetClass="commodities" />} />
-            <Route path="debts" element={<LedgerPage assetClass="debts" />} />
-            {/* Planned feature: Transact / UPI QR Generator
-            <Route path="transactions/upi" element={<UpiTransactionPage />} />
-            */}
-            <Route path="institutions" element={<FinancialInstitutionsPage />} />
-            <Route path="institutions/new" element={<FinancialInstitutionFormPage />} />
-            <Route path="institutions/:id/edit" element={<FinancialInstitutionFormPage />} />
-            <Route path="institutions/:id" element={<FinancialInstitutionDetailPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </HashRouter>
+      <UpdateProvider>
+        <HashRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="stocks" element={<LedgerPage assetClass="stocks" />} />
+              <Route path="bonds" element={<LedgerPage assetClass="bonds" />} />
+              <Route path="pf" element={<LedgerPage assetClass="pf" />} />
+              <Route path="deposits" element={<DepositsPage />} />
+              <Route path="deposits/new" element={<DepositFormPage />} />
+              <Route path="deposits/:id/edit" element={<DepositFormPage />} />
+              <Route path="deposits/:id" element={<DepositFormPage />} />
+              <Route path="assets" element={<LedgerPage assetClass="commodities" />} />
+              <Route path="debts" element={<LedgerPage assetClass="debts" />} />
+              {/* Planned feature: Transact / UPI QR Generator
+              <Route path="transactions/upi" element={<UpiTransactionPage />} />
+              */}
+              <Route path="institutions" element={<FinancialInstitutionsPage />} />
+              <Route path="institutions/new" element={<FinancialInstitutionFormPage />} />
+              <Route path="institutions/:id/edit" element={<FinancialInstitutionFormPage />} />
+              <Route path="institutions/:id" element={<FinancialInstitutionDetailPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </HashRouter>
+      </UpdateProvider>
     </SettingsProvider>
   );
 }
