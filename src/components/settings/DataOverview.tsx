@@ -23,7 +23,7 @@ export default function DataOverview({ summary }: { summary: NetWorthSummary }) 
     <section className="folio-card p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-sm font-semibold">{t('settings.storage.title')}</h2>
-        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-400">
+        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-mono text-[0.5625rem] uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-400">
           {t('settings.storage.ready')}
         </span>
       </div>
@@ -48,10 +48,10 @@ export default function DataOverview({ summary }: { summary: NetWorthSummary }) 
                 />
               </ColorPicker>
               <span className="flex-1">{t(meta.label)}</span>
-              <span className="font-mono text-[10px] text-folio-ink/40 dark:text-white/35">
+              <span className="font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35">
                 {summary.counts[key]}
               </span>
-              <span className="w-20 text-right font-mono text-[11px] tabular-nums">
+              <span className="w-20 text-right font-mono text-[0.6875rem] tabular-nums">
                 {formatINRCompact(summary.categories[key].currentValue)}
               </span>
             </li>

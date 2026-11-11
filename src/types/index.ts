@@ -5,13 +5,54 @@
  * so they survive a JSON backup without timezone drift.
  */
 
-export type Theme = 'light' | 'dark';
+export const Theme = {
+  Light: 'light',
+  Dark: 'dark',
+} as const;
+export type Theme = (typeof Theme)[keyof typeof Theme];
 
-export type Exchange = 'NSE' | 'BSE' | 'NASDAQ' | 'NYSE' | 'OTHER';
-export type StockInstrument = 'equity' | 'etf' | 'reit' | 'invit';
-export type BondType = 'government' | 'corporate' | 'tax-free' | 'other';
-export type CouponFrequency = 'annual' | 'semi-annual' | 'quarterly' | 'monthly' | 'zero-coupon';
-export type ProvidentFundType = 'EPF' | 'PPF' | 'VPF' | 'NPS' | 'OTHER';
+export const Exchange = {
+  NSE: 'NSE',
+  BSE: 'BSE',
+  NASDAQ: 'NASDAQ',
+  NYSE: 'NYSE',
+  OTHER: 'OTHER',
+} as const;
+export type Exchange = (typeof Exchange)[keyof typeof Exchange];
+
+export const StockInstrument = {
+  Equity: 'equity',
+  ETF: 'etf',
+  REIT: 'reit',
+  InvIT: 'invit',
+} as const;
+export type StockInstrument = (typeof StockInstrument)[keyof typeof StockInstrument];
+
+export const BondType = {
+  Government: 'government',
+  Corporate: 'corporate',
+  TaxFree: 'tax-free',
+  Other: 'other',
+} as const;
+export type BondType = (typeof BondType)[keyof typeof BondType];
+
+export const CouponFrequency = {
+  Annual: 'annual',
+  SemiAnnual: 'semi-annual',
+  Quarterly: 'quarterly',
+  Monthly: 'monthly',
+  ZeroCoupon: 'zero-coupon',
+} as const;
+export type CouponFrequency = (typeof CouponFrequency)[keyof typeof CouponFrequency];
+
+export const ProvidentFundType = {
+  EPF: 'EPF',
+  PPF: 'PPF',
+  VPF: 'VPF',
+  NPS: 'NPS',
+  OTHER: 'OTHER',
+} as const;
+export type ProvidentFundType = (typeof ProvidentFundType)[keyof typeof ProvidentFundType];
 
 export const DepositType = {
   FD: 'fd',
@@ -45,15 +86,31 @@ export const DepositPayoutFrequency = {
   Monthly: 'monthly',
 } as const;
 export type DepositPayoutFrequency = (typeof DepositPayoutFrequency)[keyof typeof DepositPayoutFrequency];
-export type CommodityForm = 'physical' | 'etf' | 'sgb' | 'digital';
-export type CommodityUnit = 'gram' | 'kilogram' | 'ounce' | 'unit';
-export type DebtType =
-  | 'home-loan'
-  | 'personal-loan'
-  | 'car-loan'
-  | 'education-loan'
-  | 'credit-card'
-  | 'other';
+export const CommodityForm = {
+  Physical: 'physical',
+  ETF: 'etf',
+  SGB: 'sgb',
+  Digital: 'digital',
+} as const;
+export type CommodityForm = (typeof CommodityForm)[keyof typeof CommodityForm];
+
+export const CommodityUnit = {
+  Gram: 'gram',
+  Kilogram: 'kilogram',
+  Ounce: 'ounce',
+  Unit: 'unit',
+} as const;
+export type CommodityUnit = (typeof CommodityUnit)[keyof typeof CommodityUnit];
+
+export const DebtType = {
+  HomeLoan: 'home-loan',
+  PersonalLoan: 'personal-loan',
+  CarLoan: 'car-loan',
+  EducationLoan: 'education-loan',
+  CreditCard: 'credit-card',
+  Other: 'other',
+} as const;
+export type DebtType = (typeof DebtType)[keyof typeof DebtType];
 
 export interface AuditFields {
   createdAt: string;
@@ -120,7 +177,15 @@ export interface PasscodeCredential {
   changedBy?: string;
 }
 
-export type AuthStatus = 'loading' | 'setup' | 'recovery' | 'locked' | 'unlocked' | 'error';
+export const AuthStatus = {
+  Loading: 'loading',
+  Setup: 'setup',
+  Recovery: 'recovery',
+  Locked: 'locked',
+  Unlocked: 'unlocked',
+  Error: 'error',
+} as const;
+export type AuthStatus = (typeof AuthStatus)[keyof typeof AuthStatus];
 
 export interface PasscodeFreeCredential {
   id: 'primary';
@@ -184,8 +249,21 @@ export const FinancialInstitutionCategory = {
 } as const;
 export type FinancialInstitutionCategory = (typeof FinancialInstitutionCategory)[keyof typeof FinancialInstitutionCategory];
 
-export type CardNetwork = 'VISA' | 'MasterCard' | 'RuPay' | 'American Express';
-export type InvestmentSegment = 'cash-equity-mf' | 'equity-fo' | 'commodities' | 'debt';
+export const CardNetwork = {
+  VISA: 'VISA',
+  MasterCard: 'MasterCard',
+  RuPay: 'RuPay',
+  AmericanExpress: 'American Express',
+} as const;
+export type CardNetwork = (typeof CardNetwork)[keyof typeof CardNetwork];
+
+export const InvestmentSegment = {
+  CashEquityMF: 'cash-equity-mf',
+  EquityFO: 'equity-fo',
+  Commodities: 'commodities',
+  Debt: 'debt',
+} as const;
+export type InvestmentSegment = (typeof InvestmentSegment)[keyof typeof InvestmentSegment];
 
 export const OperationMode = {
   Online: 'online',
@@ -355,7 +433,15 @@ export interface PortfolioSnapshot {
   debts: DebtItem[];
 }
 
-export type AssetClassKey = 'stocks' | 'bonds' | 'pf' | 'deposits' | 'commodities' | 'debts';
+export const AssetClassKey = {
+  Stocks: 'stocks',
+  Bonds: 'bonds',
+  PF: 'pf',
+  Deposits: 'deposits',
+  Commodities: 'commodities',
+  Debts: 'debts',
+} as const;
+export type AssetClassKey = (typeof AssetClassKey)[keyof typeof AssetClassKey];
 
 export const ASSET_CLASS_KEYS = [
   'stocks',
@@ -375,7 +461,12 @@ export interface CategoryTotals {
 }
 
 /** Deposit subcategories used for allocation/progress breakdown (dashboard overview). */
-export type DepositAllocationKey = 'deposits-fd' | 'deposits-rd' | 'deposits-other';
+export const DepositAllocationKey = {
+  FD: 'deposits-fd',
+  RD: 'deposits-rd',
+  Other: 'deposits-other',
+} as const;
+export type DepositAllocationKey = (typeof DepositAllocationKey)[keyof typeof DepositAllocationKey];
 export type AllocationKey = AssetClassKey | DepositAllocationKey;
 
 export interface AllocationSlice {
@@ -436,6 +527,8 @@ export interface BackupReportRow {
   errors: number;
   /** Render as an indented child row (e.g. deposit subtypes). */
   indent?: boolean;
+  /** Optional error category breakdown (category -> affected record count), shown when error count is clicked. */
+  errorCategories?: Record<string, number>;
 }
 
 export interface BackupReport {
@@ -472,6 +565,10 @@ export interface AppSettings {
   colorMode: 'system' | 'light' | 'dark';
   /** Show the Net worth widget in the header/title bar. (Persisted key kept as showHeaderTicker for backward compatibility.) */
   showHeaderTicker: boolean;
+  /** Use heavier (current) font weights when enabled; use normal font weights when disabled. */
+  boldText?: boolean;
+  /** Global text size scale. Defaults to medium. */
+  fontSize?: 'small' | 'medium' | 'large';
   /** Use Folio's experimental custom title bar (with native window controls). */
   customTitleBarEnabled?: boolean;
   headerBarPosition?: HeaderBarPosition;

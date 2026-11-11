@@ -37,7 +37,7 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
           <div className="flex flex-wrap items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-folio-primary" />
             <p className="folio-label !text-folio-cream/50 dark:!text-folio-ink/50">{t('dashboard.netWorth.label')}</p>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-folio-cream/50 dark:border-folio-ink/10 dark:bg-folio-ink/[0.04] dark:text-folio-ink/50">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-folio-cream/50 dark:border-folio-ink/10 dark:bg-folio-ink/[0.04] dark:text-folio-ink/50">
               {formatDate(dayjs().format('YYYY-MM-DD'))}
             </span>
           </div>
@@ -52,7 +52,7 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
             )}
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[10px]',
+                'inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[0.625rem]',
                 positive
                   ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300 dark:border-emerald-600/25 dark:bg-emerald-500/10 dark:text-emerald-700'
                   : 'border-rose-400/25 bg-rose-400/10 text-rose-300 dark:border-rose-600/25 dark:bg-rose-500/10 dark:text-rose-700',
@@ -67,7 +67,7 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 xl:min-w-[520px]">
           {numberTiles.map((tile) => (
             <div key={tile.key} className="min-w-0 border-white/10 sm:border-l sm:pl-4 dark:border-folio-ink/10">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-folio-cream/45 dark:text-folio-ink/45">
+              <p className="font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-folio-cream/45 dark:text-folio-ink/45">
                 {t(tile.label)}
               </p>
               <p

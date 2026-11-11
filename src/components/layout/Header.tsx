@@ -70,7 +70,7 @@ export default function Header({ summary, isLoading, onOpenSidebar, onBack, canG
         {settings.showHeaderTicker && (
           <div className="hidden items-center gap-4 rounded-xl border border-folio-ink/[0.08] bg-white/60 px-3 py-1.5 dark:border-white/[0.08] dark:bg-white/[0.03] md:flex">
             <div>
-              <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-folio-ink/70 dark:text-white/65">
+              <p className="font-mono text-[0.5625rem] font-medium uppercase tracking-[0.14em] text-folio-ink/70 dark:text-white/65">
                 {t('header.netWorth')}
               </p>
               <p className="folio-value text-xs">
@@ -79,7 +79,7 @@ export default function Header({ summary, isLoading, onOpenSidebar, onBack, canG
             </div>
             <span className="h-6 w-px bg-folio-ink/[0.08] dark:bg-white/[0.08]" />
             <div className="text-right">
-              <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-folio-ink/70 dark:text-white/65">
+              <p className="font-mono text-[0.5625rem] font-medium uppercase tracking-[0.14em] text-folio-ink/70 dark:text-white/65">
                 {t('header.liabilities')}
               </p>
               <p className="folio-value text-xs text-folio-primary dark:text-folio-accent">

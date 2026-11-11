@@ -215,7 +215,7 @@ export default function TitleBar() {
               className="hidden h-4 w-4 shrink-0 dark:block"
               draggable={false}
             />
-            <span className="truncate font-mono text-[11px] font-medium tracking-wide text-folio-ink/70 dark:text-white/70">
+            <span className="truncate font-mono text-[0.6875rem] font-medium tracking-wide text-folio-ink/70 dark:text-white/70">
               {t('titlebar.brand')}
             </span>
           </div>

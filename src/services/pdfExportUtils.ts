@@ -7,12 +7,6 @@ export function exportDateTimeLabel(): string {
   return `${now.format(getDateFormatId())} - ${now.format('hh:mm:ss A')}`;
 }
 
-export function stampName(prefix: string, ext: string): string {
-  const stamp = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${prefix}-${stamp.getFullYear()}-${pad(stamp.getMonth() + 1)}-${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}${pad(stamp.getSeconds())}.${ext}`;
-}
-
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';

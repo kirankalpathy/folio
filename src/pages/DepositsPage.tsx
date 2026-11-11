@@ -9,7 +9,7 @@ import type { DepositHolding, DepositOperationType, DepositType } from '../types
 import { useDeposits } from '../hooks/useDeposits';
 import { useFinancialInstitutions } from '../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../services/financialInstitutions';
-import { getDepositLifecycleStatus, isClosedDepositStatus, summarizeDeposits, type DepositLifecycleStatus } from '../utils/deposits';
+import { DepositLifecycleStatus, getDepositLifecycleStatus, isClosedDepositStatus, summarizeDeposits } from '../utils/deposits';
 import { getDateFormatId } from '../utils/date';
 import { isDateOutsidePickerBounds } from '../config/validationConfig';
 import ExportDropdown from '../components/common/ExportDropdown';
@@ -104,13 +104,13 @@ export default function DepositsPage() {
   }, [tabDeposits]);
   const lifecycleFilterOptions = useMemo(() => {
     const active: Array<{ value: DepositLifecycleStatus; label: string }> = [
-      { value: 'planned', label: t('deposit.lifecycle.planned') },
-      { value: 'active', label: t('deposit.lifecycle.active') },
-      { value: 'in-lien', label: t('deposit.lifecycle.inLien') },
+      { value: DepositLifecycleStatus.Planned, label: t('deposit.lifecycle.planned') },
+      { value: DepositLifecycleStatus.Active, label: t('deposit.lifecycle.active') },
+      { value: DepositLifecycleStatus.InLien, label: t('deposit.lifecycle.inLien') },
     ];
     const closed: Array<{ value: DepositLifecycleStatus; label: string }> = [
-      { value: 'matured', label: t('deposit.lifecycle.matured') },
-      { value: 'pre-closed', label: t('deposit.lifecycle.preClosed') },
+      { value: DepositLifecycleStatus.Matured, label: t('deposit.lifecycle.matured') },
+      { value: DepositLifecycleStatus.PreClosed, label: t('deposit.lifecycle.preClosed') },
     ];
     return depositTab === 'closed' ? closed : active;
   }, [depositTab, t]);
@@ -301,7 +301,7 @@ export default function DepositsPage() {
               type="button"
               onClick={() => {
                 setDepositTab('active');
-                setLifecycleFilter((prev) => prev.filter((s) => ['planned', 'active', 'in-lien'].includes(s)));
+                setLifecycleFilter((prev) => prev.filter((s) => ([DepositLifecycleStatus.Planned, DepositLifecycleStatus.Active, DepositLifecycleStatus.InLien] as DepositLifecycleStatus[]).includes(s)));
               }}
               className={cn(
                 'flex min-w-[160px] items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors outline-none focus-visible:ring-2 md:min-w-0',
@@ -316,7 +316,7 @@ export default function DepositsPage() {
               type="button"
               onClick={() => {
                 setDepositTab('closed');
-                setLifecycleFilter((prev) => prev.filter((s) => ['matured', 'pre-closed'].includes(s)));
+                setLifecycleFilter((prev) => prev.filter((s) => ([DepositLifecycleStatus.Matured, DepositLifecycleStatus.PreClosed] as DepositLifecycleStatus[]).includes(s)));
               }}
               className={cn(
                 'flex min-w-[160px] items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors outline-none focus-visible:ring-2 md:min-w-0',

@@ -149,10 +149,10 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[13px] font-semibold text-folio-ink dark:text-folio-dark-text">{t('common.customizeLayoutFields')}</p>
-              <p className="mt-0.5 text-[11px] text-folio-ink/55 dark:text-white/50">{t('common.customizeLayoutHint')}</p>
+              <p className="text-[0.8125rem] font-semibold text-folio-ink dark:text-folio-dark-text">{t('common.customizeLayoutFields')}</p>
+              <p className="mt-0.5 text-[0.6875rem] text-folio-ink/55 dark:text-white/50">{t('common.customizeLayoutHint')}</p>
             </div>
-            <Button type="link" size="small" className="!h-auto !px-0 !text-[11px]" onClick={reset}>{t('common.reset')}</Button>
+            <Button type="link" size="small" className="!h-auto !px-0 !text-[0.6875rem]" onClick={reset}>{t('common.reset')}</Button>
           </div>
           <Input
             allowClear
@@ -164,7 +164,7 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
           />
           <div className="max-h-[min(50vh,320px)] space-y-1 overflow-auto pr-0.5">
             {visibleCustomizable.length === 0 ? (
-              <p className="px-1 py-3 text-center text-[12px] text-folio-ink/45 dark:text-white/40">{t('common.noFieldsFound')}</p>
+              <p className="px-1 py-3 text-center text-[0.75rem] text-folio-ink/45 dark:text-white/40">{t('common.noFieldsFound')}</p>
             ) : null}
             {visibleCustomizable.map((col) => {
               const def = defs.get(col.key);
@@ -184,7 +184,7 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
                       aria-label={`${t('common.showField')}: ${def.label}`}
                     />
                   )}
-                  <span className="min-w-0 flex-1 truncate text-[12px] text-folio-ink/85 dark:text-white/80">{def.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-[0.75rem] text-folio-ink/85 dark:text-white/80">{def.label}</span>
                   <span className="inline-flex shrink-0 items-center">
                     <Button
                       type="text"

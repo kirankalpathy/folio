@@ -67,7 +67,7 @@ export default function Sidebar({
             <div key={group.label} className="mt-5 first:mt-0">
               <p
                 className={cn(
-                  'mb-1.5 px-2.5 font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-folio-ink/30 dark:text-white/25',
+                  'mb-1.5 px-2.5 font-mono text-[0.5625rem] font-medium uppercase tracking-[0.18em] text-folio-ink/30 dark:text-white/25',
                   collapsed && 'lg:hidden',
                 )}
               >
@@ -107,7 +107,7 @@ export default function Sidebar({
                             {count > 0 && (
                               <span
                                 className={cn(
-                                  'rounded-full bg-folio-ink/[0.06] px-1.5 py-0.5 font-mono text-[9px] tabular-nums text-folio-ink/45 dark:bg-white/[0.07] dark:text-white/40',
+                                  'rounded-full bg-folio-ink/[0.06] px-1.5 py-0.5 font-mono text-[0.5625rem] tabular-nums text-folio-ink/45 dark:bg-white/[0.07] dark:text-white/40',
                                   collapsed && 'lg:hidden',
                                 )}
                               >

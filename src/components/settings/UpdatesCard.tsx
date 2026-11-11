@@ -1,11 +1,9 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Alert, Button, Collapse, Progress } from 'antd';
-import { Download, RefreshCw, RotateCw } from 'lucide-react';
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { CloudDownload, Download, RefreshCcw, RotateCw } from 'lucide-react';
 import { useI18n } from '../../i18n';
-import { useSettings } from '../../context/SettingsContext';
 import { formatDateTime } from '../../utils/date';
-import { useBusyIndicator } from '../common/BusyIndicator';
+import { useUpdates } from '../../context/UpdateContext';
 
 function renderInline(text: string): ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
@@ -14,7 +12,7 @@ function renderInline(text: string): ReactNode[] {
       return <strong key={i} className="font-semibold text-folio-role-text">{part.slice(2, -2)}</strong>;
     }
     if (part.startsWith('`') && part.endsWith('`')) {
-      return <code key={i} className="rounded bg-folio-ink/[0.06] px-1 py-0.5 font-mono text-[11px] dark:bg-white/[0.08]">{part.slice(1, -1)}</code>;
+      return <code key={i} className="rounded bg-folio-ink/[0.06] px-1 py-0.5 font-mono text-[0.6875rem] dark:bg-white/[0.08]">{part.slice(1, -1)}</code>;
     }
     return <span key={i}>{part}</span>;
   });
@@ -47,17 +45,17 @@ function ReleaseNotes({ body }: { body: string }) {
     }
     if (t.startsWith('### ')) {
       flushList();
-      blocks.push(<h4 key={`h4-${key++}`} className="mt-3 text-xs font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(4))}</h4>);
+      blocks.push(<h4 key={`h4-${key++}`} className="mt-3 text-sm font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(4))}</h4>);
       continue;
     }
     if (t.startsWith('## ')) {
       flushList();
-      blocks.push(<h3 key={`h3-${key++}`} className="mt-3 text-sm font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(3))}</h3>);
+      blocks.push(<h3 key={`h3-${key++}`} className="mt-3 text-base font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(3))}</h3>);
       continue;
     }
     if (t.startsWith('# ')) {
       flushList();
-      blocks.push(<h3 key={`h1-${key++}`} className="mt-3 text-sm font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(2))}</h3>);
+      blocks.push(<h3 key={`h1-${key++}`} className="mt-3 text-base font-semibold text-folio-role-text first:mt-0">{renderInline(t.slice(2))}</h3>);
       continue;
     }
     if (t.startsWith('- ') || t.startsWith('* ')) {
@@ -65,169 +63,37 @@ function ReleaseNotes({ body }: { body: string }) {
       continue;
     }
     flushList();
-    blocks.push(<p key={`p-${key++}`} className="leading-5">{renderInline(t)}</p>);
+    blocks.push(<p key={`p-${key++}`} className="leading-6">{renderInline(t)}</p>);
   }
   flushList();
 
-  return <div className="max-h-48 overflow-auto text-xs text-folio-ink/75 dark:text-white/70">{blocks}</div>;
+  return <div className="max-h-72 overflow-auto text-sm leading-6 text-folio-ink/75 dark:text-white/70">{blocks}</div>;
 }
-
-type UpdateState =
-  | { status: 'idle' }
-  | { status: 'checking' }
-  | { status: 'upToDate' }
-  | { status: 'available'; version: string; body?: string; install: (onProgress: (pct: number) => void) => Promise<void> }
-  | { status: 'downloading'; version: string; progress: number; body?: string }
-  | { status: 'installing'; version: string; body?: string }
-  | { status: 'ready'; version: string; body?: string }
-  | { status: 'error'; detail: string };
 
 export default function UpdatesCard() {
   const { t } = useI18n();
-  const { settings, updateSettings } = useSettings();
-  const { setBusyIndicator } = useBusyIndicator();
-  const [updateState, setUpdateState] = useState<UpdateState>({ status: 'idle' });
-
-  const checkForUpdates = useCallback(async () => {
-    setBusyIndicator(true);
-    try {
-      if (!isTauri()) {
-        setUpdateState({ status: 'error', detail: t('settings.about.updates.desktopOnly') });
-        return;
-      }
-      setUpdateState({ status: 'checking' });
-      try {
-        const { check } = await import('@tauri-apps/plugin-updater');
-        const update = await check();
-        const checkedAt = new Date().toISOString();
-        if (!update) {
-          setUpdateState({ status: 'upToDate' });
-        } else {
-          setUpdateState({
-            status: 'available',
-            version: update.version ?? '',
-            body: update.body ?? undefined,
-            install: async (onProgress) => {
-              let downloaded = 0;
-              let contentLength = 0;
-              await update.downloadAndInstall((event) => {
-                if (event.event === 'Started') {
-                  contentLength = event.data.contentLength ?? 0;
-                } else if (event.event === 'Progress') {
-                  downloaded += event.data.chunkLength ?? 0;
-                  const pct = contentLength > 0 ? Math.min(100, Math.round((downloaded / contentLength) * 100)) : 0;
-                  onProgress(pct);
-                }
-              });
-            },
-          });
-        }
-        await updateSettings({ updatesLastCheckedAt: checkedAt });
-      } catch (err) {
-        setUpdateState({ status: 'error', detail: err instanceof Error ? err.message : String(err) });
-        try {
-          await updateSettings({ updatesLastCheckedAt: new Date().toISOString() });
-        } catch {
-          // Ignore persistence errors so the check result remains visible.
-        }
-      }
-    } finally {
-      setBusyIndicator(false);
-    }
-  }, [setBusyIndicator, t, updateSettings]);
-
-  const downloadAndInstall = useCallback(async () => {
-    if (updateState.status !== 'available') return;
-    const { version, body, install } = updateState;
-    try {
-      setUpdateState({ status: 'downloading', version, progress: 0, body });
-      await install((pct) => setUpdateState({ status: 'downloading', version, progress: pct, body }));
-      setUpdateState({ status: 'ready', version, body });
-    } catch (err) {
-      setUpdateState({ status: 'error', detail: err instanceof Error ? err.message : String(err) });
-    }
-  }, [updateState]);
-
-  const forceUpdateSameVersion = useCallback(async () => {
-    setBusyIndicator(true);
-    try {
-      if (!isTauri()) {
-        setUpdateState({ status: 'error', detail: t('settings.about.updates.desktopOnly') });
-        return;
-      }
-      setUpdateState({ status: 'checking' });
-      try {
-        const metadata = await invoke<{
-          rid: number;
-          currentVersion: string;
-          version: string;
-          date?: string;
-          body?: string;
-          rawJson: Record<string, unknown>;
-        } | null>('force_update_check');
-        const checkedAt = new Date().toISOString();
-        if (!metadata) {
-          setUpdateState({ status: 'error', detail: t('settings.about.updates.forceUnavailable') });
-        } else {
-          const { Update } = await import('@tauri-apps/plugin-updater');
-          const update = new Update(metadata);
-          setUpdateState({
-            status: 'available',
-            version: update.version ?? metadata.version ?? '',
-            body: update.body ?? metadata.body ?? undefined,
-            install: async (onProgress) => {
-              let downloaded = 0;
-              let contentLength = 0;
-              await update.downloadAndInstall((event) => {
-                if (event.event === 'Started') {
-                  contentLength = event.data.contentLength ?? 0;
-                } else if (event.event === 'Progress') {
-                  downloaded += event.data.chunkLength ?? 0;
-                  const pct = contentLength > 0 ? Math.min(100, Math.round((downloaded / contentLength) * 100)) : 0;
-                  onProgress(pct);
-                }
-              });
-            },
-          });
-        }
-        await updateSettings({ updatesLastCheckedAt: checkedAt });
-      } catch (err) {
-        setUpdateState({ status: 'error', detail: err instanceof Error ? err.message : String(err) });
-        try {
-          await updateSettings({ updatesLastCheckedAt: new Date().toISOString() });
-        } catch {
-          // Ignore persistence errors so the check result remains visible.
-        }
-      }
-    } finally {
-      setBusyIndicator(false);
-    }
-  }, [setBusyIndicator, t, updateSettings]);
-
-  const restartApp = useCallback(async () => {
-    try {
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      await relaunch();
-    } catch (err) {
-      setUpdateState({ status: 'error', detail: err instanceof Error ? err.message : String(err) });
-    }
-  }, []);
+  const { updateState, lastCheckedAt, syncUpdates, forceUpdateSameVersion, downloadAndInstall, restartApp } = useUpdates();
 
   const actionButton = (() => {
     if (updateState.status === 'idle' || updateState.status === 'error') {
       return (
-        <Button icon={<RefreshCw size={14} />} onClick={() => void checkForUpdates()}>
-          {t('settings.about.updates.check')}
+        <Button icon={<RefreshCcw size={14} />} onClick={() => void syncUpdates()}>
+          {t('settings.about.updates.sync')}
         </Button>
       );
     }
     if (updateState.status === 'upToDate') {
       return (
         <div className="flex items-center gap-2">
-          <Button icon={<RefreshCw size={14} />} onClick={() => void checkForUpdates()}>
-            {t('settings.about.updates.check')}
+          <Button icon={<RefreshCcw size={14} />} onClick={() => void syncUpdates()}>
+            {t('settings.about.updates.sync')}
           </Button>
-          <Button icon={<Download size={14} />} onClick={() => void forceUpdateSameVersion()}>
+          <Button
+            type="default"
+            icon={<CloudDownload size={14} />}
+            onClick={() => void forceUpdateSameVersion()}
+            className="!border-folio-warning-border !bg-folio-warning-bg !text-folio-warning-text hover:!border-folio-warning-accent hover:!text-folio-warning-text"
+          >
             {t('settings.about.updates.updateSameVersion')}
           </Button>
         </div>
@@ -235,21 +101,32 @@ export default function UpdatesCard() {
     }
     if (updateState.status === 'checking') {
       return (
-        <Button icon={<RefreshCw size={14} />} loading>
-          {t('settings.about.updates.check')}
+        <Button icon={<RefreshCcw size={14} />} loading>
+          {t('settings.about.updates.sync')}
         </Button>
       );
     }
     if (updateState.status === 'available') {
       return (
-        <Button type="primary" icon={<Download size={14} />} onClick={() => void downloadAndInstall()}>
+        <Button
+          type="default"
+          icon={<Download size={14} />}
+          onClick={() => void downloadAndInstall()}
+          className="!border-folio-warning-border !bg-folio-warning-bg !text-folio-warning-text hover:!border-folio-warning-accent hover:!text-folio-warning-text"
+        >
           {t('settings.about.updates.downloadInstall')}
         </Button>
       );
     }
     if (updateState.status === 'downloading' || updateState.status === 'installing') {
       return (
-        <Button type="primary" icon={<Download size={14} />} loading disabled>
+        <Button
+          type="default"
+          icon={<Download size={14} />}
+          loading
+          disabled
+          className="!border-folio-warning-border !bg-folio-warning-bg !text-folio-warning-text"
+        >
           {t('settings.about.updates.downloadInstall')}
         </Button>
       );
@@ -264,8 +141,8 @@ export default function UpdatesCard() {
     return null;
   })();
 
-  const lastChecked = settings.updatesLastCheckedAt
-    ? t('settings.about.updates.lastChecked', { dateTime: formatDateTime(settings.updatesLastCheckedAt) })
+  const lastChecked = lastCheckedAt
+    ? t('settings.about.updates.lastChecked', { dateTime: formatDateTime(lastCheckedAt) })
     : null;
 
   return (
@@ -284,7 +161,19 @@ export default function UpdatesCard() {
         <Alert
           type="warning"
           showIcon
-          title={t('settings.about.updates.available', { version: updateState.version })}
+          title={<span className="font-semibold">{t('settings.about.updates.available')}</span>}
+          description={(
+            <span>
+              {t('settings.about.updates.availableDetailWithDate')}{' '}
+              <strong>v{updateState.version}</strong>
+              {updateState.date ? (
+                <>
+                  {' '}released on <strong>{formatDateTime(updateState.date)}</strong>
+                </>
+              ) : null}
+              {!updateState.date ? '.' : null}
+            </span>
+          )}
         />
       )}
       {updateState.status === 'downloading' && (

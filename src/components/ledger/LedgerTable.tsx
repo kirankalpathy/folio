@@ -19,8 +19,8 @@ export default function LedgerTable({ rows, meta }: LedgerTableProps) {
       render: (_, row) => (
         <div className="min-w-[180px]">
           <p className="text-sm font-medium">{row.title}</p>
-          <p className="mt-0.5 text-[11px] text-folio-ink/45 dark:text-white/40">{row.subtitle}</p>
-          <span className="mt-1.5 inline-flex rounded-full border border-folio-primary/20 bg-folio-primary/[0.06] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-folio-primary dark:text-folio-accent">
+          <p className="mt-0.5 text-[0.6875rem] text-folio-ink/45 dark:text-white/40">{row.subtitle}</p>
+          <span className="mt-1.5 inline-flex rounded-full border border-folio-primary/20 bg-folio-primary/[0.06] px-2 py-0.5 font-mono text-[0.5625rem] uppercase tracking-[0.12em] text-folio-primary dark:text-folio-accent">
             {row.tag}
           </span>
         </div>

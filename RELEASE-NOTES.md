@@ -1,5 +1,19 @@
 # RELEASE NOTES
 
+## `v0.1.4`
+
+### In-app updates
+- **Smoother update checks:** Folio now checks for updates in the background without freezing the app. You can **Check for Updates** anytime from **Settings → Updates**, see when updates are available (including the release date), download with progress, and restart when you’re ready to finish installing.
+- **Force Update option:** when you’re already on the latest version, you can use **Force Update** to reinstall the latest available build for your device if needed.
+
+### Backup & restore
+- **Safer restore checks:** backup restore now validates record IDs more strictly and clearly reports issues (such as invalid or duplicate IDs) before making any changes, so your existing data stays untouched if a backup can’t be restored.
+
+### Appearance & readability
+- **Text size & bold text controls:** added **Bold Text** and **Font Size** (Small, Medium, Large) in **Settings → Appearance** so you can adjust readability across the app.
+- **More consistent scaling:** text and interface elements now scale more consistently with your chosen appearance settings.
+- **Net Worth Widget:** renamed the header widget setting to **Net Worth Widget** for clarity.
+
 ## `v0.1.3`
 
 ### In-app updates
@@ -41,6 +55,7 @@
 - **Internal build number:** added a `build` field in `package.json` (`<yymmdd>.<increment>`, e.g. `261110.0`) to distinguish builds of the same app version. It is independent of Git tags/GitHub releases, is shown in **Settings → About** after the version, and can be incremented with `npm run build:bump`.
 - Bumped to **`0.1.3`** in `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
 - Recommended runtime verification in Tauri (Windows titlebar minimize/maximize/close/drag, Customized Title Bar toggle, macOS titlebar behavior, maximized launch, same-version update flow, deposit number `/` input, and release/updater notes delivery in CI artifacts). For macOS ad-hoc signed DMG builds, verify download/install/open flow and document the Privacy & Security allow step if needed.
+
 
 ## `v0.1.2`
 

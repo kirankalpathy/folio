@@ -168,7 +168,7 @@ export default function UpiTransactionPage() {
               <Alert
                 type="warning"
                 showIcon
-                className="folio-message-strip folio-message-strip-warning !text-[11px]"
+                className="folio-message-strip folio-message-strip-warning !text-[0.6875rem]"
                 title={t('transactions.upi.qr.warning')}
               />
               <div className="flex justify-center rounded-xl border border-folio-ink/[0.08] bg-white p-3 dark:border-white/[0.08] dark:bg-folio-night">
@@ -191,7 +191,7 @@ export default function UpiTransactionPage() {
               </div>
               <div className="rounded-lg bg-folio-paper/60 p-3 text-center dark:bg-white/[0.03]">
                 {payeeName?.trim() ? (
-                  <p className="text-[13px] font-semibold text-folio-ink dark:text-folio-dark-text">
+                  <p className="text-[0.8125rem] font-semibold text-folio-ink dark:text-folio-dark-text">
                     {payeeName.trim()}
                   </p>
                 ) : null}
@@ -200,7 +200,7 @@ export default function UpiTransactionPage() {
                     ₹{formatNumber(amount as number, 2)}
                   </p>
                 )}
-                <p className="mt-1 font-mono text-[12px] text-folio-ink/60 break-all dark:text-white/55">
+                <p className="mt-1 font-mono text-[0.75rem] text-folio-ink/60 break-all dark:text-white/55">
                   {mode === 'mobile' ? `+91 ${mobileDigits}` : upiAddress?.trim()}
                 </p>
               </div>

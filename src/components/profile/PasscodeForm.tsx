@@ -38,7 +38,7 @@ export default function PasscodeForm() {
     <section className="folio-card p-4 sm:p-5">
       <p className="folio-label">{t('profile.passcode.label')}</p>
       <h2 className="mt-1 text-sm font-semibold">{t('profile.passcode.title')}</h2>
-      <p className="mt-1 text-[11px] leading-5 text-folio-ink/45 dark:text-white/40">
+      <p className="mt-1 text-[0.6875rem] leading-5 text-folio-ink/45 dark:text-white/40">
         {disabled ? t('profile.passcode.disabledBody') : t('profile.passcode.description')}
       </p>
 

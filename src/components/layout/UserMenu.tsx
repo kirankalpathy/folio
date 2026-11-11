@@ -59,7 +59,7 @@ export default function UserMenu() {
         <Avatar
           size={32}
           src={profile.photo}
-          style={!profile.photo ? { backgroundColor: palette.primary, color: palette.avatarOnPrimary, fontFamily: '"Inter Variable", Inter, system-ui, sans-serif', fontSize: 11, fontWeight: 600 } : undefined}
+          style={!profile.photo ? { backgroundColor: palette.primary, color: palette.avatarOnPrimary, fontFamily: '"Inter Variable", Inter, system-ui, sans-serif', fontSize: '0.6875rem', fontWeight: 600 } : undefined}
         >
           {!profile.photo ? getInitials(profile) : null}
         </Avatar>

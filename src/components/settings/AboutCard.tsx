@@ -53,7 +53,7 @@ export default function AboutCard() {
           {channelLabel ? (
             <Tag
               color="blue"
-              className="!m-0 !rounded-full !border-0 !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]"
+              className="!m-0 !rounded-full !border-0 !px-2 !py-0.5 !font-mono !text-[0.5625rem] !font-medium uppercase tracking-[0.06em]"
             >
               {channelLabel}
             </Tag>
@@ -62,7 +62,7 @@ export default function AboutCard() {
           )}
         </div>
       </div>
-      <p className="flex items-center justify-center gap-1.5 pt-1 text-[12px] text-folio-ink/55 dark:text-white/50">
+      <p className="flex items-center justify-center gap-1.5 pt-1 text-[0.75rem] text-folio-ink/55 dark:text-white/50">
         <span>{t('settings.about.madeWith')}</span>
         <Heart size={13} className="fill-rose-500 text-rose-500" aria-label="love" />
         <span>{t('settings.about.inIndia')}</span>

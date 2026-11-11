@@ -177,7 +177,7 @@ export default function Layout() {
           className="hidden h-4 w-4 shrink-0 dark:block"
           draggable={false}
         />
-        <span className="truncate font-mono text-[11px] font-medium tracking-wide text-folio-ink/70 dark:text-white/70">
+        <span className="truncate font-mono text-[0.6875rem] font-medium tracking-wide text-folio-ink/70 dark:text-white/70">
           {t('titlebar.brand')}
         </span>
       </div>
@@ -186,13 +186,13 @@ export default function Layout() {
         {settings.showHeaderTicker && (
           <div className="hidden shrink-0 items-center gap-2 rounded-lg border border-folio-ink/[0.08] bg-white/60 px-1.5 py-0.5 dark:border-white/[0.08] dark:bg-white/[0.03] sm:gap-3 sm:px-2 lg:flex">
             <div className="flex items-baseline gap-1 sm:gap-1.5">
-              <span className="hidden font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-folio-ink/70 dark:text-white/65 md:inline">{t('header.netWorth')}</span>
-              <span className="folio-value text-[10px] sm:text-[11px]">{isLoading ? '—' : formatINRCompact(summary.netWorth)}</span>
+              <span className="hidden font-mono text-[0.5625rem] font-medium uppercase tracking-[0.12em] text-folio-ink/70 dark:text-white/65 md:inline">{t('header.netWorth')}</span>
+              <span className="folio-value text-[0.625rem] sm:text-[0.6875rem]">{isLoading ? '—' : formatINRCompact(summary.netWorth)}</span>
             </div>
             <span className="h-4 w-px bg-folio-ink/[0.08] dark:bg-white/[0.08]" />
             <div className="flex items-baseline gap-1 sm:gap-1.5">
-              <span className="hidden font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-folio-ink/70 dark:text-white/65 md:inline">{t('header.liabilities')}</span>
-              <span className="folio-value text-[10px] text-folio-primary dark:text-folio-accent sm:text-[11px]">{isLoading ? '—' : formatINRCompact(summary.totalLiabilities)}</span>
+              <span className="hidden font-mono text-[0.5625rem] font-medium uppercase tracking-[0.12em] text-folio-ink/70 dark:text-white/65 md:inline">{t('header.liabilities')}</span>
+              <span className="folio-value text-[0.625rem] text-folio-primary dark:text-folio-accent sm:text-[0.6875rem]">{isLoading ? '—' : formatINRCompact(summary.totalLiabilities)}</span>
             </div>
           </div>
         )}
@@ -213,7 +213,7 @@ export default function Layout() {
           onClick={handleToggleTheme}
           className="!h-7 !w-7 !min-w-0 shrink-0"
         />
-        <div className="ml-0.5 flex shrink-0 items-center [&_.ant-avatar]:!h-6 [&_.ant-avatar]:!w-6 [&_.ant-avatar]:!text-[9px] [&_.ant-avatar]:!leading-6">
+        <div className="ml-0.5 flex shrink-0 items-center [&_.ant-avatar]:!h-6 [&_.ant-avatar]:!w-6 [&_.ant-avatar]:!text-[0.5625rem] [&_.ant-avatar]:!leading-6">
           <UserMenu />
         </div>
       </div>

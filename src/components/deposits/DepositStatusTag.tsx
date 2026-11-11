@@ -1,19 +1,19 @@
 import { Tag } from 'antd';
 import type { CSSProperties } from 'react';
-import type { DepositLifecycleStatus } from '../../utils/deposits';
+import { DepositLifecycleStatus } from '../../utils/deposits';
 import { useI18n } from '../../i18n';
 
 type SemanticKind = 'info' | 'success' | 'warning' | 'error';
 
 export const DEPOSIT_STATUS_SEMANTIC: Record<DepositLifecycleStatus, SemanticKind> = {
-  planned: 'info',
-  active: 'success',
-  matured: 'warning',
-  'pre-closed': 'error',
-  'in-lien': 'error',
+  [DepositLifecycleStatus.Planned]: 'info',
+  [DepositLifecycleStatus.Active]: 'success',
+  [DepositLifecycleStatus.Matured]: 'warning',
+  [DepositLifecycleStatus.PreClosed]: 'error',
+  [DepositLifecycleStatus.InLien]: 'error',
 };
 
-export const FOLIO_TAG_CLASS = '!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]';
+export const FOLIO_TAG_CLASS = '!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[0.5625rem] !font-medium uppercase tracking-[0.06em]';
 
 export function semanticTagStyle(kind: SemanticKind): CSSProperties {
   return {
@@ -26,11 +26,11 @@ export function semanticTagStyle(kind: SemanticKind): CSSProperties {
 export function useDepositStatusLabel(status: DepositLifecycleStatus): string {
   const { t } = useI18n();
   const keys = {
-    planned: 'deposit.lifecycle.planned',
-    active: 'deposit.lifecycle.active',
-    matured: 'deposit.lifecycle.matured',
-    'pre-closed': 'deposit.lifecycle.preClosed',
-    'in-lien': 'deposit.lifecycle.inLien',
+    [DepositLifecycleStatus.Planned]: 'deposit.lifecycle.planned',
+    [DepositLifecycleStatus.Active]: 'deposit.lifecycle.active',
+    [DepositLifecycleStatus.Matured]: 'deposit.lifecycle.matured',
+    [DepositLifecycleStatus.PreClosed]: 'deposit.lifecycle.preClosed',
+    [DepositLifecycleStatus.InLien]: 'deposit.lifecycle.inLien',
   } as const;
   return t(keys[status]);
 }

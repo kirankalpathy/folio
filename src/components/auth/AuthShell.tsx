@@ -81,7 +81,7 @@ export default function AuthShell({
             <div className="mt-6">{children}</div>
 
             {footer && (
-              <div className="mt-6 border-t border-folio-ink/10 pt-4 text-[11px] leading-5 text-folio-ink/45 dark:border-white/10 dark:text-white/40">
+              <div className="mt-6 border-t border-folio-ink/10 pt-4 text-[0.6875rem] leading-5 text-folio-ink/45 dark:border-white/10 dark:text-white/40">
                 {footer}
               </div>
             )}

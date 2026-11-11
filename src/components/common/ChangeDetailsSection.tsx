@@ -11,7 +11,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="folio-card overflow-hidden">
       <div className="border-b border-folio-ink/10 px-4 py-3 dark:border-white/[0.07]">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{title}</h2>
+        <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{title}</h2>
       </div>
       <div className="p-4 sm:p-5">{children}</div>
     </section>

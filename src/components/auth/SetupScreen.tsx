@@ -61,7 +61,7 @@ export default function SetupScreen() {
           <Input autoComplete="email" placeholder={t('placeholder.email')} />
         </Form.Item>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <span className="text-[13px] font-medium text-folio-ink dark:text-folio-cream">{t('auth.setup.passcodeFree')}</span>
+          <span className="text-[0.8125rem] font-medium text-folio-ink dark:text-folio-cream">{t('auth.setup.passcodeFree')}</span>
           <Form.Item name="passcodeFree" valuePropName="checked" noStyle>
             <Switch
               onChange={(checked) => {

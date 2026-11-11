@@ -3,7 +3,7 @@ import { AutoComplete, Tag } from 'antd';
 import { CalendarClock, Hash, Layers, Percent, PiggyBank } from 'lucide-react';
 import type { DepositHolding, DepositType } from '../../types';
 import { daysUntil } from '../../utils/date';
-import { getDepositLifecycleStatus, isPortfolioDeposit, type DepositLifecycleStatus, type DepositSummary } from '../../utils/deposits';
+import { DepositLifecycleStatus, getDepositLifecycleStatus, isPortfolioDeposit, type DepositSummary } from '../../utils/deposits';
 import { formatINR, formatPercent } from '../../utils/finance';
 import { useI18n } from '../../i18n';
 import StatCard from '../common/StatCard';
@@ -35,7 +35,7 @@ export default function DepositStats({
   const maturingCount = useMemo(() => {
     const asOf = new Date();
     return portfolioDeposits.filter((item) => {
-      if (getDepositLifecycleStatus(item) !== 'active') return false;
+      if (getDepositLifecycleStatus(item) !== DepositLifecycleStatus.Active) return false;
       const days = daysUntil(item.maturityDate, asOf);
       return Number.isFinite(days) && days >= 0 && days <= maturityDays;
     }).length;
@@ -59,9 +59,9 @@ export default function DepositStats({
   }, [portfolioDeposits]);
 
   const statusMeta: Array<{ key: DepositLifecycleStatus; label: string }> = [
-    { key: 'planned', label: t('deposit.lifecycle.planned') },
-    { key: 'active', label: t('deposit.lifecycle.active') },
-    { key: 'in-lien', label: t('deposit.lifecycle.inLien') },
+    { key: DepositLifecycleStatus.Planned, label: t('deposit.lifecycle.planned') },
+    { key: DepositLifecycleStatus.Active, label: t('deposit.lifecycle.active') },
+    { key: DepositLifecycleStatus.InLien, label: t('deposit.lifecycle.inLien') },
   ];
 
   const commitMaturityDays = (raw: string) => {
@@ -93,7 +93,7 @@ export default function DepositStats({
                     key={key}
                     bordered={false}
                     style={semanticTagStyle(DEPOSIT_STATUS_SEMANTIC[key])}
-                    className={`!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[9px] !font-medium uppercase tracking-[0.06em]${onStatusClick ? ' cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                    className={`!m-0 !rounded-full !px-2 !py-0.5 !font-mono !text-[0.5625rem] !font-medium uppercase tracking-[0.06em]${onStatusClick ? ' cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                     onClick={onStatusClick ? () => onStatusClick(key) : undefined}
                     tabIndex={onStatusClick ? 0 : undefined}
                     role={onStatusClick ? 'button' : undefined}

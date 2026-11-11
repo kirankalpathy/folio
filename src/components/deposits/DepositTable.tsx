@@ -125,7 +125,7 @@ export default function DepositTable({
             <p className="text-sm font-medium">
               <TruncatedText text={record.name} maxLength={30} block className="max-w-[220px]" />
             </p>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-folio-ink/45 dark:text-white/40">
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[0.6875rem] text-folio-ink/45 dark:text-white/40">
               <Tag bordered={false} style={accountTypeTagStyle(record.accountType)} className={FOLIO_TAG_CLASS}>
                 {accountLabel(record.accountType, t)}
               </Tag>
@@ -192,7 +192,7 @@ export default function DepositTable({
         render: (value: number, record) => (
           <div className="whitespace-nowrap text-right">
             <p className="font-mono text-sm font-medium tabular-nums">{formatINR(value)}</p>
-            <p className="mt-0.5 font-mono text-[10px] text-folio-ink/40 dark:text-white/35">
+            <p className="mt-0.5 font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35">
               {formatPercent(calculateReturnsPercentage(record.principal, record.currentValue))}
             </p>
           </div>
@@ -248,7 +248,7 @@ export default function DepositTable({
               <p className="font-mono text-xs tabular-nums">{formatDate(record.maturityDate)}</p>
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 <span
-                  className={`inline-flex rounded-full border px-1.5 py-0.5 font-mono text-[9px] ${maturityClass(days)}`}
+                  className={`inline-flex rounded-full border px-1.5 py-0.5 font-mono text-[0.5625rem] ${maturityClass(days)}`}
                 >
                   {maturityLabel(days, t)}
                 </span>
@@ -305,7 +305,7 @@ export default function DepositTable({
         align: 'center',
         showTotal: (total, range) => (
           <>
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-folio-ink/55 dark:text-white/50">
+            <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-folio-ink/55 dark:text-white/50">
               <AutoComplete
                 size="small"
                 value={pageSizeInput}
@@ -326,7 +326,7 @@ export default function DepositTable({
               />
               <span>items</span>
             </span>
-            <span className="text-[12px] text-folio-ink/55 dark:text-white/50">
+            <span className="text-[0.75rem] text-folio-ink/55 dark:text-white/50">
               {total > 0 ? `${range[0]}-${range[1]} of ${total}` : `0 of ${total}`}
             </span>
           </>
@@ -370,7 +370,7 @@ export default function DepositTable({
                     <Table.Summary.Cell key={key} index={idx}>
                       <div>
                         <p className="text-sm font-semibold text-folio-ink dark:text-folio-cream">{t('common.total')}</p>
-                        <p className="mt-0.5 text-[11px] text-folio-ink/45 dark:text-white/40">
+                        <p className="mt-0.5 text-[0.6875rem] text-folio-ink/45 dark:text-white/40">
                           {t(deposits.length === 1 ? 'common.record.one' : 'common.record.other', { count: deposits.length })}
                         </p>
                       </div>
