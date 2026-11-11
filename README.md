@@ -94,7 +94,6 @@ Folio has several planned features and improvements. Detailed implementation pla
 | Backup Encryption (E2E) | End-to-end encryption of backup files using password-based AES-256-GCM | ⭐⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐⭐ |
 | Production-Grade Standards | Error boundaries, structured logging, performance optimization, accessibility, security hardening | ⭐⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐⭐ |
 | Backup & Restore Schema Analysis | Identify and remove stray/redundant fields (e.g., bankName vs financialInstitutionId); classify computed vs manual fields | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
-| Asynchronous Update Checking | Non-blocking update check/download with background sync, progress tracking, and manual restart | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 | Standardized File Name Format | Consistent `Folio_{Type}_{Date}.{format}` naming across all exports (currently uses timestamps) | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ |
 | Notification Framework | App-wide non-blocking toast/notification system for async events | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | Multi-Profile Support | Multiple user profiles for family/household financial management with data isolation | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
