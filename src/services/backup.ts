@@ -9,7 +9,7 @@ import type {
   RestoreResult,
 } from '../types';
 import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../types';
-import { parseBackup } from '../utils/backupSchema';
+import { isRecord, parseBackup } from '../utils/backupSchema';
 import { calculateDepositValues } from '../utils/deposits';
 import { folioFileName } from '../utils/fileNaming';
 import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
@@ -233,8 +233,10 @@ export function buildExportReport(backup: ApplicationBackupSchema): BackupReport
 
 export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   const parsed = typeof source === 'string' ? JSON.parse(source) : source;
+  // If already validated (has required backup properties), skip re-validation.
+  const isPreValidated = isRecord(parsed) && parsed.app === 'folio' && parsed.schemaVersion === 1 && isRecord(parsed.data);
   // Validate the entire file first; only import when fully valid (no mid-way import).
-  const backup = parseBackup(parsed);
+  const backup = isPreValidated ? (parsed as unknown as ApplicationBackupSchema) : parseBackup(parsed);
   const preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore> = {
     stocks: prepareRecordsForRestore('stocks', backup.data.stocks),
     bonds: prepareRecordsForRestore('bonds', backup.data.bonds),

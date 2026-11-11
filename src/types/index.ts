@@ -527,6 +527,8 @@ export interface BackupReportRow {
   errors: number;
   /** Render as an indented child row (e.g. deposit subtypes). */
   indent?: boolean;
+  /** Optional error category breakdown (category -> affected record count), shown when error count is clicked. */
+  errorCategories?: Record<string, number>;
 }
 
 export interface BackupReport {

@@ -30,6 +30,7 @@ const config: FileNameConfig = {
   types: {
     // Backup
     ledgerBackup: 'Ledger_Backup',
+    restoreErrorLog: 'Restore_Error_Log',
     // Deposits
     depositSummary: 'Deposit_Summary',
     depositDetail: 'Deposit',
