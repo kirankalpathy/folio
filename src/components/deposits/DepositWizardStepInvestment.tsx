@@ -1,16 +1,16 @@
-import { Alert, Checkbox, DatePicker, Form, Input, InputNumber, Select } from 'antd';
+import { Alert, Checkbox, DatePicker, Form, Input, InputNumber, Select, Tooltip } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { Globe, WifiOff } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n';
 import { getDateFormatId } from '../../utils/date';
-import { DATE_PICKER_MIN, isDateOutsidePickerBounds } from '../../config/validationConfig';
-import { formatINR, formatNumber, getNumberFormat } from '../../utils/finance';
-import { calculateDepositValues, DepositLifecycleStatus, formatDepositTenure } from '../../utils/deposits';
+import { isDateOutsidePickerBounds } from '../../config/validationConfig';
+import { formatNumber, getNumberFormat } from '../../utils/finance';
+import AmountInputNumber from '../common/AmountInputNumber';
+import { DepositLifecycleStatus, formatDepositTenure } from '../../utils/deposits';
 import {
   InterestPayoutOption,
-  deriveCumulativeInterest,
-  derivePeriodicPayoutFrequency,
+  isScssAccountType,
   type DepositFormValues,
 } from './depositFormModel';
 import DepositStatusTag from './DepositStatusTag';
@@ -27,10 +27,6 @@ function parseFormattedNumber(input: string): number {
 
 function isDateOutOfRange(date: Dayjs): boolean {
   return isDateOutsidePickerBounds(date);
-}
-
-function isPreClosedDateDisabled(date: Dayjs): boolean {
-  return date.isBefore(DATE_PICKER_MIN, 'day') || date.isAfter(dayjs(), 'day');
 }
 
 function boldStatus(template: string, statusLabel: string): ReactNode {
@@ -55,17 +51,10 @@ export default function DepositWizardStepInvestment({
   const form = Form.useFormInstance<DepositFormValues>();
   const accountType = Form.useWatch('accountType', form);
   const isRd = accountType === 'rd';
-  const principal = Form.useWatch('principal', form) ?? 0;
-  const recurringAmount = Form.useWatch('recurringAmount', form) ?? 0;
-  const interestRate = Form.useWatch('interestRate', form) ?? 0;
+  const isScss = isScssAccountType(accountType);
   const startDate = Form.useWatch('startDate', form) as Dayjs | undefined;
   const maturityDate = Form.useWatch('maturityDate', form) as Dayjs | undefined;
-  const compoundingFrequency = Form.useWatch('compoundingFrequency', form);
-  const interestPayoutOption = (Form.useWatch('interestPayoutOption', form) ?? InterestPayoutOption.Cumulative) as InterestPayoutOption;
-  const cumulative = deriveCumulativeInterest(accountType, interestPayoutOption);
-  const payoutFrequency = derivePeriodicPayoutFrequency(accountType, interestPayoutOption);
   const preClosed = Form.useWatch('preClosed', form) ?? false;
-  const preClosureCreditedValue = Form.useWatch('preClosureCreditedValue', form);
   const markedAsLien = Form.useWatch('markedAsLien', form) ?? false;
   const isPanLinked = Form.useWatch('isPanLinked', form) ?? true;
   const isTaxExempt = Form.useWatch('isTaxExempt', form) ?? false;
@@ -75,8 +64,6 @@ export default function DepositWizardStepInvestment({
   const dateFormat = getDateFormatId();
   const [focusedNumber, setFocusedNumber] = useState<'principal' | 'rate' | 'recurringAmount' | null>(null);
   const required = t('validation.required');
-  const isPlanned = startDate?.isValid() ? startDate.isAfter(dayjs().startOf('day')) : false;
-  const showPreClosure = isEdit && !activeLocked && !isPlanned;
 
   useEffect(() => {
     if (isRd) {
@@ -90,25 +77,32 @@ export default function DepositWizardStepInvestment({
     }
   }, [isRd, form]);
 
-  const computed = useMemo(
-    () => calculateDepositValues({
-      accountType,
-      principal,
-      recurringAmount,
-      interestRate,
-      startDate: startDate?.format('YYYY-MM-DD') ?? '',
-      maturityDate: maturityDate?.format('YYYY-MM-DD') ?? '',
-      cumulativeInterest: isRd ? true : cumulative,
-      compoundingFrequency,
-      payoutFrequency,
-    }),
-    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, payoutFrequency, isRd],
-  );
+  useEffect(() => {
+    if (!isScss) return;
+    form.setFieldsValue({
+      markedAsLien: false,
+      lienReason: '',
+      interestPayoutOption: InterestPayoutOption.Quarterly,
+      cumulativeInterest: false,
+      payoutFrequency: 'quarterly',
+      rollover: 'none',
+    } as Partial<DepositFormValues>);
+  }, [isScss, form]);
+
+  useEffect(() => {
+    if (!isScss) return;
+    const baseStart = startDate?.isValid() ? startDate.startOf('day') : dayjs().startOf('day');
+    const expected = baseStart.add(5, 'year');
+    if (!maturityDate?.isValid() || !maturityDate.isSame(expected, 'day')) {
+      form.setFieldValue('maturityDate', expected);
+    }
+  }, [isScss, startDate, maturityDate, form]);
+
   const tenure = formatDepositTenure(startDate?.format('YYYY-MM-DD'), maturityDate?.format('YYYY-MM-DD'));
 
   const statusInfo = useMemo((): { status: DepositLifecycleStatus; message: ReactNode } | null => {
     if (!startDate?.isValid() || !maturityDate?.isValid()) return null;
-    if (!isRd && markedAsLien) {
+    if (!isRd && !isScss && markedAsLien) {
       const label = t('deposit.lifecycle.inLien');
       return { status: DepositLifecycleStatus.InLien, message: boldStatus(t('deposit.status.message.inLien'), label) };
     }
@@ -155,7 +149,7 @@ export default function DepositWizardStepInvestment({
             { type: 'number', min: 0.01, message: t('deposit.validation.recurringAmountMin') },
           ]}
         >
-          <InputNumber
+          <AmountInputNumber
             disabled={locked}
             className="!w-full"
             style={{ width: '100%' }}
@@ -177,14 +171,26 @@ export default function DepositWizardStepInvestment({
           required
           rules={[
             { required: true, message: required },
-            { type: 'number', min: 1000.01, message: t('deposit.validation.principalMin') },
+            ...(isScss
+              ? [
+                  {
+                    validator: async (_: unknown, value: number) => {
+                      if (value == null || value === ('' as unknown)) return;
+                      if (!Number.isFinite(value) || value < 1000 || value % 1000 !== 0) {
+                        throw new Error(t('deposit.validation.principalMultiple1000'));
+                      }
+                    },
+                  },
+                ]
+              : [{ type: 'number' as const, min: 1000.01, message: t('deposit.validation.principalMin') }]),
           ]}
         >
-          <InputNumber
+          <AmountInputNumber
             disabled={locked}
             className="!w-full"
             style={{ width: '100%' }}
             min={0}
+            step={isScss ? 1000 : undefined}
             controls={false}
             inputMode="decimal"
             addonBefore="₹"
@@ -240,25 +246,51 @@ export default function DepositWizardStepInvestment({
       >
         <DatePicker disabled={locked} className="w-full" format={dateFormat} disabledDate={isDateOutOfRange} />
       </Form.Item>
-      <Form.Item
-        label={t('deposit.fields.maturityDate')}
-        name="maturityDate"
-        required
-        dependencies={['startDate']}
-        rules={[
-          { required: true, message: required },
-          { validator: async (_, value?: Dayjs) => { if (!value || !isDateOutOfRange(value)) return; throw new Error(t('deposit.validation.dateRange')); } },
-          ({ getFieldValue }) => ({
-            validator(_rule, value: Dayjs | undefined) {
-              const start = getFieldValue('startDate') as Dayjs | undefined;
-              if (!value || !start || value.isAfter(start, 'day')) return Promise.resolve();
-              return Promise.reject(new Error(t('deposit.validation.maturityAfterStart')));
-            },
-          }),
-        ]}
-      >
-        <DatePicker disabled={locked} className="w-full" format={dateFormat} disabledDate={isDateOutOfRange} />
-      </Form.Item>
+      {isScss ? (
+        <Tooltip title={t('deposit.scss.maturityTenureHint')}>
+          <div>
+            <Form.Item
+              label={t('deposit.fields.maturityDate')}
+              name="maturityDate"
+              required
+              dependencies={['startDate']}
+              rules={[
+                { required: true, message: required },
+                { validator: async (_, value?: Dayjs) => { if (!value || !isDateOutOfRange(value)) return; throw new Error(t('deposit.validation.dateRange')); } },
+                ({ getFieldValue }) => ({
+                  validator(_rule, value: Dayjs | undefined) {
+                    const start = getFieldValue('startDate') as Dayjs | undefined;
+                    if (!value || !start || value.isAfter(start, 'day')) return Promise.resolve();
+                    return Promise.reject(new Error(t('deposit.validation.maturityAfterStart')));
+                  },
+                }),
+              ]}
+            >
+              <DatePicker disabled className="w-full" format={dateFormat} disabledDate={isDateOutOfRange} />
+            </Form.Item>
+          </div>
+        </Tooltip>
+      ) : (
+        <Form.Item
+          label={t('deposit.fields.maturityDate')}
+          name="maturityDate"
+          required
+          dependencies={['startDate']}
+          rules={[
+            { required: true, message: required },
+            { validator: async (_, value?: Dayjs) => { if (!value || !isDateOutOfRange(value)) return; throw new Error(t('deposit.validation.dateRange')); } },
+            ({ getFieldValue }) => ({
+              validator(_rule, value: Dayjs | undefined) {
+                const start = getFieldValue('startDate') as Dayjs | undefined;
+                if (!value || !start || value.isAfter(start, 'day')) return Promise.resolve();
+                return Promise.reject(new Error(t('deposit.validation.maturityAfterStart')));
+              },
+            }),
+          ]}
+        >
+          <DatePicker disabled={locked} className="w-full" format={dateFormat} disabledDate={isDateOutOfRange} />
+        </Form.Item>
+      )}
       {(tenure || statusInfo) && (
         <Alert
           className="folio-message-strip folio-message-strip-info sm:col-span-2 -mt-1 mb-2"
@@ -313,7 +345,7 @@ export default function DepositWizardStepInvestment({
           }
         />
       )}
-      {!isRd && (
+      {!isRd && !isScss && (
         <>
           <Form.Item name="markedAsLien" valuePropName="checked" className="sm:col-span-2 mb-0">
             <Checkbox
@@ -340,44 +372,7 @@ export default function DepositWizardStepInvestment({
           )}
         </>
       )}
-      {showPreClosure && (
-        <Form.Item name="preClosed" valuePropName="checked" className="sm:col-span-2 mt-1 mb-0">
-          <Checkbox
-            className="folio-checkbox"
-            disabled={fullyLocked || activeLocked}
-            onChange={(e) => {
-              if (e.target.checked && !form.getFieldValue('preClosedDate')) form.setFieldsValue({ preClosedDate: dayjs() });
-              if (!e.target.checked) form.setFieldsValue({ preClosedDate: undefined, preClosureCreditedValue: undefined });
-            }}
-          >{t('deposit.fields.preClosed')}</Checkbox>
-        </Form.Item>
-      )}
-      {showPreClosure && preClosed && (
-        <div className="sm:col-span-2 mt-2 rounded-xl border border-folio-ink/[0.06] bg-folio-paper/40 p-3 dark:border-white/[0.06] dark:bg-white/[0.02]">
-          <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.preClosure')}</p>
-          <div className="grid gap-x-4 sm:grid-cols-2">
-            <Form.Item
-              label={t('deposit.fields.preClosedDate')}
-              name="preClosedDate"
-              rules={[
-                { required: true, message: required },
-                { validator: async (_, value?: Dayjs) => { if (!value || !value.isAfter(dayjs(), 'day')) return; throw new Error(t('deposit.validation.preClosedDateNotFuture')); } },
-              ]}
-            >
-              <DatePicker disabled={fullyLocked || activeLocked} className="w-full" format={dateFormat} disabledDate={isPreClosedDateDisabled} />
-            </Form.Item>
-            <Form.Item label={t('deposit.fields.creditedValue')} name="preClosureCreditedValue" rules={[{ required: true, message: required }]}><InputNumber disabled={fullyLocked || activeLocked} className="w-full" min={0} precision={2} prefix="₹" placeholder={t('deposit.placeholder.creditedValue')} /></Form.Item>
-          </div>
-          {Number.isFinite(preClosureCreditedValue) && (
-            <Alert className="folio-message-strip folio-message-strip-warning mt-1" showIcon type="warning" title={
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.loss')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(Math.max(0, computed.realizedValue - (preClosureCreditedValue ?? 0)), { decimals: 2 })}</span></span>
-                {computed.realizedValue - (preClosureCreditedValue ?? 0) < 0 && <span className="text-[0.6875rem] text-emerald-700 dark:text-emerald-400">{t('deposit.preClosure.noLoss')}</span>}
-              </div>
-            } />
-          )}
-        </div>
-      )}
+
     </div>
   );
 }

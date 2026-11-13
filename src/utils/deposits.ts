@@ -167,11 +167,11 @@ export function calculateDepositValues(input: {
     return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
   }
 
-  // Non-cumulative (interest payout): maturity amount is principal; interest is paid out periodically.
+  // Non-cumulative (interest payout): interest is paid out periodically; realized value reflects principal plus total interest over the tenure.
   const interest = Math.max(0, (principal * rate * years) / 100);
   const payoutsPerYear = input.payoutFrequency ? PAYOUTS_PER_YEAR[input.payoutFrequency] : undefined;
   const interestPayoutAmount = payoutsPerYear && payoutsPerYear > 0 ? (principal * rate) / 100 / payoutsPerYear : undefined;
-  return { interest, realizedValue: principal, totalDeposited: principal, months: 0, interestPayoutAmount };
+  return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0, interestPayoutAmount };
 }
 
 export function summarizeDeposits(

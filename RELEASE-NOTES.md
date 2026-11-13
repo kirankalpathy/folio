@@ -1,5 +1,17 @@
 # RELEASE NOTES
 
+## `v0.1.5`
+
+### Deposits
+- **Senior Citizen Savings Scheme (SCSS):** added support for SCSS deposits with guided setup, eligibility reminder, amount and date rules, automatic 5-year maturity, quarterly interest payout defaults, and appropriate nominee/closure options.
+- **Pre-closure in the wizard:** pre-closure details are now captured in the **Maturity** step when applicable (including for active deposits), with a required pre-closure date, credited amount validation (cannot exceed realized value), and clearer realized/loss information.
+- **Amount clarity:** currency amount fields now show the amount in words below the input to help reduce entry mistakes.
+- **Wizard usability:** the deposit wizard now keeps action buttons visible with scrollable step content for long forms, and the active-deposit edit message is clearer about what can be changed.
+
+### Deposits table & exports
+- **Closure dates:** the deposits table now shows a **Closure Date** column, displaying the pre-closure date for pre-closed deposits and the maturity/planned date for matured deposits.
+- **Export details:** deposit exports now include **Pre-closure Date** and **Planned / Matured Date** columns (replacing the previous single maturity date field) so matured and pre-closed records are easier to review.
+
 ## `v0.1.4`
 
 ### In-app updates

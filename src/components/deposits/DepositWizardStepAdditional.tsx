@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AutoComplete, Button, DatePicker, Form, Input, InputNumber, Select } from 'antd';
+import { AutoComplete, Button, DatePicker, Form, Input, InputNumber, Select, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../../i18n';
@@ -83,10 +83,11 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
             validator: async (_, value) => {
               const list = (value ?? []) as Array<{ name?: string; share?: number }>;
               if (list.length === 0) return;
+              if (list.length > 4) throw new Error(t('deposit.validation.nomineeMax'));
               const keys = list.map((n) => (n?.name ?? '').trim().toLowerCase()).filter(Boolean);
               if (keys.length > 0 && new Set(keys).size !== keys.length) throw new Error(t('deposit.validation.nomineeUnique'));
               const total = list.reduce((s, n) => s + (Number.isFinite(n?.share) ? Number(n.share ?? 0) : 0), 0);
-              if (list.length > 0 && Math.abs(total - 100) > 0.001) throw new Error(t('deposit.validation.nomineeShareTotal'));
+              if (Math.abs(total - 100) > 0.001) throw new Error(t('deposit.validation.nomineeShareTotal'));
             },
           }]}
         >
@@ -136,9 +137,19 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
               ))}
               {errors.length > 0 && <div className="text-xs text-red-500">{errors}</div>}
               {!locked && (
-                <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add(newNominee())}>
-                  {t('deposit.nominee.add')}
-                </Button>
+                fields.length >= 4 ? (
+                  <Tooltip title={t('deposit.nominee.maxHint')}>
+                    <span className="block">
+                      <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add(newNominee())} disabled>
+                        {t('deposit.nominee.add')}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add(newNominee())}>
+                    {t('deposit.nominee.add')}
+                  </Button>
+                )
               )}
             </div>
           )}

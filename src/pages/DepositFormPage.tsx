@@ -19,6 +19,7 @@ import {
 import { calculateDepositValues, DepositLifecycleStatus, getDepositLifecycleStatus } from '../utils/deposits';
 import { createDeposit, getDeposit, updateDeposit } from '../services/deposits';
 import { exportDepositDetailPdf } from '../services/depositExport';
+import { accountLabel } from '../components/deposits/depositTableHelpers';
 
 export default function DepositFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -158,6 +159,9 @@ export default function DepositFormPage() {
   const isActiveLocked = isEdit && !isSpecialEdit && (lifecycle === DepositLifecycleStatus.Active || lifecycle === DepositLifecycleStatus.InLien);
   const isTerminalLocked = isEdit && !isSpecialEdit && (lifecycle === DepositLifecycleStatus.Matured || lifecycle === DepositLifecycleStatus.PreClosed);
   const title = isView ? t('deposit.page.viewTitle') : isEdit ? t('deposit.page.editTitle') : t('deposit.page.addTitle');
+  const viewDescription = isView && record
+    ? [record.depositNumber, accountLabel(record.accountType, t), record.name].filter(Boolean).join(' • ')
+    : undefined;
 
   const lifecycleLabel = (state: NonNullable<typeof lifecycle>): string => {
     if (state === DepositLifecycleStatus.InLien) return t('deposit.lifecycle.inLien');
@@ -199,11 +203,12 @@ export default function DepositFormPage() {
   }
 
   return (
-    <div className="space-y-5" ref={topRef}>
+    <div className={`flex min-h-0 flex-col gap-5 ${isView ? '' : 'h-full'}`} ref={topRef}>
       <PageHeader
         eyebrow={t('nav.group.portfolio')}
         title={title}
-        description={record?.name}
+        description={isView ? viewDescription : record?.name}
+        descriptionTruncate={isView}
         actions={
           <div className="flex items-center gap-2">
 
@@ -241,10 +246,11 @@ export default function DepositFormPage() {
       {isView && record ? (
         <DepositDetailsView record={record} />
       ) : (
-        <section className="folio-card p-4 sm:p-5">
+        <section className="folio-card flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-5">
           <Form<DepositFormValues>
             form={form}
             layout="vertical"
+            className="flex min-h-0 flex-1 flex-col"
             requiredMark={(labelNode, { required }) => (
               <>
                 {labelNode}
@@ -265,6 +271,7 @@ export default function DepositFormPage() {
               activeLocked={isActiveLocked}
               terminalLocked={isTerminalLocked}
               lienEditable={isEdit && lifecycle === DepositLifecycleStatus.InLien}
+              allowPreClosure={isEdit && lifecycle === DepositLifecycleStatus.Active}
               isEdit={isEdit}
             />
           </Form>

@@ -1,8 +1,11 @@
-import { Alert, Form, Select } from 'antd';
-import { useMemo, type ReactNode } from 'react';
-import type { Dayjs } from 'dayjs';
+import { Alert, Checkbox, DatePicker, Form, Select, Tooltip } from 'antd';
+import AmountInputNumber from '../common/AmountInputNumber';
+import { useEffect, useMemo, type ReactNode } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
 import { Ban, Calendar, CalendarClock, CalendarDays, CalendarRange, Coins, RefreshCw, TrendingUp } from 'lucide-react';
 import { useI18n } from '../../i18n';
+import { getDateFormatId } from '../../utils/date';
+import { DATE_PICKER_MIN } from '../../config/validationConfig';
 import { formatINR } from '../../utils/finance';
 import { calculateDepositValues } from '../../utils/deposits';
 import {
@@ -11,6 +14,7 @@ import {
   ROLLOVER_OPTIONS,
   deriveCumulativeInterest,
   derivePeriodicPayoutFrequency,
+  isScssAccountType,
   type DepositFormValues,
 } from './depositFormModel';
 import type { DepositRollover } from '../../types';
@@ -37,11 +41,26 @@ function shortFrequencyLabel(t: (key: 'deposit.frequency.short.monthly' | 'depos
   return t('deposit.frequency.short.annual');
 }
 
-export default function DepositWizardStepMaturity({ activeLocked = false, terminalLocked = false }: { activeLocked?: boolean; terminalLocked?: boolean }) {
+function isPreClosedDateDisabled(date: Dayjs): boolean {
+  return date.isBefore(DATE_PICKER_MIN, 'day') || date.isAfter(dayjs(), 'day');
+}
+
+export default function DepositWizardStepMaturity({
+  activeLocked = false,
+  terminalLocked = false,
+  allowPreClosure = false,
+  isEdit = false,
+}: {
+  activeLocked?: boolean;
+  terminalLocked?: boolean;
+  allowPreClosure?: boolean;
+  isEdit?: boolean;
+}) {
   const { t } = useI18n();
   const form = Form.useFormInstance<DepositFormValues>();
   const accountType = Form.useWatch('accountType', form);
   const isRd = accountType === 'rd';
+  const isScss = isScssAccountType(accountType);
   const interestPayoutOption = (Form.useWatch('interestPayoutOption', form) ?? InterestPayoutOption.Cumulative) as InterestPayoutOption;
   const cumulative = deriveCumulativeInterest(accountType, interestPayoutOption);
   const periodicPayoutFrequency = derivePeriodicPayoutFrequency(accountType, interestPayoutOption);
@@ -51,8 +70,24 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
   const startDate = Form.useWatch('startDate', form) as Dayjs | undefined;
   const maturityDate = Form.useWatch('maturityDate', form) as Dayjs | undefined;
   const compoundingFrequency = Form.useWatch('compoundingFrequency', form);
+  const preClosed = Form.useWatch('preClosed', form) ?? false;
+  const preClosureCreditedValue = Form.useWatch('preClosureCreditedValue', form);
   const locked = terminalLocked || activeLocked;
   const required = t('validation.required');
+  const dateFormat = getDateFormatId();
+  const isPlanned = startDate?.isValid() ? startDate.isAfter(dayjs().startOf('day')) : false;
+  const showPreClosure = isEdit && !terminalLocked && !isPlanned && (!activeLocked || allowPreClosure);
+  const preClosureEditable = showPreClosure && (!activeLocked || allowPreClosure);
+
+  useEffect(() => {
+    if (!isScss) return;
+    form.setFieldsValue({
+      interestPayoutOption: InterestPayoutOption.Quarterly,
+      cumulativeInterest: false,
+      payoutFrequency: 'quarterly',
+      rollover: 'none',
+    } as Partial<DepositFormValues>);
+  }, [isScss, form]);
 
   const computed = useMemo(
     () => calculateDepositValues({
@@ -74,54 +109,87 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
     <div className="space-y-0">
       <div className="grid gap-x-4 sm:grid-cols-2">
         {!isRd && (
-          <Form.Item
-            label={t('deposit.fields.payoutFrequency')}
-            name="interestPayoutOption"
-            required
-            rules={[{ required: true, message: required }]}
-            className="sm:col-span-2"
-          >
+          isScss ? (
+            <Tooltip title={t('deposit.scss.payoutFrequencyHint')}>
+              <div className="sm:col-span-2">
+                <Form.Item
+                  label={t('deposit.fields.payoutFrequency')}
+                  name="interestPayoutOption"
+                  required
+                  rules={[{ required: true, message: required }]}
+                  className="sm:col-span-2"
+                >
+                  <Select
+                    disabled
+                    optionLabelProp="label"
+                    options={INTEREST_PAYOUT_OPTIONS.map((o) => {
+                      const text = t(o.label);
+                      return {
+                        value: o.value,
+                        label: text,
+                        search: text,
+                        children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
+                      };
+                    })}
+                    optionRender={(option) => option.data.children as ReactNode}
+                  />
+                </Form.Item>
+              </div>
+            </Tooltip>
+          ) : (
+            <Form.Item
+              label={t('deposit.fields.payoutFrequency')}
+              name="interestPayoutOption"
+              required
+              rules={[{ required: true, message: required }]}
+              className="sm:col-span-2"
+            >
+              <Select
+                disabled={locked}
+                optionLabelProp="label"
+                options={INTEREST_PAYOUT_OPTIONS.map((o) => {
+                  const text = t(o.label);
+                  return {
+                    value: o.value,
+                    label: text,
+                    search: text,
+                    children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
+                  };
+                })}
+                optionRender={(option) => option.data.children as ReactNode}
+                onChange={(value) => {
+                  const isCumulative = deriveCumulativeInterest(accountType, value as InterestPayoutOption);
+                  form.setFieldsValue({
+                    cumulativeInterest: isCumulative,
+                    payoutFrequency: derivePeriodicPayoutFrequency(accountType, value as InterestPayoutOption) ?? 'annual',
+                  });
+                }}
+              />
+            </Form.Item>
+          )
+        )}
+        {isRd && <Form.Item name="interestPayoutOption" hidden initialValue={InterestPayoutOption.Cumulative}><input type="hidden" /></Form.Item>}
+
+        {!isScss ? (
+          <Form.Item label={t('deposit.fields.rollover')} name="rollover" required rules={[{ required: true, message: required }]} className={!isRd ? 'sm:col-span-2' : undefined}>
             <Select
               disabled={locked}
               optionLabelProp="label"
-              options={INTEREST_PAYOUT_OPTIONS.map((o) => {
+              options={ROLLOVER_OPTIONS.map((o) => {
                 const text = t(o.label);
                 return {
                   value: o.value,
                   label: text,
                   search: text,
-                  children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
+                  children: <span className="inline-flex items-center gap-2">{rolloverIcons[o.value]}<span>{text}</span></span>,
                 };
               })}
               optionRender={(option) => option.data.children as ReactNode}
-              onChange={(value) => {
-                const isCumulative = deriveCumulativeInterest(accountType, value as InterestPayoutOption);
-                form.setFieldsValue({
-                  cumulativeInterest: isCumulative,
-                  payoutFrequency: derivePeriodicPayoutFrequency(accountType, value as InterestPayoutOption) ?? 'annual',
-                });
-              }}
             />
           </Form.Item>
+        ) : (
+          <Form.Item name="rollover" hidden initialValue="none"><input type="hidden" /></Form.Item>
         )}
-        {isRd && <Form.Item name="interestPayoutOption" hidden initialValue={InterestPayoutOption.Cumulative}><input type="hidden" /></Form.Item>}
-
-        <Form.Item label={t('deposit.fields.rollover')} name="rollover" required rules={[{ required: true, message: required }]} className={!isRd ? 'sm:col-span-2' : undefined}>
-          <Select
-            disabled={locked}
-            optionLabelProp="label"
-            options={ROLLOVER_OPTIONS.map((o) => {
-              const text = t(o.label);
-              return {
-                value: o.value,
-                label: text,
-                search: text,
-                children: <span className="inline-flex items-center gap-2">{rolloverIcons[o.value]}<span>{text}</span></span>,
-              };
-            })}
-            optionRender={(option) => option.data.children as ReactNode}
-          />
-        </Form.Item>
       </div>
       <Alert
         className="folio-message-strip folio-message-strip-info mt-2"
@@ -149,6 +217,59 @@ export default function DepositWizardStepMaturity({ activeLocked = false, termin
           </div>
         }
       />
+
+      {showPreClosure && (
+        <Form.Item name="preClosed" valuePropName="checked" className="sm:col-span-2 mt-4 mb-0">
+          <Checkbox
+            className="folio-checkbox"
+            disabled={terminalLocked || !preClosureEditable}
+            onChange={(e) => {
+              if (e.target.checked && !form.getFieldValue('preClosedDate')) form.setFieldsValue({ preClosedDate: dayjs() });
+              if (!e.target.checked) form.setFieldsValue({ preClosedDate: undefined, preClosureCreditedValue: undefined });
+            }}
+          >{t('deposit.fields.preClosed')}</Checkbox>
+        </Form.Item>
+      )}
+      {showPreClosure && preClosed && (
+        <div className="sm:col-span-2 mt-2 rounded-xl border border-folio-ink/[0.06] bg-folio-paper/40 p-3 dark:border-white/[0.06] dark:bg-white/[0.02]">
+          <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-folio-ink/45 dark:text-white/40">{t('deposit.section.preClosure')}</p>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            <Form.Item
+              label={t('deposit.fields.preClosedDate')}
+              name="preClosedDate"
+              rules={[
+                { required: true, message: required },
+                { validator: async (_, value?: Dayjs) => { if (!value || !value.isAfter(dayjs(), 'day')) return; throw new Error(t('deposit.validation.preClosedDateNotFuture')); } },
+              ]}
+            >
+              <DatePicker disabled={terminalLocked || !preClosureEditable} className="w-full" format={dateFormat} disabledDate={isPreClosedDateDisabled} />
+            </Form.Item>
+            <Form.Item
+              label={t('deposit.fields.creditedValue')}
+              name="preClosureCreditedValue"
+              rules={[
+                { required: true, message: required },
+                {
+                  validator: async (_, value?: number) => {
+                    if (value == null || !Number.isFinite(value)) return;
+                    if (value > computed.realizedValue) throw new Error(t('deposit.validation.preClosureCreditedMax'));
+                  },
+                },
+              ]}
+            >
+              <AmountInputNumber disabled={terminalLocked || !preClosureEditable} className="!w-full" min={0} precision={2} prefix="₹" placeholder={t('deposit.placeholder.creditedValue')} />
+            </Form.Item>
+          </div>
+          {Number.isFinite(preClosureCreditedValue) && (
+            <Alert className="folio-message-strip folio-message-strip-warning mt-1" showIcon type="warning" title={
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span><span className="text-folio-ink/55 dark:text-white/50">{t('deposit.fields.loss')}: </span><span className="font-mono font-semibold tabular-nums">{formatINR(Math.max(0, computed.realizedValue - (preClosureCreditedValue ?? 0)), { decimals: 2 })}</span></span>
+                {computed.realizedValue - (preClosureCreditedValue ?? 0) < 0 && <span className="text-[0.6875rem] text-emerald-700 dark:text-emerald-400">{t('deposit.preClosure.noLoss')}</span>}
+              </div>
+            } />
+          )}
+        </div>
+      )}
     </div>
   );
 }

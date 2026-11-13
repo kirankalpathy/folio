@@ -109,7 +109,8 @@ const HEADERS = [
   'Recurring Amount (INR)',
   'Rate of Interest (% p.a.)',
   'Start Date',
-  'Maturity Date',
+  'Pre-closure Date',
+  'Planned / Matured Date',
   'Tenure',
   'Cumulative / Compound',
   'Compounding / Payout Frequency',
@@ -144,6 +145,7 @@ function buildRows(deposits: DepositHolding[], byId: Map<string, FinancialInstit
       recurringAmount: d.recurringAmount ?? '',
       interestRate: d.interestRate,
       startDate: d.startDate ? formatDate(d.startDate) : '',
+      preClosedDate: d.preClosedDate ? formatDate(d.preClosedDate) : '',
       maturityDate: d.maturityDate ? formatDate(d.maturityDate) : '',
       tenure: formatDepositTenure(d.startDate, d.maturityDate) ?? '',
       cumulativeInterest: (isRd || d.cumulativeInterest) ? 'Yes' : 'No',
@@ -173,14 +175,15 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
     { header: HEADERS[6], key: 'recurringAmount', width: 18 },
     { header: HEADERS[7], key: 'interestRate', width: 18 },
     { header: HEADERS[8], key: 'startDate', width: 14 },
-    { header: HEADERS[9], key: 'maturityDate', width: 14 },
-    { header: HEADERS[10], key: 'tenure', width: 22 },
-    { header: HEADERS[11], key: 'cumulativeInterest', width: 16 },
-    { header: HEADERS[12], key: 'frequency', width: 22 },
-    { header: HEADERS[13], key: 'rollover', width: 18 },
-    { header: HEADERS[14], key: 'interest', width: 16 },
-    { header: HEADERS[15], key: 'realizedValue', width: 18 },
-    { header: HEADERS[16], key: 'notes', width: 28 },
+    { header: HEADERS[9], key: 'preClosedDate', width: 16 },
+    { header: HEADERS[10], key: 'maturityDate', width: 18 },
+    { header: HEADERS[11], key: 'tenure', width: 22 },
+    { header: HEADERS[12], key: 'cumulativeInterest', width: 16 },
+    { header: HEADERS[13], key: 'frequency', width: 22 },
+    { header: HEADERS[14], key: 'rollover', width: 18 },
+    { header: HEADERS[15], key: 'interest', width: 16 },
+    { header: HEADERS[16], key: 'realizedValue', width: 18 },
+    { header: HEADERS[17], key: 'notes', width: 28 },
   ];
   const header = sheet.getRow(1);
   header.font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Calibri', size: 11 };
@@ -223,7 +226,7 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
       formatNumber(r.principal, 2),
       typeof r.recurringAmount === 'number' ? formatNumber(r.recurringAmount, 2) : '',
       formatNumber(r.interestRate, 2),
-      r.startDate, r.maturityDate, r.tenure,
+      r.startDate, r.preClosedDate, r.maturityDate, r.tenure,
       r.cumulativeInterest, r.frequency, r.rollover,
       formatNumber(r.interest, 2), formatNumber(r.realizedValue, 2), r.notes,
     ].map(csvEscape).join(','));
@@ -396,6 +399,7 @@ async function exportPdf(
       formatNumber(d.principal, 0),
       formatPercent(d.interestRate, 2),
       d.startDate ? formatDate(d.startDate) : '',
+      d.preClosedDate ? formatDate(d.preClosedDate) : '',
       d.maturityDate ? formatDate(d.maturityDate) : '',
       formatNumber(d.currentValue || computed.realizedValue, 0),
     ];
@@ -412,7 +416,8 @@ async function exportPdf(
       'Principal',
       'Rate of Interest',
       'Start Date',
-      'Maturity Date',
+      'Pre-closure Date',
+      'Planned / Matured Date',
       'Maturity Value',
     ]],
     body,
@@ -421,16 +426,17 @@ async function exportPdf(
     headStyles: { fillColor: [200, 80, 45], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, overflow: 'linebreak', halign: 'center' },
     alternateRowStyles: { fillColor: [250, 246, 243] },
     columnStyles: {
-      0: { cellWidth: 58, overflow: 'linebreak' },  // Deposit Number
-      1: { cellWidth: 105, overflow: 'linebreak' }, // Purpose/Name
-      2: { cellWidth: 72, overflow: 'linebreak' },  // Account Type
-      3: { cellWidth: 96, overflow: 'linebreak' },  // Bank
-      4: { cellWidth: 54, halign: 'center' },       // Status
-      5: { cellWidth: 84, halign: 'right' },        // Principal (accounting: currency left, value right)
-      6: { cellWidth: 58, halign: 'right' },        // Rate of Interest
-      7: { cellWidth: 62, halign: 'center' },       // Start Date
-      8: { cellWidth: 62, halign: 'center' },       // Maturity Date
-      9: { cellWidth: 84, halign: 'right' },        // Maturity Value (accounting)
+      0: { cellWidth: 52, overflow: 'linebreak' },  // Deposit Number
+      1: { cellWidth: 90, overflow: 'linebreak' },  // Purpose/Name
+      2: { cellWidth: 66, overflow: 'linebreak' },  // Account Type
+      3: { cellWidth: 86, overflow: 'linebreak' },  // Bank
+      4: { cellWidth: 50, halign: 'center' },       // Status
+      5: { cellWidth: 80, halign: 'right' },        // Principal (accounting: currency left, value right)
+      6: { cellWidth: 54, halign: 'right' },        // Rate of Interest
+      7: { cellWidth: 58, halign: 'center' },       // Start Date
+      8: { cellWidth: 58, halign: 'center' },       // Pre-closure Date
+      9: { cellWidth: 66, halign: 'center' },       // Planned / Matured Date
+      10: { cellWidth: 80, halign: 'right' },       // Maturity Value (accounting)
     },
     margin: { left: marginX, right: marginX, top: 28, bottom: 28 },
     tableWidth: tableW,
@@ -446,13 +452,13 @@ async function exportPdf(
           data.cell.styles.fontSize = 7;
         }
       }
-      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 9)) {
+      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 10)) {
         // Accounting style drawn in didDrawCell (currency left, value right)
         data.cell.text = [''];
       }
     },
     didDrawCell: (data) => {
-      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 9)) {
+      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 10)) {
         const raw = String((data.row.raw as unknown[] | undefined)?.[data.column.index] ?? data.cell.raw ?? '');
         if (!raw) return;
         const { x, y: cy, width, height } = data.cell;

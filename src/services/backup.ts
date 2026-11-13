@@ -128,10 +128,11 @@ interface PreparedRestore {
   depositSubtypes?: Array<{ accountType: DepositType; input: number; success: number; errors: number }>;
 }
 
-const DEPOSIT_SUBTYPE_ORDER: DepositType[] = ['fd', 'rd', 'tax-saving', 'savings', 'nsc', 'other'];
+const DEPOSIT_SUBTYPE_ORDER: DepositType[] = ['fd', 'rd', 'scss', 'tax-saving', 'savings', 'nsc', 'other'];
 const DEPOSIT_SUBTYPE_LABEL_KEYS: Record<DepositType, string> = {
   fd: 'deposit.account.fd',
   rd: 'deposit.account.rd',
+  scss: 'deposit.account.scss',
   'tax-saving': 'deposit.account.taxSaving',
   savings: 'deposit.account.savings',
   nsc: 'deposit.account.nsc',
@@ -139,7 +140,7 @@ const DEPOSIT_SUBTYPE_LABEL_KEYS: Record<DepositType, string> = {
 };
 
 function normalizeDepositSubtype(value: unknown): DepositType {
-  if (value === 'fd' || value === 'rd' || value === 'tax-saving' || value === 'savings' || value === 'nsc' || value === 'other') return value;
+  if (value === 'fd' || value === 'rd' || value === 'scss' || value === 'tax-saving' || value === 'savings' || value === 'nsc' || value === 'other') return value;
   return 'other';
 }
 
