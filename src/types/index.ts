@@ -60,6 +60,7 @@ export const DepositType = {
   TaxSaving: 'tax-saving',
   Savings: 'savings',
   NSC: 'nsc',
+  SCSS: 'scss',
   Other: 'other',
 } as const;
 export type DepositType = (typeof DepositType)[keyof typeof DepositType];

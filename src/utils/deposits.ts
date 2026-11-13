@@ -44,23 +44,48 @@ export function isPortfolioDeposit(
   return !isClosedDepositStatus(getDepositLifecycleStatus(input, asOf));
 }
 
+export function sanitizeDepositLienState<T extends {
+  markedAsLien?: boolean;
+  preClosedDate?: string;
+  preClosureCreditedValue?: number;
+  lienReason?: string;
+  accountType?: string;
+}>(input: T): T {
+  const markedAsLien = input.accountType === 'rd' ? false : Boolean(input.markedAsLien);
+  if (markedAsLien) {
+    return {
+      ...input,
+      markedAsLien: true,
+      lienReason: input.lienReason?.trim() || undefined,
+      preClosedDate: undefined,
+      preClosureCreditedValue: undefined,
+    };
+  }
+  return {
+    ...input,
+    markedAsLien: false,
+    lienReason: undefined,
+  };
+}
+
 export function getDepositLifecycleStatus(input: {
   startDate: string;
   maturityDate: string;
   preClosedDate?: string;
   markedAsLien?: boolean;
 }, asOf: Date = new Date()): DepositLifecycleStatus | null {
-  if (input.markedAsLien) return 'in-lien';
-  if (input.preClosedDate) return 'pre-closed';
+  // Invariant: lien-active deposit cannot be matured/pre-closed until lien is closed.
+  if (input.markedAsLien) return DepositLifecycleStatus.InLien;
+  if (input.preClosedDate) return DepositLifecycleStatus.PreClosed;
   const start = dayjs(input.startDate);
   const maturity = dayjs(input.maturityDate);
   if (!start.isValid() || !maturity.isValid()) return null;
   const today = dayjs(asOf).startOf('day');
-  if (maturity.isBefore(today, 'day')) return 'matured';
-  if (start.isAfter(today, 'day') && maturity.isAfter(today, 'day')) return 'planned';
-  if ((start.isBefore(today, 'day') || start.isSame(today, 'day')) && maturity.isAfter(today, 'day')) return 'active';
-  if (start.isAfter(today, 'day')) return 'planned';
-  return 'active';
+  if (maturity.isBefore(today, 'day')) return DepositLifecycleStatus.Matured;
+  if (start.isAfter(today, 'day') && maturity.isAfter(today, 'day')) return DepositLifecycleStatus.Planned;
+  if ((start.isBefore(today, 'day') || start.isSame(today, 'day')) && maturity.isAfter(today, 'day')) return DepositLifecycleStatus.Active;
+  if (start.isAfter(today, 'day')) return DepositLifecycleStatus.Planned;
+  return DepositLifecycleStatus.Active;
 }
 
 export function formatDepositTenure(startDate?: string, maturityDate?: string): string | null {
@@ -86,9 +111,9 @@ export function formatDepositTenure(startDate?: string, maturityDate?: string): 
 }
 
 export interface DepositComputedValues {
-  /** Interest earned (compound interest for cumulative/RD; total simple interest for non-cumulative payout FD). */
+  /** Interest earned (compound interest for cumulative/RD; total simple interest for non-cumulative payout FD) over full tenure. */
   interest: number;
-  /** Maturity value (FD cumulative: principal+interest; FD non-cumulative payout: principal; RD: recurringAmount*months + interest). */
+  /** Maturity/realized value over full tenure. */
   realizedValue: number;
   /** Total amount deposited/invested (FD: principal; RD: recurringAmount * months). */
   totalDeposited: number;
@@ -120,6 +145,16 @@ function calculateRdMaturityValue(
   const denom = 1 - Math.pow(onePlusI, -1 / 3);
   if (Math.abs(denom) < 1e-12) return recurringAmount * months;
   return recurringAmount * ((Math.pow(onePlusI, q) - 1) / denom);
+}
+
+function clampAsOfToTenure(startDate: string, maturityDate: string, asOf: Date = new Date()): dayjs.Dayjs | null {
+  const start = dayjs(startDate).startOf('day');
+  const maturity = dayjs(maturityDate).startOf('day');
+  if (!start.isValid() || !maturity.isValid() || maturity.isBefore(start, 'day')) return null;
+  const asOfDay = dayjs(asOf).startOf('day');
+  if (asOfDay.isBefore(start, 'day')) return start;
+  if (asOfDay.isAfter(maturity, 'day')) return maturity;
+  return asOfDay;
 }
 
 export function calculateDepositValues(input: {
@@ -167,11 +202,81 @@ export function calculateDepositValues(input: {
     return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
   }
 
-  // Non-cumulative (interest payout): maturity amount is principal; interest is paid out periodically.
+  // Non-cumulative (interest payout): total interest over tenure (simple), realized includes principal.
   const interest = Math.max(0, (principal * rate * years) / 100);
   const payoutsPerYear = input.payoutFrequency ? PAYOUTS_PER_YEAR[input.payoutFrequency] : undefined;
   const interestPayoutAmount = payoutsPerYear && payoutsPerYear > 0 ? (principal * rate) / 100 / payoutsPerYear : undefined;
-  return { interest, realizedValue: principal, totalDeposited: principal, months: 0, interestPayoutAmount };
+  return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0, interestPayoutAmount };
+}
+
+export function calculateDepositAccruedValueAsOf(input: {
+  accountType?: DepositType;
+  principal: number;
+  recurringAmount?: number;
+  interestRate: number;
+  startDate: string;
+  maturityDate: string;
+  cumulativeInterest: boolean;
+  compoundingFrequency?: CompoundingFrequency;
+  payoutFrequency?: DepositPayoutFrequency;
+  preClosedDate?: string;
+  preClosureCreditedValue?: number;
+  markedAsLien?: boolean;
+}, asOf: Date = new Date()): number {
+  const start = dayjs(input.startDate).startOf('day');
+  const asOfDay = dayjs(asOf).startOf('day');
+  if (!start.isValid()) return input.accountType === 'rd' ? 0 : Math.max(0, input.principal || 0);
+
+  // Pre-closed (and lien not active): credited value if available, else accrued to pre-closure date.
+  if (input.preClosedDate && !input.markedAsLien) {
+    if (typeof input.preClosureCreditedValue === 'number' && Number.isFinite(input.preClosureCreditedValue)) {
+      return Math.max(0, input.preClosureCreditedValue);
+    }
+    return calculateDepositAccruedValueAsOf({ ...input, preClosedDate: undefined, preClosureCreditedValue: undefined }, dayjs(input.preClosedDate).toDate());
+  }
+
+  if (asOfDay.isBefore(start, 'day')) {
+    // Planned: no accrual before start.
+    if (input.accountType === 'rd') return 0;
+    return Math.max(0, input.principal || 0);
+  }
+
+  const capped = clampAsOfToTenure(input.startDate, input.maturityDate, asOfDay.toDate());
+  if (!capped) {
+    if (input.accountType === 'rd') return 0;
+    return Math.max(0, input.principal || 0);
+  }
+  const maturity = dayjs(input.maturityDate).startOf('day');
+  // If capped at/after maturity, full tenure value applies.
+  if (!capped.isBefore(maturity, 'day')) {
+    return calculateDepositValues({ ...input }).realizedValue;
+  }
+
+  if (input.accountType === 'rd') {
+    const recurringAmount = Number.isFinite(input.recurringAmount) ? Math.max(0, input.recurringAmount as number) : 0;
+    if (!recurringAmount) return 0;
+    const monthsElapsed = Math.max(0, capped.diff(start, 'month'));
+    const totalDeposited = recurringAmount * monthsElapsed;
+    const rate = Number.isFinite(input.interestRate) ? Math.max(0, input.interestRate) : 0;
+    if (!rate || monthsElapsed <= 0) return totalDeposited;
+    const maturityValue = calculateRdMaturityValue(recurringAmount, rate, monthsElapsed, input.compoundingFrequency ?? 'quarterly');
+    return Math.max(totalDeposited, maturityValue);
+  }
+
+  const principal = Number.isFinite(input.principal) ? Math.max(0, input.principal) : 0;
+  const rate = Number.isFinite(input.interestRate) ? Math.max(0, input.interestRate) : 0;
+  if (!principal) return 0;
+  if (!rate) return principal;
+  const years = capped.diff(start, 'day') / 365;
+  if (years <= 0) return principal;
+  if (input.cumulativeInterest) {
+    const compoundsPerYear = COMPOUNDING_PERIODS[input.compoundingFrequency ?? 'quarterly'] ?? 4;
+    const result = calculateCompoundInterest({ principal, annualRate: rate, years, compoundsPerYear });
+    return principal + Math.max(0, result.interestEarned);
+  }
+  // Non-cumulative/payout (including SCSS): simple interest accrued to-date.
+  const interest = Math.max(0, (principal * rate * years) / 100);
+  return principal + interest;
 }
 
 export function summarizeDeposits(

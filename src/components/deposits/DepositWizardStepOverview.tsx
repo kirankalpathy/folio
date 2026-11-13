@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Alert, AutoComplete, Button, DatePicker, Divider, Form, Input, InputNumber, Select } from 'antd';
+import { Alert, AutoComplete, Button, DatePicker, Divider, Form, Input, InputNumber, Select, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
-import { CircleEllipsis, Landmark, Plus, Repeat, ShieldCheck, Trash2, User, UserCheck, Users } from 'lucide-react';
+import { Plus, Trash2, User, UserCheck, Users } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
@@ -13,21 +13,16 @@ import { getDateFormatId } from '../../utils/date';
 import { isDobDisabled } from '../../config/validationConfig';
 import { profileDisplayName, type DepositJointHolder, type DepositOperationType, type DepositType, type FinancialInstitutionInput } from '../../types';
 import {
-  ACCOUNT_OPTIONS,
+  ACCOUNT_TYPE_SELECT_OPTIONS,
   OPERATION_TYPE_OPTIONS,
   buildJointHolderSuggestions,
   newJointHolder,
+  renderDepositTypeIcon,
   type DepositFormValues,
 } from './depositFormModel';
 
 function AccountTypeLabel({ type, label }: { type: DepositType; label: string }) {
-  const icons: Partial<Record<DepositType, ReactNode>> = {
-    fd: <Landmark size={15} className="text-emerald-600 dark:text-emerald-400" />,
-    rd: <Repeat size={15} className="text-sky-600 dark:text-sky-400" />,
-    'tax-saving': <ShieldCheck size={15} className="text-violet-600 dark:text-violet-400" />,
-    other: <CircleEllipsis size={15} className="text-folio-ink/55 dark:text-white/55" />,
-  };
-  return <span className="inline-flex items-center gap-2">{icons[type]}<span>{label}</span></span>;
+  return <span className="inline-flex items-center gap-2">{renderDepositTypeIcon(type)}<span>{label}</span></span>;
 }
 
 function normalizeDepositNumber(value: string): string {
@@ -52,6 +47,8 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
   const { id: editId } = useParams<{ id: string }>();
   const form = Form.useFormInstance<DepositFormValues>();
   const depositNumber = Form.useWatch('depositNumber', form);
+  const accountType = Form.useWatch('accountType', form);
+  const startDate = Form.useWatch('startDate', form);
   const operationType = (Form.useWatch('operationType', form) ?? 'single') as DepositOperationType;
   const jointHolders = (Form.useWatch('jointHolders', form) ?? []) as Array<{ share?: number }>;
   const [createInstitutionOpen, setCreateInstitutionOpen] = useState(false);
@@ -81,6 +78,20 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
       });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (accountType !== 'scss') return;
+    const baseStart = startDate && dayjs.isDayjs(startDate) && startDate.isValid() ? startDate.startOf('day') : dayjs().startOf('day');
+    form.setFieldsValue({
+      interestPayoutOption: 'quarterly',
+      cumulativeInterest: false,
+      payoutFrequency: 'quarterly',
+      rollover: 'none',
+      markedAsLien: false,
+      lienReason: '',
+      maturityDate: baseStart.add(5, 'year'),
+    } as Partial<DepositFormValues>);
+  }, [accountType, form, startDate]);
 
   const locked = activeLocked || terminalLocked;
   const showJointHolders = operationType !== 'single';
@@ -154,16 +165,26 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
         <Input maxLength={120} autoComplete="off" />
       </Form.Item>
 
-      <Form.Item name="accountType" label={t('deposit.fields.accountType')} rules={[{ required: true, message: t('deposit.validation.accountTypeRequired') }]}>
+      <Form.Item name="accountType" label={t('deposit.fields.accountType')} rules={[{ required: true, message: t('deposit.validation.accountTypeRequired') }]} className={accountType === 'scss' ? 'sm:col-span-2' : undefined}>
         <Select
           disabled={locked}
           optionLabelProp="label"
-          options={ACCOUNT_OPTIONS.map((opt) => {
+          options={ACCOUNT_TYPE_SELECT_OPTIONS.map((opt) => {
             const label = t(opt.label);
-            return { value: opt.value, label: <AccountTypeLabel type={opt.value} label={label} /> };
+            const isCurrent = accountType === opt.value;
+            const disabledOpt = !opt.enabled && !isCurrent;
+            return { value: opt.value, disabled: disabledOpt, label: <AccountTypeLabel type={opt.value} label={label} /> };
           })}
         />
       </Form.Item>
+      {accountType === 'scss' ? (
+        <Alert
+          className="folio-message-strip folio-message-strip-warning sm:col-span-2 -mt-1 mb-2"
+          showIcon
+          type="warning"
+          title={t('deposit.scss.eligibilityWarning')}
+        />
+      ) : null}
       <Form.Item name="operationType" label={t('deposit.fields.operationType')} rules={[{ required: true, message: t('deposit.validation.operationTypeRequired') }]}>
         <Select
           disabled={locked}
@@ -280,10 +301,20 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
                     </div>
                   );
                 })}
-                {!locked && fields.length < 2 ? (
-                  <Button type="dashed" icon={<Plus size={14} />} onClick={() => add(newJointHolder())}>
-                    {t('deposit.jointHolder.add')}
-                  </Button>
+                {!locked ? (
+                  fields.length >= 2 ? (
+                    <Tooltip title={t('deposit.jointHolder.maxHint')}>
+                      <span className="block">
+                        <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add(newJointHolder())} disabled>
+                          {t('deposit.jointHolder.add')}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <Button type="dashed" block icon={<Plus size={14} />} onClick={() => add(newJointHolder())}>
+                      {t('deposit.jointHolder.add')}
+                    </Button>
+                  )
                 ) : null}
                 {showJointHolders && fields.length === 0 ? (
                   <Alert

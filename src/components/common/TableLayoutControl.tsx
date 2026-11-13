@@ -49,10 +49,25 @@ function normalizeLayout(defs: TableLayoutColumnDef[], prefs?: TableLayoutPrefs)
     seen.add(col.key);
     out.push({ key: col.key, visible: isAlwaysVisible(def) ? true : col.visible !== false });
   }
-  // Fields not present in saved prefs use their default visibility.
-  for (const def of defs) {
+  // Fields not present in saved prefs use their default visibility, inserted near their defined position.
+  for (let i = 0; i < defs.length; i++) {
+    const def = defs[i]!;
     if (seen.has(def.key)) continue;
-    out.push({ key: def.key, visible: isDefaultVisible(def) });
+    let insertAt = out.length;
+    for (let j = i - 1; j >= 0; j--) {
+      const prevKey = defs[j]!.key;
+      const idx = out.findIndex((c) => c.key === prevKey);
+      if (idx >= 0) { insertAt = idx + 1; break; }
+    }
+    if (insertAt === out.length) {
+      for (let j = i + 1; j < defs.length; j++) {
+        const nextKey = defs[j]!.key;
+        const idx = out.findIndex((c) => c.key === nextKey);
+        if (idx >= 0) { insertAt = idx; break; }
+      }
+    }
+    out.splice(insertAt, 0, { key: def.key, visible: isDefaultVisible(def) });
+    seen.add(def.key);
   }
   return out;
 }

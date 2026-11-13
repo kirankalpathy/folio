@@ -1,8 +1,8 @@
 {
   "name": "folio",
   "private": true,
-  "version": "0.1.4",
-  "build": "261111.8",
+  "version": "0.1.5",
+  "build": "261113.2",
   "versionChannel": "dev",
   "license": "MIT",
   "type": "module",

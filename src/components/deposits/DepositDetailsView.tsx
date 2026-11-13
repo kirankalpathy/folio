@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Alert, Descriptions } from 'antd';
 import type { DescriptionsProps } from 'antd';
-import { CircleEllipsis, Landmark, Repeat, ShieldCheck, User, UserCheck, Users } from 'lucide-react';
+import { User, UserCheck, Users } from 'lucide-react';
 import type { DepositHolding, DepositOperationType, DepositType } from '../../types';
 import { useI18n, type MessageKey } from '../../i18n';
 import { formatDate } from '../../utils/date';
@@ -10,7 +10,7 @@ import { calculateDepositValues, formatDepositTenure, getDepositLifecycleStatus 
 import DepositStatusTag from './DepositStatusTag';
 import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../../services/financialInstitutions';
-import { ACCOUNT_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, OPERATION_TYPE_OPTIONS, PAYOUT_OPTIONS, ROLLOVER_OPTIONS } from './depositFormModel';
+import { ACCOUNT_OPTIONS, NOMINEE_RELATIONSHIP_OPTIONS, OPERATION_TYPE_OPTIONS, PAYOUT_OPTIONS, ROLLOVER_OPTIONS, renderDepositTypeIcon } from './depositFormModel';
 import ChangeDetailsSection from '../common/ChangeDetailsSection';
 
 function val(v?: string | number | null): ReactNode {
@@ -19,15 +19,7 @@ function val(v?: string | number | null): ReactNode {
 }
 
 function accountTypeIcon(type: DepositType): ReactNode {
-  const icons: Partial<Record<DepositType, ReactNode>> = {
-    fd: <Landmark size={15} className="text-emerald-600 dark:text-emerald-400" />,
-    rd: <Repeat size={15} className="text-sky-600 dark:text-sky-400" />,
-    'tax-saving': <ShieldCheck size={15} className="text-violet-600 dark:text-violet-400" />,
-    savings: <Landmark size={15} className="text-folio-ink/55 dark:text-white/55" />,
-    nsc: <ShieldCheck size={15} className="text-folio-ink/55 dark:text-white/55" />,
-    other: <CircleEllipsis size={15} className="text-folio-ink/55 dark:text-white/55" />,
-  };
-  return icons[type] ?? <CircleEllipsis size={15} className="text-folio-ink/55 dark:text-white/55" />;
+  return renderDepositTypeIcon(type);
 }
 
 function operationTypeIcon(type: DepositOperationType): ReactNode {

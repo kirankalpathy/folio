@@ -9,13 +9,27 @@ import type {
   RestoreResult,
 } from '../types';
 import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../types';
-import { isRecord, parseBackup } from '../utils/backupSchema';
-import { calculateDepositValues } from '../utils/deposits';
+import { parseBackup } from '../utils/backupSchema';
+import { calculateDepositAccruedValueAsOf, calculateDepositValues, sanitizeDepositLienState } from '../utils/deposits';
 import { folioFileName } from '../utils/fileNaming';
 import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
 
 const FINANCIAL_TABLES = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
 const ALL_TABLES = [...FINANCIAL_TABLES, 'profile', 'credentials'] as const;
+const DEXIE_NAME = 'folio';
+
+async function clearDexieResidue(): Promise<void> {
+  try {
+    await new Promise<void>((resolve) => {
+      const req = indexedDB.deleteDatabase(DEXIE_NAME);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    });
+  } catch {
+    /* ignore */
+  }
+}
 
 function backupFileName(exportedAt: string): string {
   return folioFileName('ledgerBackup', 'json', { date: new Date(exportedAt) });
@@ -102,6 +116,8 @@ function recomputeDepositForRestore(record: unknown): Record<string, unknown> | 
   if (isRd) {
     next.markedAsLien = false;
     next.lienReason = undefined;
+    next.preClosedDate = undefined;
+    next.preClosureCreditedValue = undefined;
     next.principal = computed.totalDeposited;
     next.recurringAmount = recurringAmountRaw;
     next.interestPayoutAmount = undefined;
@@ -112,8 +128,30 @@ function recomputeDepositForRestore(record: unknown): Record<string, unknown> | 
         ? computed.interestPayoutAmount
         : undefined;
   }
-  // Persist computed current/maturity value. Pre-closure credited value is preserved separately.
-  next.currentValue = computed.realizedValue;
+
+  // Enforce lien/closed invariant (lien cannot coexist with pre-closure; lien remains in-lien even if maturity passed).
+  const sanitized = sanitizeDepositLienState(next as Partial<DepositHolding> & { accountType?: string });
+  Object.assign(next, sanitized);
+
+  // Accrued-to-date current value semantic.
+  next.currentValue = calculateDepositAccruedValueAsOf(
+    {
+      accountType: next.accountType as DepositType | undefined,
+      principal: typeof next.principal === 'number' ? next.principal : principal,
+      recurringAmount: typeof next.recurringAmount === 'number' ? next.recurringAmount : undefined,
+      interestRate,
+      startDate,
+      maturityDate,
+      cumulativeInterest,
+      compoundingFrequency,
+      payoutFrequency,
+      preClosedDate: typeof next.preClosedDate === 'string' ? next.preClosedDate : undefined,
+      preClosureCreditedValue: typeof next.preClosureCreditedValue === 'number' ? next.preClosureCreditedValue : undefined,
+      markedAsLien: Boolean(next.markedAsLien),
+    },
+    new Date(),
+  );
+
   const ts = typeof d.updatedAt === 'string' && d.updatedAt ? d.updatedAt : (typeof d.changedAt === 'string' && d.changedAt ? d.changedAt : new Date().toISOString());
   next.updatedAt = ts;
   if (typeof d.changedAt !== 'string' || !d.changedAt) next.changedAt = ts;
@@ -128,10 +166,11 @@ interface PreparedRestore {
   depositSubtypes?: Array<{ accountType: DepositType; input: number; success: number; errors: number }>;
 }
 
-const DEPOSIT_SUBTYPE_ORDER: DepositType[] = ['fd', 'rd', 'tax-saving', 'savings', 'nsc', 'other'];
+const DEPOSIT_SUBTYPE_ORDER: DepositType[] = ['fd', 'rd', 'scss', 'tax-saving', 'savings', 'nsc', 'other'];
 const DEPOSIT_SUBTYPE_LABEL_KEYS: Record<DepositType, string> = {
   fd: 'deposit.account.fd',
   rd: 'deposit.account.rd',
+  scss: 'deposit.account.scss',
   'tax-saving': 'deposit.account.taxSaving',
   savings: 'deposit.account.savings',
   nsc: 'deposit.account.nsc',
@@ -139,7 +178,7 @@ const DEPOSIT_SUBTYPE_LABEL_KEYS: Record<DepositType, string> = {
 };
 
 function normalizeDepositSubtype(value: unknown): DepositType {
-  if (value === 'fd' || value === 'rd' || value === 'tax-saving' || value === 'savings' || value === 'nsc' || value === 'other') return value;
+  if (value === 'fd' || value === 'rd' || value === 'scss' || value === 'tax-saving' || value === 'savings' || value === 'nsc' || value === 'other') return value;
   return 'other';
 }
 
@@ -156,7 +195,7 @@ function prepareRecordsForRestore(table: (typeof FINANCIAL_TABLES)[number], reco
         out.push(computed);
         stat.success += 1;
       } else {
-        stat.errors += 1; // not pushed when computed fields cannot be derived
+        stat.errors += 1;
       }
       byType.set(t, stat);
     }
@@ -233,10 +272,8 @@ export function buildExportReport(backup: ApplicationBackupSchema): BackupReport
 
 export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   const parsed = typeof source === 'string' ? JSON.parse(source) : source;
-  // If already validated (has required backup properties), skip re-validation.
-  const isPreValidated = isRecord(parsed) && parsed.app === 'folio' && parsed.schemaVersion === 1 && isRecord(parsed.data);
-  // Validate the entire file first; only import when fully valid (no mid-way import).
-  const backup = isPreValidated ? (parsed as unknown as ApplicationBackupSchema) : parseBackup(parsed);
+  // Always perform full schema/record validation (no bypass).
+  const backup = parseBackup(parsed);
   const preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore> = {
     stocks: prepareRecordsForRestore('stocks', backup.data.stocks),
     bonds: prepareRecordsForRestore('bonds', backup.data.bonds),
@@ -246,6 +283,14 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
     debts: prepareRecordsForRestore('debts', backup.data.debts),
     financialInstitutions: prepareRecordsForRestore('financialInstitutions', backup.data.financialInstitutions ?? []),
   };
+
+  // All-or-nothing: do not import if any record cannot be safely prepared/recomputed.
+  const prepErrors = FINANCIAL_TABLES.reduce((sum, t) => sum + preparedByTable[t].errors, 0);
+  if (prepErrors > 0) {
+    const report = buildRestoreReport(preparedByTable);
+    throw new Error(`Restore aborted: ${prepErrors} record(s) could not be safely imported. No data was changed. ${JSON.stringify(report)}`);
+  }
+
   const counts: BackupRecordCounts = {
     stocks: preparedByTable.stocks.success,
     bonds: preparedByTable.bonds.success,
@@ -271,6 +316,8 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
         await bulkPutRecordsSilent(db, 'debts', preparedByTable.debts.records);
         await bulkPutRecordsSilent(db, 'financialInstitutions', preparedByTable.financialInstitutions.records);
       });
+      // Keep storage layers consistent: remove Dexie residue so it cannot be re-migrated over restored data.
+      await clearDexieResidue();
       console.info('[folio/backup] restore complete', { counts, institutions: preparedByTable.financialInstitutions.success, attempt });
       return { counts, total: totalRecords(counts), report };
     } catch (error) {
@@ -296,6 +343,8 @@ export async function clearFinancialRecords(): Promise<void> {
   await withTransaction(async (db) => {
     for (const table of FINANCIAL_TABLES) await clearTableSilent(db, table);
   });
+  // Keep storage layers consistent and prevent Dexie residue from re-migrating.
+  await clearDexieResidue();
 }
 
 export async function clearLedgerData(): Promise<void> {
@@ -314,7 +363,11 @@ export async function saveBackupToChosenLocation(backup: ApplicationBackupSchema
 }
 
 export async function deleteEntireLedger(): Promise<void> {
+  // Full local reset: all SQLite tables, Dexie residue, and session state.
   await withTransaction(async (db) => {
     for (const table of ALL_TABLES) await clearTableSilent(db, table);
+    try { await db.execute('DELETE FROM settings'); } catch { /* ignore */ }
   });
+  try { sessionStorage.clear(); } catch { /* ignore */ }
+  await clearDexieResidue();
 }

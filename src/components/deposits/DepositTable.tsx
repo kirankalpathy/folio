@@ -3,8 +3,8 @@ import type { TableProps } from 'antd';
 import { AutoComplete, Table, Tag } from 'antd';
 import type { DepositHolding } from '../../types';
 import { daysUntil, formatDate } from '../../utils/date';
-import { calculateReturnsPercentage, formatINR, formatPercent } from '../../utils/finance';
-import { getDepositLifecycleStatus } from '../../utils/deposits';
+import { formatINR, formatPercent } from '../../utils/finance';
+import { calculateDepositValues, getDepositLifecycleStatus } from '../../utils/deposits';
 import { useI18n } from '../../i18n';
 import TruncatedText from '../common/TruncatedText';
 import TableLayoutControl, { useTableLayout, type TableLayoutColumnDef } from '../common/TableLayoutControl';
@@ -95,6 +95,7 @@ export default function DepositTable({
       { key: 'operationMode', label: t('deposit.table.operationMode'), defaultVisible: false },
       { key: 'status', label: t('deposit.table.status'), defaultVisible: true },
       { key: 'principal', label: t('deposit.table.principal'), defaultVisible: true },
+      { key: 'interest', label: t('deposit.table.interest'), defaultVisible: true },
       { key: 'recurringAmount', label: t('deposit.table.recurringAmount'), defaultVisible: false },
       { key: 'currentValue', label: t('deposit.table.currentValue'), defaultVisible: true },
       { key: 'interestRate', label: t('deposit.table.interestRate'), defaultVisible: false },
@@ -172,10 +173,64 @@ export default function DepositTable({
         align: 'right',
         sorter: { compare: (left, right) => left.principal - right.principal, multiple: 3 },
         render: (value: number) => (
-          <span className="whitespace-nowrap font-mono text-xs tabular-nums text-folio-ink/60 dark:text-white/50">
-            {formatINR(value)}
-          </span>
+          <div className="whitespace-nowrap text-right">
+            <p className="font-mono text-xs leading-5 tabular-nums text-folio-ink/60 dark:text-white/50">{formatINR(value)}</p>
+            <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+          </div>
         ),
+      },
+      interest: {
+        title: t('deposit.table.interest'),
+        key: 'interest',
+        align: 'right',
+        sorter: {
+          compare: (left, right) => {
+            const li = calculateDepositValues({
+              accountType: left.accountType, principal: left.principal, recurringAmount: left.recurringAmount,
+              interestRate: left.interestRate, startDate: left.startDate, maturityDate: left.maturityDate,
+              cumulativeInterest: left.accountType === 'rd' ? true : (left.cumulativeInterest ?? false),
+              compoundingFrequency: left.compoundingFrequency, payoutFrequency: left.payoutFrequency,
+            }).interest;
+            const ri = calculateDepositValues({
+              accountType: right.accountType, principal: right.principal, recurringAmount: right.recurringAmount,
+              interestRate: right.interestRate, startDate: right.startDate, maturityDate: right.maturityDate,
+              cumulativeInterest: right.accountType === 'rd' ? true : (right.cumulativeInterest ?? false),
+              compoundingFrequency: right.compoundingFrequency, payoutFrequency: right.payoutFrequency,
+            }).interest;
+            return li - ri;
+          },
+          multiple: 4,
+        },
+        render: (_, record) => {
+          const isRd = record.accountType === 'rd';
+          const computed = calculateDepositValues({
+            accountType: record.accountType,
+            principal: record.principal,
+            recurringAmount: record.recurringAmount,
+            interestRate: record.interestRate,
+            startDate: record.startDate,
+            maturityDate: record.maturityDate,
+            cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
+            compoundingFrequency: record.compoundingFrequency,
+            payoutFrequency: record.payoutFrequency,
+          });
+          const payoutOption = toInterestPayoutOption(record);
+          const isCumulative = payoutOption === 'cumulative' || isRd;
+          let subtext = t('deposit.payoutMode.cumulative');
+          if (!isCumulative && computed.interestPayoutAmount != null) {
+            const amt = formatINR(computed.interestPayoutAmount);
+            if (payoutOption === 'monthly') subtext = t('deposit.interestSubtext.monthly', { amount: amt });
+            else if (payoutOption === 'quarterly') subtext = t('deposit.interestSubtext.quarterly', { amount: amt });
+            else if (payoutOption === 'semi-annual') subtext = t('deposit.interestSubtext.semiAnnual', { amount: amt });
+            else if (payoutOption === 'annual') subtext = t('deposit.interestSubtext.annual', { amount: amt });
+          }
+          return (
+            <div className="whitespace-nowrap text-right">
+              <p className="font-mono text-xs leading-5 tabular-nums text-folio-ink/70 dark:text-white/60">{formatINR(computed.interest)}</p>
+              <p className="mt-0.5 font-mono text-[0.625rem] leading-4 font-semibold tabular-nums text-folio-ink/40 dark:text-white/35">{subtext}</p>
+            </div>
+          );
+        },
       },
       recurringAmount: {
         title: t('deposit.table.recurringAmount'),
@@ -185,18 +240,46 @@ export default function DepositTable({
       },
       currentValue: {
         title: t('deposit.table.currentValue'),
-        dataIndex: 'currentValue',
         key: 'currentValue',
         align: 'right',
-        sorter: { compare: (left, right) => left.currentValue - right.currentValue, multiple: 2 },
-        render: (value: number, record) => (
-          <div className="whitespace-nowrap text-right">
-            <p className="font-mono text-sm font-medium tabular-nums">{formatINR(value)}</p>
-            <p className="mt-0.5 font-mono text-[0.625rem] text-folio-ink/40 dark:text-white/35">
-              {formatPercent(calculateReturnsPercentage(record.principal, record.currentValue))}
-            </p>
-          </div>
-        ),
+        sorter: {
+          compare: (left, right) => {
+            const l = calculateDepositValues({
+              accountType: left.accountType, principal: left.principal, recurringAmount: left.recurringAmount,
+              interestRate: left.interestRate, startDate: left.startDate, maturityDate: left.maturityDate,
+              cumulativeInterest: left.accountType === 'rd' ? true : (left.cumulativeInterest ?? false),
+              compoundingFrequency: left.compoundingFrequency, payoutFrequency: left.payoutFrequency,
+            }).realizedValue;
+            const r = calculateDepositValues({
+              accountType: right.accountType, principal: right.principal, recurringAmount: right.recurringAmount,
+              interestRate: right.interestRate, startDate: right.startDate, maturityDate: right.maturityDate,
+              cumulativeInterest: right.accountType === 'rd' ? true : (right.cumulativeInterest ?? false),
+              compoundingFrequency: right.compoundingFrequency, payoutFrequency: right.payoutFrequency,
+            }).realizedValue;
+            return l - r;
+          },
+          multiple: 2,
+        },
+        render: (_, record) => {
+          const isRd = record.accountType === 'rd';
+          const computed = calculateDepositValues({
+            accountType: record.accountType,
+            principal: record.principal,
+            recurringAmount: record.recurringAmount,
+            interestRate: record.interestRate,
+            startDate: record.startDate,
+            maturityDate: record.maturityDate,
+            cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
+            compoundingFrequency: record.compoundingFrequency,
+            payoutFrequency: record.payoutFrequency,
+          });
+          return (
+            <div className="whitespace-nowrap text-right">
+              <p className="font-mono text-sm font-medium leading-5 tabular-nums">{formatINR(computed.realizedValue)}</p>
+              <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+            </div>
+          );
+        },
       },
       interestRate: {
         title: t('deposit.table.interestRate'),
@@ -210,7 +293,10 @@ export default function DepositTable({
         align: 'right',
         sorter: { compare: (left, right) => left.interestRate - right.interestRate, multiple: 5 },
         render: (_, record) => (
-          <span className="whitespace-nowrap font-mono text-xs tabular-nums">{formatPercent(record.interestRate, 2)}</span>
+          <div className="whitespace-nowrap text-right">
+            <p className="font-mono text-xs leading-5 tabular-nums">{formatPercent(record.interestRate, 2)}</p>
+            <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+          </div>
         ),
       },
       interestPayout: {
@@ -240,17 +326,26 @@ export default function DepositTable({
         title: t('deposit.table.maturity'),
         key: 'maturity',
         defaultSortOrder: 'descend',
-        sorter: { compare: (left, right) => left.maturityDate.localeCompare(right.maturityDate), multiple: 1 },
+        sorter: {
+          compare: (left, right) => {
+            const leftDate = left.preClosedDate || left.maturityDate || '';
+            const rightDate = right.preClosedDate || right.maturityDate || '';
+            return leftDate.localeCompare(rightDate);
+          },
+          multiple: 1,
+        },
         render: (_, record) => {
-          const days = daysUntil(record.maturityDate);
+          const closureDate = record.preClosedDate || record.maturityDate;
+          if (!closureDate) return dash;
+          const days = daysUntil(closureDate);
           return (
             <div className="whitespace-nowrap">
-              <p className="font-mono text-xs tabular-nums">{formatDate(record.maturityDate)}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-1">
+              <p className="font-mono text-xs leading-5 tabular-nums">{formatDate(closureDate)}</p>
+              <div className="mt-0.5 flex min-h-4 flex-wrap items-center gap-1">
                 <span
-                  className={`inline-flex rounded-full border px-1.5 py-0.5 font-mono text-[0.5625rem] ${maturityClass(days)}`}
+                  className={`inline-flex rounded-full border px-1.5 py-0.5 font-mono text-[0.5625rem] leading-4 ${maturityClass(days)}`}
                 >
-                  {maturityLabel(days, t)}
+                  {maturityLabel(closureDate, t)}
                 </span>
               </div>
             </div>

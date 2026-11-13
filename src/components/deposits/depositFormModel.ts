@@ -1,4 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs';
+import type { ReactNode } from 'react';
+import { createElement } from 'react';
+import { CircleEllipsis, Landmark, Repeat, ShieldCheck, UserCheck, type LucideIcon } from 'lucide-react';
 import type { MessageKey } from '../../i18n';
 import type {
   CompoundingFrequency,
@@ -13,6 +16,7 @@ import type {
   NomineeRelationship,
   OperationMode,
 } from '../../types';
+import { calculateDepositAccruedValueAsOf, sanitizeDepositLienState } from '../../utils/deposits';
 
 export const InterestPayoutOption = {
   Cumulative: 'cumulative',
@@ -24,21 +28,30 @@ export const InterestPayoutOption = {
 
 export type InterestPayoutOption = (typeof InterestPayoutOption)[keyof typeof InterestPayoutOption];
 
+export function isScssAccountType(accountType: DepositType | undefined): boolean {
+  return accountType === 'scss';
+}
+
 export function isCumulativePayoutOption(option: InterestPayoutOption | undefined): boolean {
   return option === InterestPayoutOption.Cumulative || option == null;
 }
 
 export function deriveCumulativeInterest(accountType: DepositType | undefined, option: InterestPayoutOption | undefined): boolean {
-  return accountType === 'rd' || isCumulativePayoutOption(option);
+  if (accountType === 'rd') return true;
+  if (isScssAccountType(accountType)) return false;
+  return isCumulativePayoutOption(option);
 }
 
 export function derivePeriodicPayoutFrequency(accountType: DepositType | undefined, option: InterestPayoutOption | undefined): DepositPayoutFrequency | undefined {
-  if (accountType === 'rd' || !option || option === InterestPayoutOption.Cumulative) return undefined;
+  if (accountType === 'rd') return undefined;
+  if (isScssAccountType(accountType)) return 'quarterly';
+  if (!option || option === InterestPayoutOption.Cumulative) return undefined;
   return option as DepositPayoutFrequency;
 }
 
 export function toInterestPayoutOption(deposit: Pick<DepositHolding, 'accountType' | 'cumulativeInterest' | 'payoutFrequency'>): InterestPayoutOption {
   if (deposit.accountType === 'rd') return InterestPayoutOption.Cumulative;
+  if (isScssAccountType(deposit.accountType)) return InterestPayoutOption.Quarterly;
   if (deposit.cumulativeInterest === false && deposit.payoutFrequency) return deposit.payoutFrequency as InterestPayoutOption;
   if (deposit.cumulativeInterest === true) return InterestPayoutOption.Cumulative;
   // Legacy ambiguous: if a periodic payout frequency exists, treat as non-cumulative payout; else cumulative.
@@ -93,13 +106,44 @@ export interface DepositFormValues {
   nominees: DepositNomineeFormValue[];
 }
 
-export const ACCOUNT_OPTIONS: Array<{ value: DepositType; label: MessageKey }> = [
-  { value: 'fd', label: 'deposit.account.fd' },
-  { value: 'rd', label: 'deposit.account.rd' },
-  // TODO: implement incrementally
-  // { value: 'tax-saving', label: 'deposit.account.taxSaving' },
-  // { value: 'other', label: 'deposit.account.other' },
+export interface DepositAccountTypeOption {
+  value: DepositType;
+  label: MessageKey;
+  /** When false, option is shown disabled in the dropdown and cannot be selected for new input. */
+  enabled: boolean;
+  icon: LucideIcon;
+  iconClassName: string;
+}
+
+export const DEPOSIT_TYPE_ICON: Record<DepositType, { icon: LucideIcon; className: string }> = {
+  fd: { icon: Landmark, className: 'text-emerald-600 dark:text-emerald-400' },
+  rd: { icon: Repeat, className: 'text-sky-600 dark:text-sky-400' },
+  scss: { icon: UserCheck, className: 'text-amber-600 dark:text-amber-400' },
+  'tax-saving': { icon: ShieldCheck, className: 'text-violet-600 dark:text-violet-400' },
+  savings: { icon: Landmark, className: 'text-folio-ink/55 dark:text-white/55' },
+  nsc: { icon: ShieldCheck, className: 'text-folio-ink/55 dark:text-white/55' },
+  other: { icon: CircleEllipsis, className: 'text-folio-ink/55 dark:text-white/55' },
+};
+
+export function renderDepositTypeIcon(type: DepositType, size = 15): ReactNode {
+  const cfg = DEPOSIT_TYPE_ICON[type] ?? DEPOSIT_TYPE_ICON.other;
+  return createElement(cfg.icon, { size, className: cfg.className });
+}
+
+/** Central deposit type options. Toggle `enabled` (or comment an entry's enabled state) to control availability. */
+export const DEPOSIT_ACCOUNT_TYPE_OPTIONS: DepositAccountTypeOption[] = [
+  { value: 'fd', label: 'deposit.account.fd', enabled: true, icon: DEPOSIT_TYPE_ICON.fd.icon, iconClassName: DEPOSIT_TYPE_ICON.fd.className },
+  { value: 'rd', label: 'deposit.account.rd', enabled: true, icon: DEPOSIT_TYPE_ICON.rd.icon, iconClassName: DEPOSIT_TYPE_ICON.rd.className },
+  { value: 'scss', label: 'deposit.account.scss', enabled: true, icon: DEPOSIT_TYPE_ICON.scss.icon, iconClassName: DEPOSIT_TYPE_ICON.scss.className },
+  // { value: 'tax-saving', label: 'deposit.account.taxSaving', enabled: true, icon: DEPOSIT_TYPE_ICON['tax-saving'].icon, iconClassName: DEPOSIT_TYPE_ICON['tax-saving'].className },
+  { value: 'tax-saving', label: 'deposit.account.taxSaving', enabled: false, icon: DEPOSIT_TYPE_ICON['tax-saving'].icon, iconClassName: DEPOSIT_TYPE_ICON['tax-saving'].className },
+  // { value: 'savings', label: 'deposit.account.savings', enabled: true, icon: DEPOSIT_TYPE_ICON.savings.icon, iconClassName: DEPOSIT_TYPE_ICON.savings.className },
+  // { value: 'nsc', label: 'deposit.account.nsc', enabled: true, icon: DEPOSIT_TYPE_ICON.nsc.icon, iconClassName: DEPOSIT_TYPE_ICON.nsc.className },
+  // { value: 'other', label: 'deposit.account.other', enabled: true, icon: DEPOSIT_TYPE_ICON.other.icon, iconClassName: DEPOSIT_TYPE_ICON.other.className },
 ];
+
+export const ACCOUNT_OPTIONS = DEPOSIT_ACCOUNT_TYPE_OPTIONS.filter((o) => o.enabled);
+export const ACCOUNT_TYPE_SELECT_OPTIONS = DEPOSIT_ACCOUNT_TYPE_OPTIONS;
 
 export const FREQUENCY_OPTIONS: Array<{
   value: CompoundingFrequency & DepositPayoutFrequency;
@@ -208,42 +252,44 @@ export function defaultDepositValues(): DepositFormValues {
 }
 
 export function toFormValues(deposit: DepositHolding): DepositFormValues {
-  const isRd = deposit.accountType === 'rd';
-  const interestPayoutOption = toInterestPayoutOption(deposit);
-  const cumulativeInterest = deriveCumulativeInterest(deposit.accountType, interestPayoutOption);
-  const payoutFrequency = derivePeriodicPayoutFrequency(deposit.accountType, interestPayoutOption) ?? deposit.payoutFrequency ?? 'annual';
+  const sanitized = sanitizeDepositLienState(deposit);
+  const isRd = sanitized.accountType === 'rd';
+  const isScss = isScssAccountType(sanitized.accountType);
+  const interestPayoutOption = toInterestPayoutOption(sanitized as DepositHolding);
+  const cumulativeInterest = deriveCumulativeInterest(sanitized.accountType, interestPayoutOption);
+  const payoutFrequency = derivePeriodicPayoutFrequency(sanitized.accountType, interestPayoutOption) ?? sanitized.payoutFrequency ?? 'annual';
   return {
-    depositNumber: deposit.depositNumber ?? '',
-    name: deposit.name,
-    financialInstitutionId: deposit.financialInstitutionId,
-    bankName: deposit.bankName,
-    accountType: deposit.accountType,
-    operationType: deposit.operationType ?? 'single',
-    jointHolders: (deposit.jointHolders ?? []).map((h) => ({
+    depositNumber: sanitized.depositNumber ?? '',
+    name: sanitized.name,
+    financialInstitutionId: sanitized.financialInstitutionId,
+    bankName: sanitized.bankName,
+    accountType: sanitized.accountType,
+    operationType: sanitized.operationType ?? 'single',
+    jointHolders: (sanitized.jointHolders ?? []).map((h) => ({
       name: h.name ?? '',
       dateOfBirth: h.dateOfBirth ? dayjs(h.dateOfBirth) : undefined,
       share: Number.isFinite(h.share) ? h.share : undefined,
     })),
-    principal: deposit.principal,
-    recurringAmount: deposit.recurringAmount,
-    interestRate: deposit.interestRate,
-    compoundingFrequency: deposit.compoundingFrequency ?? 'quarterly',
+    principal: sanitized.principal,
+    recurringAmount: sanitized.recurringAmount,
+    interestRate: sanitized.interestRate,
+    compoundingFrequency: sanitized.compoundingFrequency ?? 'quarterly',
     cumulativeInterest,
     payoutFrequency,
     interestPayoutOption,
-    rollover: deposit.rollover ?? 'none',
-    operationMode: deposit.operationMode ?? 'online',
-    isPanLinked: deposit.isPanLinked ?? true,
-    isTaxExempt: deposit.isTaxExempt ?? false,
-    markedAsLien: isRd ? false : Boolean(deposit.markedAsLien),
-    lienReason: isRd ? '' : (deposit.lienReason ?? ''),
-    preClosed: Boolean(deposit.preClosedDate),
-    preClosedDate: deposit.preClosedDate ? dayjs(deposit.preClosedDate) : undefined,
-    preClosureCreditedValue: deposit.preClosureCreditedValue,
-    startDate: deposit.startDate ? dayjs(deposit.startDate) : undefined,
-    maturityDate: deposit.maturityDate ? dayjs(deposit.maturityDate) : undefined,
-    notes: deposit.notes ?? '',
-    nominees: (deposit.nominees ?? []).map((n) => ({
+    rollover: isScss ? 'none' : (sanitized.rollover ?? 'none'),
+    operationMode: sanitized.operationMode ?? 'online',
+    isPanLinked: sanitized.isPanLinked ?? true,
+    isTaxExempt: sanitized.isTaxExempt ?? false,
+    markedAsLien: isRd || isScss ? false : Boolean(sanitized.markedAsLien),
+    lienReason: isRd || isScss ? '' : (sanitized.lienReason ?? ''),
+    preClosed: Boolean(sanitized.preClosedDate),
+    preClosedDate: sanitized.preClosedDate ? dayjs(sanitized.preClosedDate) : undefined,
+    preClosureCreditedValue: sanitized.preClosureCreditedValue,
+    startDate: sanitized.startDate ? dayjs(sanitized.startDate) : undefined,
+    maturityDate: sanitized.maturityDate ? dayjs(sanitized.maturityDate) : undefined,
+    notes: sanitized.notes ?? '',
+    nominees: (sanitized.nominees ?? []).map((n) => ({
       name: n.name ?? '',
       relationship: n.relationship ?? 'other',
       dateOfBirth: n.dateOfBirth ? dayjs(n.dateOfBirth) : undefined,
@@ -280,12 +326,12 @@ export function toDepositInput(
   computed: { realizedValue: number; totalDeposited: number; interestPayoutAmount?: number },
 ): DepositInput {
   const isRd = values.accountType === 'rd';
+  const isScss = isScssAccountType(values.accountType);
   const nominees = (values.nominees ?? []).map(toNomineeInput).filter((n): n is DepositNominee => Boolean(n));
   const operationType = values.operationType ?? 'single';
   const jointHolders = operationType === 'single'
     ? []
     : (values.jointHolders ?? []).map(toJointHolderInput).filter((h): h is DepositJointHolder => Boolean(h));
-  const markedAsLien = isRd ? false : Boolean(values.markedAsLien);
   const cumulativeInterest = deriveCumulativeInterest(values.accountType, values.interestPayoutOption);
   const periodicPayoutFrequency = derivePeriodicPayoutFrequency(values.accountType, values.interestPayoutOption);
   const recurringAmount = isRd && Number.isFinite(values.recurringAmount) ? Math.max(0, values.recurringAmount as number) : undefined;
@@ -293,7 +339,8 @@ export function toDepositInput(
   const interestPayoutAmount = (!isRd && !cumulativeInterest && Number.isFinite(computed.interestPayoutAmount))
     ? computed.interestPayoutAmount
     : undefined;
-  return {
+
+  const base: DepositInput = {
     depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_/-]/g, ''),
     name: values.name.trim(),
     bankName: values.bankName.trim(),
@@ -303,18 +350,18 @@ export function toDepositInput(
     jointHolders: jointHolders.length ? jointHolders : undefined,
     principal,
     recurringAmount,
-    currentValue: computed.realizedValue,
+    currentValue: 0,
     interestRate: values.interestRate,
     compoundingFrequency: values.compoundingFrequency,
     cumulativeInterest,
     payoutFrequency: periodicPayoutFrequency,
     interestPayoutAmount,
-    rollover: values.rollover,
+    rollover: isScss ? 'none' : values.rollover,
     operationMode: values.operationMode ?? 'online',
     isPanLinked: Boolean(values.isPanLinked),
     isTaxExempt: Boolean(values.isTaxExempt),
-    markedAsLien,
-    lienReason: markedAsLien ? (values.lienReason?.trim() || undefined) : undefined,
+    markedAsLien: isRd || isScss ? false : Boolean(values.markedAsLien),
+    lienReason: values.lienReason?.trim() || undefined,
     preClosedDate: values.preClosed ? (values.preClosedDate?.format('YYYY-MM-DD') ?? dayjs().format('YYYY-MM-DD')) : undefined,
     preClosureCreditedValue: values.preClosed && Number.isFinite(values.preClosureCreditedValue) ? values.preClosureCreditedValue : undefined,
     startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : '',
@@ -322,4 +369,23 @@ export function toDepositInput(
     notes: values.notes?.trim() || undefined,
     nominees: nominees.length ? nominees : undefined,
   };
+  const sanitized = sanitizeDepositLienState(base);
+  sanitized.currentValue = calculateDepositAccruedValueAsOf(
+    {
+      accountType: sanitized.accountType,
+      principal: sanitized.principal,
+      recurringAmount: sanitized.recurringAmount,
+      interestRate: sanitized.interestRate,
+      startDate: sanitized.startDate,
+      maturityDate: sanitized.maturityDate,
+      cumulativeInterest: sanitized.cumulativeInterest ?? false,
+      compoundingFrequency: sanitized.compoundingFrequency,
+      payoutFrequency: sanitized.payoutFrequency,
+      preClosedDate: sanitized.preClosedDate,
+      preClosureCreditedValue: sanitized.preClosureCreditedValue,
+      markedAsLien: sanitized.markedAsLien,
+    },
+    new Date(),
+  );
+  return sanitized;
 }

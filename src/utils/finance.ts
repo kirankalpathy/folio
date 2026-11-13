@@ -11,6 +11,84 @@ import { isPortfolioDeposit } from './deposits';
 
 export type NumberFormatId = 'en-IN' | 'en-US' | 'de-DE' | 'fr-FR-space-dot' | 'fr-FR-space-comma' | 'de-CH';
 
+export const NumberWordSystem = {
+  Indian: 'indian',
+  International: 'international',
+} as const;
+export type NumberWordSystem = (typeof NumberWordSystem)[keyof typeof NumberWordSystem];
+
+export function getNumberWordSystem(cfg: NumberFormatConfig = activeNumberFormat): NumberWordSystem {
+  return cfg.indianGrouping ? NumberWordSystem.Indian : NumberWordSystem.International;
+}
+
+const BELOW_TWENTY = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+function wordsBelowThousand(n: number): string {
+  let num = Math.floor(Math.abs(n));
+  const parts: string[] = [];
+  const hundreds = Math.floor(num / 100);
+  const rest = num % 100;
+  if (hundreds > 0) parts.push(`${BELOW_TWENTY[hundreds]} Hundred`);
+  if (rest > 0) {
+    if (rest < 20) parts.push(BELOW_TWENTY[rest] ?? '');
+    else {
+      const ten = Math.floor(rest / 10);
+      const one = rest % 10;
+      parts.push(one ? `${TENS[ten]} ${BELOW_TWENTY[one]}` : (TENS[ten] ?? ''));
+    }
+  }
+  return parts.join(' ').trim();
+}
+
+function toIndianWords(n: number): string {
+  let num = Math.floor(Math.abs(n));
+  if (num === 0) return 'Zero';
+  const parts: string[] = [];
+  const crore = Math.floor(num / 10000000);
+  num %= 10000000;
+  const lakh = Math.floor(num / 100000);
+  num %= 100000;
+  const thousand = Math.floor(num / 1000);
+  num %= 1000;
+  const hundredRest = num;
+  if (crore) parts.push(`${wordsBelowThousand(crore)} ${crore === 1 ? 'Crore' : 'Crores'}`);
+  if (lakh) parts.push(`${wordsBelowThousand(lakh)} ${lakh === 1 ? 'Lakh' : 'Lakhs'}`);
+  if (thousand) parts.push(`${wordsBelowThousand(thousand)} Thousand`);
+  if (hundredRest) parts.push(wordsBelowThousand(hundredRest));
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function toInternationalWords(n: number): string {
+  let num = Math.floor(Math.abs(n));
+  if (num === 0) return 'Zero';
+  const scales = [
+    { value: 1_000_000_000, name: 'Billion' },
+    { value: 1_000_000, name: 'Million' },
+    { value: 1_000, name: 'Thousand' },
+  ];
+  const parts: string[] = [];
+  for (const scale of scales) {
+    const qty = Math.floor(num / scale.value);
+    if (qty > 0) {
+      parts.push(`${wordsBelowThousand(qty)} ${scale.name}`);
+      num %= scale.value;
+    }
+  }
+  if (num > 0) parts.push(wordsBelowThousand(num));
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+export function formatAmountInWords(value: number, system?: NumberWordSystem): string {
+  if (!Number.isFinite(value)) return '';
+  const abs = Math.abs(value);
+  if (abs === 0) return 'Zero';
+  const rounded = Math.round(abs);
+  const wordSystem = system ?? getNumberWordSystem();
+  const words = wordSystem === NumberWordSystem.Indian ? toIndianWords(rounded) : toInternationalWords(rounded);
+  return value < 0 ? `Minus ${words}` : words;
+}
+
 export interface NumberFormatConfig {
   id: NumberFormatId;
   label: string;

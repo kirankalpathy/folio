@@ -19,12 +19,14 @@ export function depositStepFields(
       'isPanLinked',
       'isTaxExempt',
       ...(isRd ? [] : ['markedAsLien', 'lienReason']),
-      'preClosedDate',
-      'preClosureCreditedValue',
     ];
   }
-  if (step === 2) return isRd
-    ? ['interestPayoutOption', 'compoundingFrequency', 'rollover']
-    : ['interestPayoutOption', 'compoundingFrequency', 'rollover'];
+  if (step === 2) return [
+    'interestPayoutOption',
+    'compoundingFrequency',
+    'rollover',
+    'preClosedDate',
+    'preClosureCreditedValue',
+  ];
   return ['nominees', 'notes'];
 }
