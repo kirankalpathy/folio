@@ -2,6 +2,12 @@
 
 ## `v0.1.5`
 
+### Accuracy & consistency
+- **Consistent deposit calculations:** deposit totals (including interest and gains) now use the same calculation across the deposits table, deposit details, and exports, so values match everywhere.
+- **Consistent number formatting:** amounts and percentages now follow your selected number format and show 2 decimal places consistently across tables, details, summaries, and exports for clearer, more reliable values.
+- **Clearer gain colors:** **Realized Gain** and **Unrealized Gain** now use consistent, easy-to-distinguish colors across the app.
+- **Improved table alignment:** values in deposit tables (including totals and rates) now align more consistently for easier reading.
+
 ### Reliability & data safety
 - **Safer backup restore:** restoring a backup is now checked more thoroughly before anything changes, and if a backup can’t be restored safely the restore is stopped without affecting your existing data.
 - **Clear vs. delete data:** clearing ledger data now only removes your financial records while keeping your profile, settings, and sign-in setup intact; deleting all app data now fully resets the app to a clean state.
