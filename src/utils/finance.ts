@@ -7,7 +7,7 @@ import type {
   PortfolioSnapshot,
 } from '../types';
 import { ASSET_CLASS_KEYS } from '../types';
-import { isPortfolioDeposit } from './deposits';
+import { isPortfolioDeposit, summarizeDeposits } from './deposits';
 
 export type NumberFormatId = 'en-IN' | 'en-US' | 'de-DE' | 'fr-FR-space-dot' | 'fr-FR-space-comma' | 'de-CH';
 
@@ -132,11 +132,22 @@ function groupInteger(intPart: string, cfg: NumberFormatConfig): string {
   return s.replace(/\B(?=(\d{3})+(?!\d))/g, cfg.group);
 }
 
-export function formatNumber(value: number, decimals = 0): string {
+export const MONEY_DECIMALS = 2;
+export const PERCENT_DECIMALS = 2;
+
+function roundTo(value: number, decimals: number): number {
+  if (!Number.isFinite(value)) return value;
+  const d = Math.max(0, Math.floor(decimals));
+  const factor = 10 ** d;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+export function formatNumber(value: number, decimals = MONEY_DECIMALS): string {
   if (!Number.isFinite(value)) return '—';
+  const d = Math.max(0, Math.floor(decimals));
+  const rounded = roundTo(Math.abs(value), d);
   const sign = value < 0 ? '-' : '';
-  const abs = Math.abs(value);
-  const fixed = abs.toFixed(Math.max(0, Math.floor(decimals)));
+  const fixed = rounded.toFixed(d);
   const [intPart = '0', decPart] = fixed.split('.');
   const grouped = groupInteger(intPart, activeNumberFormat);
   return decPart ? `${sign}${grouped}${activeNumberFormat.decimal}${decPart}` : `${sign}${grouped}`;
@@ -156,24 +167,24 @@ const COMPACT_UNITS = [
 
 function formatCompactAmount(value: number, decimals: number): string {
   const unit = COMPACT_UNITS.find((candidate) => value >= candidate.threshold);
-  if (!unit) return formatNumber(value, Math.min(decimals, 2));
+  if (!unit) return formatNumber(value, decimals);
   return `${formatNumber(value / unit.divisor, decimals)} ${unit.suffix}`;
 }
 
 export function formatINR(value: number, options: INRFormatOptions = {}): string {
   if (!Number.isFinite(value)) return '—';
-  const { decimals = 0, compact = false, showSign = false } = options;
+  const { decimals = MONEY_DECIMALS, compact = false, showSign = false } = options;
   const sign = value < 0 ? '-' : showSign && value > 0 ? '+' : '';
   const absolute = Math.abs(value);
   if (compact) return `${sign}₹${formatCompactAmount(absolute, decimals)}`;
-  return `${sign}₹${formatNumber(absolute, Math.max(0, Math.floor(decimals)))}`;
+  return `${sign}₹${formatNumber(absolute, decimals)}`;
 }
 
 export function formatINRCompact(value: number): string {
-  return formatINR(value, { compact: true, decimals: 2 });
+  return formatINR(value, { compact: true, decimals: MONEY_DECIMALS });
 }
 
-export function formatPercent(value: number, decimals = 1): string {
+export function formatPercent(value: number, decimals = PERCENT_DECIMALS): string {
   if (!Number.isFinite(value)) return '—';
   return `${formatNumber(value, decimals)}%`;
 }
@@ -325,27 +336,36 @@ export function aggregateNetWorth(snapshot: PortfolioSnapshot): NetWorthSummary 
   }
 
   const assetKeys = ASSET_CLASS_KEYS.filter((key) => key !== 'debts');
-  const totalAssets = assetKeys.reduce((sum, key) => sum + categories[key].currentValue, 0);
-  const totalInvested = assetKeys.reduce((sum, key) => sum + categories[key].investedValue, 0);
+  const totalAssets = assetKeys.reduce((sum, key) => sum + categories[key].investedValue, 0);
   const totalLiabilities = categories.debts.currentValue;
-  const unrealisedGain = totalAssets - totalInvested;
-
   const portfolioDeposits = snapshot.deposits.filter((item) => isPortfolioDeposit(item));
+  const depositSummary = summarizeDeposits(snapshot.deposits);
+  const realizedGain = depositSummary.realizedGain;
+  const unrealisedGain = depositSummary.unrealizedGain;
+  const totalGain = realizedGain + unrealisedGain;
+
+  const allocationBase = assetKeys.reduce((sum, key) => sum + categories[key].currentValue, 0);
   const allocations: AllocationSlice[] = [];
   for (const key of ASSET_CLASS_KEYS) {
     if (key === 'deposits') {
-      const groups: Array<{ key: AllocationSlice['key']; types: Set<string> | null; include: (t: string) => boolean }> = [
-        { key: 'deposits-fd', types: null, include: (t) => t === 'fd' || t === 'tax-saving' || t === 'nsc' },
-        { key: 'deposits-rd', types: null, include: (t) => t === 'rd' },
-        { key: 'deposits-other', types: null, include: (t) => t !== 'fd' && t !== 'rd' && t !== 'tax-saving' && t !== 'nsc' },
+      // One allocation slice per deposit type (enum), using portfolio deposits only (excludes matured & pre-closed).
+      const depositTypeGroups: Array<{ key: AllocationSlice['key']; type: string }> = [
+        { key: 'deposits-fd', type: 'fd' },
+        { key: 'deposits-rd', type: 'rd' },
+        { key: 'deposits-tax-saving', type: 'tax-saving' },
+        { key: 'deposits-savings', type: 'savings' },
+        { key: 'deposits-nsc', type: 'nsc' },
+        { key: 'deposits-scss', type: 'scss' },
+        { key: 'deposits-other', type: 'other' },
       ];
-      for (const g of groups) {
-        const items = portfolioDeposits.filter((d) => g.include(d.accountType ?? 'other'));
+      for (const g of depositTypeGroups) {
+        const items = portfolioDeposits.filter((d) => (d.accountType ?? 'other') === g.type);
+        if (items.length === 0) continue;
         const value = items.reduce((sum, item) => sum + (item.currentValue ?? 0), 0);
         allocations.push({
           key: g.key,
           value,
-          percentage: totalAssets > 0 ? (Math.max(0, value) / totalAssets) * 100 : 0,
+          percentage: allocationBase > 0 ? (Math.max(0, value) / allocationBase) * 100 : 0,
           count: items.length,
           kind: 'asset',
         });
@@ -356,7 +376,7 @@ export function aggregateNetWorth(snapshot: PortfolioSnapshot): NetWorthSummary 
       key,
       value: categories[key].currentValue,
       percentage:
-        totalAssets > 0 ? (Math.max(0, categories[key].currentValue) / totalAssets) * 100 : 0,
+        allocationBase > 0 ? (Math.max(0, categories[key].currentValue) / allocationBase) * 100 : 0,
       count: categories[key].count,
       kind: key === 'debts' ? 'liability' : 'asset',
     });
@@ -366,9 +386,10 @@ export function aggregateNetWorth(snapshot: PortfolioSnapshot): NetWorthSummary 
     totalAssets,
     totalLiabilities,
     netWorth: totalAssets - totalLiabilities,
-    totalInvested,
+    realizedGain,
     unrealisedGain,
-    returnsPercentage: calculateReturnsPercentage(totalInvested, totalAssets),
+    totalGain,
+    returnsPercentage: calculateReturnsPercentage(totalAssets, totalAssets + totalGain),
     categories,
     allocations,
     counts,

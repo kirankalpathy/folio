@@ -2,19 +2,22 @@ import { Alert, Checkbox, DatePicker, Form, Select, Tooltip } from 'antd';
 import AmountInputNumber from '../common/AmountInputNumber';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
-import { Ban, Calendar, CalendarClock, CalendarDays, CalendarRange, Coins, RefreshCw, TrendingUp } from 'lucide-react';
+import { Ban, Building2, Calendar, CalendarClock, CalendarDays, CalendarRange, Coins, RefreshCw, TrendingUp, UserRound } from 'lucide-react';
 import { useI18n } from '../../i18n';
-import { getDateFormatId } from '../../utils/date';
+import { InterestCreditAnchor } from '../../types';
+import { getDateFormatId, formatDate } from '../../utils/date';
 import { DATE_PICKER_MIN } from '../../config/validationConfig';
 import { formatINR } from '../../utils/finance';
 import { calculateDepositValues } from '../../utils/deposits';
 import {
+  INTEREST_CREDIT_ANCHOR_OPTIONS,
   INTEREST_PAYOUT_OPTIONS,
   InterestPayoutOption,
   ROLLOVER_OPTIONS,
   deriveCumulativeInterest,
   derivePeriodicPayoutFrequency,
   isScssAccountType,
+  showInterestCreditAnchorOption,
   type DepositFormValues,
 } from './depositFormModel';
 import type { DepositRollover } from '../../types';
@@ -33,6 +36,11 @@ const payoutOptionIcons: Record<InterestPayoutOption, ReactNode> = {
   annual: <Calendar size={15} className="text-folio-ink/60 dark:text-white/60" />,
 };
 
+const creditAnchorIcons: Record<InterestCreditAnchor, ReactNode> = {
+  [InterestCreditAnchor.AccountOpeningDate]: <UserRound size={15} className="text-sky-600 dark:text-sky-400" />,
+  [InterestCreditAnchor.FinancialCalendar]: <Building2 size={15} className="text-violet-600 dark:text-violet-400" />,
+};
+
 function shortFrequencyLabel(t: (key: 'deposit.frequency.short.monthly' | 'deposit.frequency.short.quarterly' | 'deposit.frequency.short.semiAnnual' | 'deposit.frequency.short.annual') => string, opt: InterestPayoutOption | undefined): string {
   if (!opt || opt === InterestPayoutOption.Cumulative) return '';
   if (opt === InterestPayoutOption.Monthly) return t('deposit.frequency.short.monthly');
@@ -43,6 +51,25 @@ function shortFrequencyLabel(t: (key: 'deposit.frequency.short.monthly' | 'depos
 
 function isPreClosedDateDisabled(date: Dayjs): boolean {
   return date.isBefore(DATE_PICKER_MIN, 'day') || date.isAfter(dayjs(), 'day');
+}
+
+function ordinalDay(day: number): string {
+  const mod100 = day % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1: return `${day}st`;
+    case 2: return `${day}nd`;
+    case 3: return `${day}rd`;
+    default: return `${day}th`;
+  }
+}
+
+function addOpeningPeriodsLocal(base: Dayjs, periods: number, monthsPer: number, anchorDay: number): Dayjs {
+  const targetMonth = base.month() + periods * monthsPer;
+  const y = base.year() + Math.floor(targetMonth / 12);
+  const m = ((targetMonth % 12) + 12) % 12;
+  const dim = new Date(y, m + 1, 0).getDate();
+  return dayjs(new Date(y, m, Math.min(anchorDay, dim))).startOf('day');
 }
 
 export default function DepositWizardStepMaturity({
@@ -62,6 +89,7 @@ export default function DepositWizardStepMaturity({
   const isRd = accountType === 'rd';
   const isScss = isScssAccountType(accountType);
   const interestPayoutOption = (Form.useWatch('interestPayoutOption', form) ?? InterestPayoutOption.Cumulative) as InterestPayoutOption;
+  const interestCreditAnchor = (Form.useWatch('interestCreditAnchor', form) ?? InterestCreditAnchor.AccountOpeningDate) as InterestCreditAnchor;
   const cumulative = deriveCumulativeInterest(accountType, interestPayoutOption);
   const periodicPayoutFrequency = derivePeriodicPayoutFrequency(accountType, interestPayoutOption);
   const principal = Form.useWatch('principal', form) ?? 0;
@@ -85,9 +113,22 @@ export default function DepositWizardStepMaturity({
       interestPayoutOption: InterestPayoutOption.Quarterly,
       cumulativeInterest: false,
       payoutFrequency: 'quarterly',
+      interestCreditAnchor: InterestCreditAnchor.FinancialCalendar,
       rollover: 'none',
     } as Partial<DepositFormValues>);
   }, [isScss, form]);
+
+  useEffect(() => {
+    if (isRd || isScss) return;
+    if (!showInterestCreditAnchorOption(interestPayoutOption)) return;
+    // Ensure a sensible default when switching into a non-monthly periodic payout
+    const current = form.getFieldValue('interestCreditAnchor') as InterestCreditAnchor | undefined;
+    if (current !== InterestCreditAnchor.AccountOpeningDate && current !== InterestCreditAnchor.FinancialCalendar) {
+      form.setFieldValue('interestCreditAnchor', InterestCreditAnchor.AccountOpeningDate);
+    }
+  }, [interestPayoutOption, isRd, isScss, form]);
+
+  const interestPayoutAmount = Form.useWatch('interestPayoutAmount', form) as number | undefined;
 
   const computed = useMemo(
     () => calculateDepositValues({
@@ -100,75 +141,170 @@ export default function DepositWizardStepMaturity({
       cumulativeInterest: isRd ? true : cumulative,
       compoundingFrequency,
       payoutFrequency: periodicPayoutFrequency,
+      interestCreditAnchor,
+      interestPayoutAmount,
     }),
-    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, periodicPayoutFrequency, isRd],
+    [accountType, principal, recurringAmount, interestRate, startDate, maturityDate, cumulative, compoundingFrequency, periodicPayoutFrequency, interestCreditAnchor, interestPayoutAmount, isRd],
   );
   const payoutFrequencyText = shortFrequencyLabel(t, interestPayoutOption);
+  const showInterestCreditAnchor = !isRd && !cumulative && showInterestCreditAnchorOption(interestPayoutOption);
+
+  const interestCreditAnchorAlert = useMemo((): ReactNode => {
+    if (!showInterestCreditAnchor) return null;
+    const intervalText = t(interestPayoutOption === InterestPayoutOption.Quarterly
+      ? 'deposit.interestCreditAnchor.interval.quarterly'
+      : interestPayoutOption === InterestPayoutOption.SemiAnnual
+        ? 'deposit.interestCreditAnchor.interval.semiAnnual'
+        : 'deposit.interestCreditAnchor.interval.annual');
+    if (interestCreditAnchor === InterestCreditAnchor.FinancialCalendar) {
+      // Next financial-calendar anchor date (on/after start)
+      const boundaryMonths = interestPayoutOption === InterestPayoutOption.Quarterly ? [2, 5, 8, 11]
+        : interestPayoutOption === InterestPayoutOption.SemiAnnual ? [2, 8]
+        : [2]; // annual: Mar 31
+      const base = startDate?.isValid() ? startDate.startOf('day') : dayjs().startOf('day');
+      const fromYear = base.year();
+      let next: Dayjs | null = null;
+      for (let y = fromYear; y <= fromYear + 2 && !next; y++) {
+        for (const m of boundaryMonths) {
+          const d = dayjs(new Date(y, m + 1, 0)).startOf('day');
+          if (d.isAfter(base, 'day') || d.isSame(base, 'day')) { next = d; break; }
+        }
+      }
+      const startText = next ? formatDate(next.format('YYYY-MM-DD')) : '—';
+      return <>Interest will be credited every <strong>{intervalText}</strong>, starting from <strong>{startText}</strong>.</>;
+    }
+    // Account opening date
+    if (!startDate?.isValid()) {
+      return <>Interest will be credited every <strong>{intervalText}</strong>, starting from <strong>—</strong>.</>;
+    }
+    if (interestPayoutOption === InterestPayoutOption.Monthly) {
+      const dayText = ordinalDay(startDate.date());
+      return t('deposit.interestCreditAnchor.alert.openingDate.monthly', { day: dayText });
+    }
+    const monthsPer = interestPayoutOption === InterestPayoutOption.Quarterly ? 3 : interestPayoutOption === InterestPayoutOption.SemiAnnual ? 6 : 12;
+    const firstPayout = addOpeningPeriodsLocal(startDate.startOf('day'), 1, monthsPer, startDate.date());
+    const startText = formatDate(firstPayout.format('YYYY-MM-DD'));
+    return <>Interest will be credited every <strong>{intervalText}</strong>, starting from <strong>{startText}</strong>.</>;
+  }, [showInterestCreditAnchor, interestCreditAnchor, interestPayoutOption, startDate, t]);
 
   return (
     <div className="space-y-0">
       <div className="grid gap-x-4 sm:grid-cols-2">
         {!isRd && (
           isScss ? (
-            <Tooltip title={t('deposit.scss.payoutFrequencyHint')}>
-              <div className="sm:col-span-2">
-                <Form.Item
-                  label={t('deposit.fields.payoutFrequency')}
-                  name="interestPayoutOption"
-                  required
-                  rules={[{ required: true, message: required }]}
-                  className="sm:col-span-2"
-                >
-                  <Select
-                    disabled
-                    optionLabelProp="label"
-                    options={INTEREST_PAYOUT_OPTIONS.map((o) => {
-                      const text = t(o.label);
-                      return {
-                        value: o.value,
-                        label: text,
-                        search: text,
-                        children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
-                      };
-                    })}
-                    optionRender={(option) => option.data.children as ReactNode}
-                  />
-                </Form.Item>
-              </div>
-            </Tooltip>
+            <div className="sm:col-span-2">
+              <Tooltip title={t('deposit.scss.payoutFrequencyHint')}>
+                <div>
+                  <Form.Item
+                    label={t('deposit.fields.payoutFrequency')}
+                    name="interestPayoutOption"
+                    required
+                    rules={[{ required: true, message: required }]}
+                    className="mb-3"
+                  >
+                    <Select
+                      disabled
+                      optionLabelProp="label"
+                      options={INTEREST_PAYOUT_OPTIONS.map((o) => {
+                        const text = t(o.label);
+                        return {
+                          value: o.value,
+                          label: text,
+                          search: text,
+                          children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
+                        };
+                      })}
+                      optionRender={(option) => option.data.children as ReactNode}
+                    />
+                  </Form.Item>
+                </div>
+              </Tooltip>
+              {showInterestCreditAnchor && (
+                <>
+                  <Tooltip title={t('deposit.scss.interestCreditAnchorHint')}>
+                    <div>
+                      <Form.Item
+                        label={t('deposit.fields.interestCreditDate')}
+                        name="interestCreditAnchor"
+                        required
+                        rules={[{ required: true, message: required }]}
+                        className="mb-2"
+                      >
+                        <Select
+                          disabled
+                          options={INTEREST_CREDIT_ANCHOR_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))}
+                        />
+                      </Form.Item>
+                    </div>
+                  </Tooltip>
+                  {interestCreditAnchorAlert && (
+                    <Alert className="folio-message-strip folio-message-strip-info mb-2" showIcon type="info" title={interestCreditAnchorAlert} />
+                  )}
+                </>
+              )}
+            </div>
           ) : (
-            <Form.Item
-              label={t('deposit.fields.payoutFrequency')}
-              name="interestPayoutOption"
-              required
-              rules={[{ required: true, message: required }]}
-              className="sm:col-span-2"
-            >
-              <Select
-                disabled={locked}
-                optionLabelProp="label"
-                options={INTEREST_PAYOUT_OPTIONS.map((o) => {
-                  const text = t(o.label);
-                  return {
-                    value: o.value,
-                    label: text,
-                    search: text,
-                    children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
-                  };
-                })}
-                optionRender={(option) => option.data.children as ReactNode}
-                onChange={(value) => {
-                  const isCumulative = deriveCumulativeInterest(accountType, value as InterestPayoutOption);
-                  form.setFieldsValue({
-                    cumulativeInterest: isCumulative,
-                    payoutFrequency: derivePeriodicPayoutFrequency(accountType, value as InterestPayoutOption) ?? 'annual',
-                  });
-                }}
-              />
-            </Form.Item>
+            <>
+              <Form.Item
+                label={t('deposit.fields.payoutFrequency')}
+                name="interestPayoutOption"
+                required
+                rules={[{ required: true, message: required }]}
+                className={showInterestCreditAnchor ? 'sm:col-span-1 mb-3' : 'sm:col-span-2 mb-3'}
+              >
+                <Select
+                  disabled={locked}
+                  optionLabelProp="label"
+                  options={INTEREST_PAYOUT_OPTIONS.map((o) => {
+                    const text = t(o.label);
+                    return {
+                      value: o.value,
+                      label: text,
+                      search: text,
+                      children: <span className="inline-flex items-center gap-2">{payoutOptionIcons[o.value]}<span>{text}</span></span>,
+                    };
+                  })}
+                  optionRender={(option) => option.data.children as ReactNode}
+                  onChange={(value) => {
+                    const opt = value as InterestPayoutOption;
+                    const isCumulative = deriveCumulativeInterest(accountType, opt);
+                    form.setFieldsValue({
+                      cumulativeInterest: isCumulative,
+                      payoutFrequency: derivePeriodicPayoutFrequency(accountType, opt) ?? 'annual',
+                      ...(showInterestCreditAnchorOption(opt) ? { interestCreditAnchor: form.getFieldValue('interestCreditAnchor') ?? InterestCreditAnchor.AccountOpeningDate } : {}),
+                    });
+                  }}
+                />
+              </Form.Item>
+              {showInterestCreditAnchor && (
+                <>
+                  <Form.Item
+                    label={t('deposit.fields.interestCreditDate')}
+                    name="interestCreditAnchor"
+                    required
+                    rules={[{ required: true, message: required }]}
+                    className="sm:col-span-1 mb-2"
+                  >
+                    <Select
+                      disabled={locked}
+                      optionLabelProp="label"
+                      options={INTEREST_CREDIT_ANCHOR_OPTIONS.map((o) => {
+                        const text = t(o.label);
+                        return { value: o.value, label: text, children: <span className="inline-flex items-center gap-2">{creditAnchorIcons[o.value]}<span>{text}</span></span> };
+                      })}
+                      optionRender={(option) => option.data.children as ReactNode}
+                    />
+                  </Form.Item>
+                  {interestCreditAnchorAlert && (
+                    <Alert className="folio-message-strip folio-message-strip-info sm:col-span-2 mb-2" showIcon type="info" title={interestCreditAnchorAlert} />
+                  )}
+                </>
+              )}
+            </>
           )
         )}
         {isRd && <Form.Item name="interestPayoutOption" hidden initialValue={InterestPayoutOption.Cumulative}><input type="hidden" /></Form.Item>}
+        {isRd && <Form.Item name="interestCreditAnchor" hidden initialValue={InterestCreditAnchor.AccountOpeningDate}><input type="hidden" /></Form.Item>}
 
         {!isScss ? (
           <Form.Item label={t('deposit.fields.rollover')} name="rollover" required rules={[{ required: true, message: required }]} className={!isRd ? 'sm:col-span-2' : undefined}>

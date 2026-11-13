@@ -288,6 +288,7 @@
   .folio-card .ant-table-summary > tr > td {
     -webkit-user-select: none;
     user-select: none;
+    vertical-align: middle;
   }
 
   .folio-card .ant-table-container {

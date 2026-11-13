@@ -13,9 +13,11 @@ import type {
   DepositPayoutFrequency,
   DepositRollover,
   DepositType,
+  InterestCreditAnchor,
   NomineeRelationship,
   OperationMode,
 } from '../../types';
+import { InterestCreditAnchor as InterestCreditAnchorEnum } from '../../types';
 import { calculateDepositAccruedValueAsOf, sanitizeDepositLienState } from '../../utils/deposits';
 
 export const InterestPayoutOption = {
@@ -91,6 +93,8 @@ export interface DepositFormValues {
   payoutFrequency: DepositPayoutFrequency;
   /** UI selection: cumulative (compounded) or a periodic interest payout frequency. */
   interestPayoutOption: InterestPayoutOption;
+  /** Anchor for non-cumulative periodic interest credits (non-monthly). Default: account opening date. */
+  interestCreditAnchor: InterestCreditAnchor;
   rollover: DepositRollover;
   operationMode: OperationMode;
   isPanLinked: boolean;
@@ -166,6 +170,15 @@ export const INTEREST_PAYOUT_OPTIONS: Array<{ value: InterestPayoutOption; label
   { value: InterestPayoutOption.Annual, label: 'deposit.frequency.annual' },
 ];
 
+export const INTEREST_CREDIT_ANCHOR_OPTIONS: Array<{ value: InterestCreditAnchor; label: MessageKey }> = [
+  { value: InterestCreditAnchorEnum.AccountOpeningDate, label: 'deposit.interestCreditAnchor.accountOpeningDate' },
+  { value: InterestCreditAnchorEnum.FinancialCalendar, label: 'deposit.interestCreditAnchor.financialCalendar' },
+];
+
+export function showInterestCreditAnchorOption(option: InterestPayoutOption | undefined): boolean {
+  return option === InterestPayoutOption.Quarterly || option === InterestPayoutOption.SemiAnnual || option === InterestPayoutOption.Annual;
+}
+
 export const ROLLOVER_OPTIONS: Array<{ value: DepositRollover; label: MessageKey }> = [
   { value: 'none', label: 'deposit.rollover.none' },
   { value: 'principal', label: 'deposit.rollover.principal' },
@@ -235,6 +248,7 @@ export function defaultDepositValues(): DepositFormValues {
     cumulativeInterest: true,
     payoutFrequency: 'annual',
     interestPayoutOption: InterestPayoutOption.Cumulative,
+    interestCreditAnchor: InterestCreditAnchorEnum.AccountOpeningDate,
     rollover: 'none',
     operationMode: 'online',
     isPanLinked: true,
@@ -258,6 +272,9 @@ export function toFormValues(deposit: DepositHolding): DepositFormValues {
   const interestPayoutOption = toInterestPayoutOption(sanitized as DepositHolding);
   const cumulativeInterest = deriveCumulativeInterest(sanitized.accountType, interestPayoutOption);
   const payoutFrequency = derivePeriodicPayoutFrequency(sanitized.accountType, interestPayoutOption) ?? sanitized.payoutFrequency ?? 'annual';
+  const interestCreditAnchor = isScss
+    ? InterestCreditAnchorEnum.FinancialCalendar
+    : (sanitized.interestCreditAnchor ?? InterestCreditAnchorEnum.AccountOpeningDate);
   return {
     depositNumber: sanitized.depositNumber ?? '',
     name: sanitized.name,
@@ -277,6 +294,7 @@ export function toFormValues(deposit: DepositHolding): DepositFormValues {
     cumulativeInterest,
     payoutFrequency,
     interestPayoutOption,
+    interestCreditAnchor,
     rollover: isScss ? 'none' : (sanitized.rollover ?? 'none'),
     operationMode: sanitized.operationMode ?? 'online',
     isPanLinked: sanitized.isPanLinked ?? true,
@@ -339,6 +357,9 @@ export function toDepositInput(
   const interestPayoutAmount = (!isRd && !cumulativeInterest && Number.isFinite(computed.interestPayoutAmount))
     ? computed.interestPayoutAmount
     : undefined;
+  const interestCreditAnchor = !isRd && !cumulativeInterest && periodicPayoutFrequency && periodicPayoutFrequency !== 'monthly'
+    ? (isScss ? InterestCreditAnchorEnum.FinancialCalendar : (values.interestCreditAnchor ?? InterestCreditAnchorEnum.AccountOpeningDate))
+    : undefined;
 
   const base: DepositInput = {
     depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_/-]/g, ''),
@@ -355,6 +376,7 @@ export function toDepositInput(
     compoundingFrequency: values.compoundingFrequency,
     cumulativeInterest,
     payoutFrequency: periodicPayoutFrequency,
+    interestCreditAnchor,
     interestPayoutAmount,
     rollover: isScss ? 'none' : values.rollover,
     operationMode: values.operationMode ?? 'online',

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Form, Steps } from 'antd';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Form } from 'antd';
 import { useI18n } from '../../i18n';
+import Wizard from '../common/Wizard';
 import type { DepositFormValues } from './depositFormModel';
 import { depositStepFields, type DepositWizardStep } from './depositWizardSteps';
 import DepositWizardStepOverview from './DepositWizardStepOverview';
@@ -114,55 +114,39 @@ export default function DepositWizard({ onCancel, onSubmit, submitLabel, saving,
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <>
       <div ref={topRef} />
-      <Steps
-        current={step}
-        items={stepItems}
-        size="small"
-        className="mb-5 shrink-0"
-        onChange={(current) => {
+      <Wizard
+        steps={stepItems}
+        currentStep={step}
+        onStepChange={(current) => {
           setShowError(false);
           setStep(current as DepositWizardStep);
           scrollTop();
         }}
-      />
-      {showError && <Alert type="error" showIcon title={t('deposit.validation.resolveErrors')} className="mb-4 shrink-0" />}
-      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <div ref={(el) => { stepRefs.current[0] = el; }} style={{ display: step === 0 ? 'block' : 'none' }}><DepositWizardStepOverview activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
-        <div ref={(el) => { stepRefs.current[1] = el; }} style={{ display: step === 1 ? 'block' : 'none' }}><DepositWizardStepInvestment activeLocked={activeLocked} terminalLocked={terminalLocked} lienEditable={lienEditable} isEdit={isEdit} /></div>
-        <div ref={(el) => { stepRefs.current[2] = el; }} style={{ display: step === 2 ? 'block' : 'none' }}><DepositWizardStepMaturity activeLocked={activeLocked} terminalLocked={terminalLocked} allowPreClosure={allowPreClosure} isEdit={isEdit} /></div>
-        <div ref={(el) => { stepRefs.current[3] = el; }} style={{ display: step === 3 ? 'block' : 'none' }}><DepositWizardStepAdditional activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
-      </div>
-
-      <div className="mt-4 flex shrink-0 items-center justify-between gap-2 border-t border-folio-ink/10 bg-folio-paper pt-3 dark:border-white/[0.07] dark:bg-folio-dark-elevated">
-        <div className="flex items-center gap-2">
-          <Button onClick={onCancel}>
-            {t('common.cancel')}
-          </Button>
-          {step > 0 ? (
-            <Button onClick={goBack} icon={<ArrowLeft size={14} />}>
-              {t('institutions.action.back')}
-            </Button>
-          ) : null}
+        onCancel={onCancel}
+        onBack={goBack}
+        onNext={goNext}
+        onSave={handleFinish}
+        onSubmit={handleFinish}
+        submitLabel={submitLabel}
+        saving={saving}
+        isEdit={isEdit}
+        canSave={canSaveAll}
+        showError={showError}
+        errorTitle={t('deposit.validation.resolveErrors')}
+        cancelLabel={t('common.cancel')}
+        backLabel={t('institutions.action.back')}
+        nextLabel={t('institutions.action.next')}
+        bodyClassName="min-h-0 flex-1 overflow-y-auto pr-1"
+      >
+        <div ref={scrollContainerRef} className="min-h-0">
+          <div ref={(el) => { stepRefs.current[0] = el; }} style={{ display: step === 0 ? 'block' : 'none' }}><DepositWizardStepOverview activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
+          <div ref={(el) => { stepRefs.current[1] = el; }} style={{ display: step === 1 ? 'block' : 'none' }}><DepositWizardStepInvestment activeLocked={activeLocked} terminalLocked={terminalLocked} lienEditable={lienEditable} isEdit={isEdit} /></div>
+          <div ref={(el) => { stepRefs.current[2] = el; }} style={{ display: step === 2 ? 'block' : 'none' }}><DepositWizardStepMaturity activeLocked={activeLocked} terminalLocked={terminalLocked} allowPreClosure={allowPreClosure} isEdit={isEdit} /></div>
+          <div ref={(el) => { stepRefs.current[3] = el; }} style={{ display: step === 3 ? 'block' : 'none' }}><DepositWizardStepAdditional activeLocked={activeLocked} terminalLocked={terminalLocked} /></div>
         </div>
-        <div className="flex items-center gap-2">
-          {isEdit && step < 3 ? (
-            <Button onClick={() => void handleFinish()} loading={saving} disabled={!canSaveAll || saving}>
-              {submitLabel}
-            </Button>
-          ) : null}
-          {step < 3 ? (
-            <Button type="primary" onClick={() => void goNext()}>
-              <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
-            </Button>
-          ) : (
-            <Button type="primary" loading={saving} onClick={() => void handleFinish()}>
-              {submitLabel}
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+      </Wizard>
+    </>
   );
 }

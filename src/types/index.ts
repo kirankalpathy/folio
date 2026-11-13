@@ -87,6 +87,12 @@ export const DepositPayoutFrequency = {
   Monthly: 'monthly',
 } as const;
 export type DepositPayoutFrequency = (typeof DepositPayoutFrequency)[keyof typeof DepositPayoutFrequency];
+
+export const InterestCreditAnchor = {
+  AccountOpeningDate: 'account-opening-date',
+  FinancialCalendar: 'financial-calendar',
+} as const;
+export type InterestCreditAnchor = (typeof InterestCreditAnchor)[keyof typeof InterestCreditAnchor];
 export const CommodityForm = {
   Physical: 'physical',
   ETF: 'etf',
@@ -382,6 +388,8 @@ export interface DepositHolding extends BaseRecord {
   compoundingFrequency?: CompoundingFrequency;
   cumulativeInterest?: boolean;
   payoutFrequency?: DepositPayoutFrequency;
+  /** Anchor for non-cumulative periodic interest credits (non-monthly). Defaults to account opening date. */
+  interestCreditAnchor?: InterestCreditAnchor;
   /** Periodic interest credit amount for non-cumulative (payout) deposits. Optional; computed from interest and payout frequency when applicable. */
   interestPayoutAmount?: number;
   rollover?: DepositRollover;
@@ -461,10 +469,14 @@ export interface CategoryTotals {
   count: number;
 }
 
-/** Deposit subcategories used for allocation/progress breakdown (dashboard overview). */
+/** Deposit subcategories used for allocation/progress breakdown (dashboard overview), keyed by deposit type. */
 export const DepositAllocationKey = {
   FD: 'deposits-fd',
   RD: 'deposits-rd',
+  TaxSaving: 'deposits-tax-saving',
+  Savings: 'deposits-savings',
+  NSC: 'deposits-nsc',
+  SCSS: 'deposits-scss',
   Other: 'deposits-other',
 } as const;
 export type DepositAllocationKey = (typeof DepositAllocationKey)[keyof typeof DepositAllocationKey];
@@ -479,11 +491,16 @@ export interface AllocationSlice {
 }
 
 export interface NetWorthSummary {
+  /** Total committed principal value of assets (currently deposits only). */
   totalAssets: number;
   totalLiabilities: number;
   netWorth: number;
-  totalInvested: number;
+  /** Realized gain to date across assets. */
+  realizedGain: number;
+  /** Unrealized/expected future gain across assets. */
   unrealisedGain: number;
+  /** Total gain = realizedGain + unrealisedGain. */
+  totalGain: number;
   returnsPercentage: number;
   categories: Record<AssetClassKey, CategoryTotals>;
   allocations: AllocationSlice[];

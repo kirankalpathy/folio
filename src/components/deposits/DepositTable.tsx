@@ -4,7 +4,7 @@ import { AutoComplete, Table, Tag } from 'antd';
 import type { DepositHolding } from '../../types';
 import { daysUntil, formatDate } from '../../utils/date';
 import { formatINR, formatPercent } from '../../utils/finance';
-import { calculateDepositValues, getDepositLifecycleStatus } from '../../utils/deposits';
+import { getDepositDerivedValues, getDepositLifecycleStatus } from '../../utils/deposits';
 import { useI18n } from '../../i18n';
 import TruncatedText from '../common/TruncatedText';
 import TableLayoutControl, { useTableLayout, type TableLayoutColumnDef } from '../common/TableLayoutControl';
@@ -27,6 +27,7 @@ interface DepositTableProps {
   onEdit: (deposit: DepositHolding) => void;
   onDelete: (deposit: DepositHolding) => void;
   onView?: (deposit: DepositHolding) => void;
+  variant?: 'active' | 'closed';
 }
 
 const TABLE_ID = 'deposits-summary';
@@ -37,8 +38,10 @@ export default function DepositTable({
   onEdit,
   onDelete,
   onView,
+  variant = 'active',
 }: DepositTableProps) {
   const { t } = useI18n();
+  const maturityColumnLabel = variant === 'closed' ? t('deposit.table.closureDate') : t('deposit.table.maturityDate');
   const { institutions } = useFinancialInstitutions();
   const institutionName = (record: DepositHolding) => {
     const inst = record.financialInstitutionId ? institutions.find((fi) => fi.id === record.financialInstitutionId) : undefined;
@@ -46,9 +49,22 @@ export default function DepositTable({
   };
   const boolText = (v: boolean | undefined) => (v ? t('common.yes') : t('common.no'));
   const dash = <span className="text-folio-ink/35 dark:text-white/30">—</span>;
-  const totalPrincipal = deposits.reduce((sum, d) => sum + (d.principal || 0), 0);
-  const totalCurrentValue = deposits.reduce((sum, d) => sum + (d.currentValue || 0), 0);
-  const weightedRate = totalPrincipal > 0 ? deposits.reduce((sum, d) => sum + (d.principal || 0) * (d.interestRate || 0), 0) / totalPrincipal : 0;
+  const rowComputed = useMemo(
+    () =>
+      deposits.map((d) => {
+        const derived = getDepositDerivedValues(d);
+        return { deposit: d, derived };
+      }),
+    [deposits],
+  );
+  const totalPrincipal = useMemo(() => deposits.reduce((sum, d) => sum + (d.principal || 0), 0), [deposits]);
+  const totalProjectedValue = useMemo(() => rowComputed.reduce((sum, r) => sum + r.derived.totalReturns, 0), [rowComputed]);
+  const totalRealizedGain = useMemo(() => rowComputed.reduce((sum, r) => sum + r.derived.realizedGain, 0), [rowComputed]);
+  const totalUnrealizedGain = useMemo(() => rowComputed.reduce((sum, r) => sum + r.derived.unrealizedGain, 0), [rowComputed]);
+  const weightedRate = useMemo(
+    () => (totalPrincipal > 0 ? deposits.reduce((sum, d) => sum + (d.principal || 0) * (d.interestRate || 0), 0) / totalPrincipal : 0),
+    [deposits, totalPrincipal],
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [pageSizeInput, setPageSizeInput] = useState('10');
@@ -96,22 +112,24 @@ export default function DepositTable({
       { key: 'status', label: t('deposit.table.status'), defaultVisible: true },
       { key: 'principal', label: t('deposit.table.principal'), defaultVisible: true },
       { key: 'interest', label: t('deposit.table.interest'), defaultVisible: true },
-      { key: 'recurringAmount', label: t('deposit.table.recurringAmount'), defaultVisible: false },
+      { key: 'realizedGain', label: t('deposit.table.realizedGain'), defaultVisible: true },
+      { key: 'unrealizedGain', label: t('deposit.table.unrealizedGain'), defaultVisible: true },
       { key: 'currentValue', label: t('deposit.table.currentValue'), defaultVisible: true },
+      { key: 'recurringAmount', label: t('deposit.table.recurringAmount'), defaultVisible: false },
       { key: 'interestRate', label: t('deposit.table.interestRate'), defaultVisible: false },
       { key: 'rate', label: t('deposit.table.rate'), defaultVisible: true },
       { key: 'interestPayout', label: t('deposit.table.interestPayout'), defaultVisible: false },
       { key: 'compoundingFrequency', label: t('deposit.table.compoundingFrequency'), defaultVisible: false },
       { key: 'rollover', label: t('deposit.table.rollover'), defaultVisible: false },
       { key: 'startDate', label: t('deposit.table.startDate'), defaultVisible: false },
-      { key: 'maturity', label: t('deposit.table.maturity'), defaultVisible: true },
+      { key: 'maturity', label: maturityColumnLabel, defaultVisible: true },
       { key: 'panLinked', label: t('deposit.table.panLinked'), defaultVisible: false },
       { key: 'taxExempt', label: t('deposit.table.taxExempt'), defaultVisible: false },
       { key: 'lien', label: t('deposit.table.lien'), defaultVisible: false },
       { key: 'notes', label: t('deposit.table.notes'), defaultVisible: false },
       { key: 'actions', label: '', locked: true },
     ],
-    [t],
+    [t, maturityColumnLabel],
   );
 
   const { layout } = useTableLayout(TABLE_ID, columnDefs);
@@ -185,40 +203,26 @@ export default function DepositTable({
         align: 'right',
         sorter: {
           compare: (left, right) => {
-            const li = calculateDepositValues({
-              accountType: left.accountType, principal: left.principal, recurringAmount: left.recurringAmount,
-              interestRate: left.interestRate, startDate: left.startDate, maturityDate: left.maturityDate,
-              cumulativeInterest: left.accountType === 'rd' ? true : (left.cumulativeInterest ?? false),
-              compoundingFrequency: left.compoundingFrequency, payoutFrequency: left.payoutFrequency,
-            }).interest;
-            const ri = calculateDepositValues({
-              accountType: right.accountType, principal: right.principal, recurringAmount: right.recurringAmount,
-              interestRate: right.interestRate, startDate: right.startDate, maturityDate: right.maturityDate,
-              cumulativeInterest: right.accountType === 'rd' ? true : (right.cumulativeInterest ?? false),
-              compoundingFrequency: right.compoundingFrequency, payoutFrequency: right.payoutFrequency,
-            }).interest;
+            const li = getDepositDerivedValues(left).totalInterest;
+            const ri = getDepositDerivedValues(right).totalInterest;
             return li - ri;
           },
           multiple: 4,
         },
         render: (_, record) => {
           const isRd = record.accountType === 'rd';
-          const computed = calculateDepositValues({
-            accountType: record.accountType,
-            principal: record.principal,
-            recurringAmount: record.recurringAmount,
-            interestRate: record.interestRate,
-            startDate: record.startDate,
-            maturityDate: record.maturityDate,
-            cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
-            compoundingFrequency: record.compoundingFrequency,
-            payoutFrequency: record.payoutFrequency,
-          });
+          const derived = rowComputed.find((r) => r.deposit.id === record.id)?.derived ?? getDepositDerivedValues(record);
           const payoutOption = toInterestPayoutOption(record);
           const isCumulative = payoutOption === 'cumulative' || isRd;
           let subtext = t('deposit.payoutMode.cumulative');
-          if (!isCumulative && computed.interestPayoutAmount != null) {
-            const amt = formatINR(computed.interestPayoutAmount);
+          const payoutAmount = isRd || (record.cumulativeInterest ?? false) || !record.payoutFrequency
+            ? undefined
+            : (() => {
+                const payoutsPerYear = record.payoutFrequency === 'monthly' ? 12 : record.payoutFrequency === 'quarterly' ? 4 : record.payoutFrequency === 'semi-annual' ? 2 : 1;
+                return (record.principal * record.interestRate) / 100 / payoutsPerYear;
+              })();
+          if (!isCumulative && payoutAmount != null) {
+            const amt = formatINR(payoutAmount);
             if (payoutOption === 'monthly') subtext = t('deposit.interestSubtext.monthly', { amount: amt });
             else if (payoutOption === 'quarterly') subtext = t('deposit.interestSubtext.quarterly', { amount: amt });
             else if (payoutOption === 'semi-annual') subtext = t('deposit.interestSubtext.semiAnnual', { amount: amt });
@@ -226,8 +230,66 @@ export default function DepositTable({
           }
           return (
             <div className="whitespace-nowrap text-right">
-              <p className="font-mono text-xs leading-5 tabular-nums text-folio-ink/70 dark:text-white/60">{formatINR(computed.interest)}</p>
+              <p className="font-mono text-xs leading-5 tabular-nums text-folio-ink/70 dark:text-white/60">{formatINR(derived.totalInterest)}</p>
               <p className="mt-0.5 font-mono text-[0.625rem] leading-4 font-semibold tabular-nums text-folio-ink/40 dark:text-white/35">{subtext}</p>
+            </div>
+          );
+        },
+      },
+      realizedGain: {
+        title: t('deposit.table.realizedGain'),
+        key: 'realizedGain',
+        align: 'right',
+        sorter: {
+          compare: (left, right) => {
+            const l = getDepositDerivedValues(left).realizedGain;
+            const r = getDepositDerivedValues(right).realizedGain;
+            return l - r;
+          },
+          multiple: 2,
+        },
+        render: (_, record) => {
+          const value = rowComputed.find((r) => r.deposit.id === record.id)?.derived.realizedGain ?? getDepositDerivedValues(record).realizedGain;
+          return (
+            <div className="whitespace-nowrap text-right">
+              <p className="font-mono text-xs font-medium leading-5 tabular-nums text-folio-info-accent">{formatINR(value)}</p>
+              <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+            </div>
+          );
+        },
+      },
+      unrealizedGain: {
+        title: t('deposit.table.unrealizedGain'),
+        key: 'unrealizedGain',
+        align: 'right',
+        sorter: {
+          compare: (left, right) => getDepositDerivedValues(left).unrealizedGain - getDepositDerivedValues(right).unrealizedGain,
+          multiple: 2,
+        },
+        render: (_, record) => {
+          const value = rowComputed.find((r) => r.deposit.id === record.id)?.derived.unrealizedGain ?? getDepositDerivedValues(record).unrealizedGain;
+          return (
+            <div className="whitespace-nowrap text-right">
+              <p className="font-mono text-xs font-medium leading-5 tabular-nums text-folio-success-accent">{formatINR(value)}</p>
+              <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+            </div>
+          );
+        },
+      },
+      currentValue: {
+        title: t('deposit.table.currentValue'),
+        key: 'currentValue',
+        align: 'right',
+        sorter: {
+          compare: (left, right) => getDepositDerivedValues(left).totalReturns - getDepositDerivedValues(right).totalReturns,
+          multiple: 2,
+        },
+        render: (_, record) => {
+          const value = rowComputed.find((r) => r.deposit.id === record.id)?.derived.totalReturns ?? getDepositDerivedValues(record).totalReturns;
+          return (
+            <div className="whitespace-nowrap text-right">
+              <p className="font-mono text-sm font-medium leading-5 tabular-nums">{formatINR(value)}</p>
+              <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
             </div>
           );
         },
@@ -236,56 +298,23 @@ export default function DepositTable({
         title: t('deposit.table.recurringAmount'),
         key: 'recurringAmount',
         align: 'right',
-        render: (_, r) => <span className="whitespace-nowrap font-mono text-xs tabular-nums">{r.recurringAmount != null ? formatINR(r.recurringAmount) : dash}</span>,
-      },
-      currentValue: {
-        title: t('deposit.table.currentValue'),
-        key: 'currentValue',
-        align: 'right',
-        sorter: {
-          compare: (left, right) => {
-            const l = calculateDepositValues({
-              accountType: left.accountType, principal: left.principal, recurringAmount: left.recurringAmount,
-              interestRate: left.interestRate, startDate: left.startDate, maturityDate: left.maturityDate,
-              cumulativeInterest: left.accountType === 'rd' ? true : (left.cumulativeInterest ?? false),
-              compoundingFrequency: left.compoundingFrequency, payoutFrequency: left.payoutFrequency,
-            }).realizedValue;
-            const r = calculateDepositValues({
-              accountType: right.accountType, principal: right.principal, recurringAmount: right.recurringAmount,
-              interestRate: right.interestRate, startDate: right.startDate, maturityDate: right.maturityDate,
-              cumulativeInterest: right.accountType === 'rd' ? true : (right.cumulativeInterest ?? false),
-              compoundingFrequency: right.compoundingFrequency, payoutFrequency: right.payoutFrequency,
-            }).realizedValue;
-            return l - r;
-          },
-          multiple: 2,
-        },
-        render: (_, record) => {
-          const isRd = record.accountType === 'rd';
-          const computed = calculateDepositValues({
-            accountType: record.accountType,
-            principal: record.principal,
-            recurringAmount: record.recurringAmount,
-            interestRate: record.interestRate,
-            startDate: record.startDate,
-            maturityDate: record.maturityDate,
-            cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
-            compoundingFrequency: record.compoundingFrequency,
-            payoutFrequency: record.payoutFrequency,
-          });
-          return (
-            <div className="whitespace-nowrap text-right">
-              <p className="font-mono text-sm font-medium leading-5 tabular-nums">{formatINR(computed.realizedValue)}</p>
-              <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
-            </div>
-          );
-        },
+        render: (_, r) => (
+          <div className="whitespace-nowrap text-right">
+            <p className="font-mono text-xs leading-5 tabular-nums">{r.recurringAmount != null ? formatINR(r.recurringAmount) : dash}</p>
+            <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+          </div>
+        ),
       },
       interestRate: {
         title: t('deposit.table.interestRate'),
         key: 'interestRate',
         align: 'right',
-        render: (_, r) => <span className="whitespace-nowrap font-mono text-xs tabular-nums">{formatPercent(r.interestRate, 2)}</span>,
+        render: (_, r) => (
+          <div className="whitespace-nowrap text-right">
+            <p className="font-mono text-xs leading-5 tabular-nums">{formatPercent(r.interestRate, 2)}</p>
+            <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+          </div>
+        ),
       },
       rate: {
         title: t('deposit.table.rate'),
@@ -321,31 +350,40 @@ export default function DepositTable({
           return t(ROLLOVER_OPTIONS.find((o) => o.value === ro)?.label ?? 'deposit.rollover.none');
         },
       },
-      startDate: { title: t('deposit.table.startDate'), key: 'startDate', render: (_, r) => <span className="font-mono text-xs tabular-nums">{r.startDate ? formatDate(r.startDate) : dash}</span> },
+      startDate: {
+        title: t('deposit.table.startDate'),
+        key: 'startDate',
+        render: (_, r) => (
+          <div className="whitespace-nowrap">
+            <p className="font-mono text-xs leading-5 tabular-nums">{r.startDate ? formatDate(r.startDate) : dash}</p>
+            <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+          </div>
+        ),
+      },
       maturity: {
-        title: t('deposit.table.maturity'),
+        title: maturityColumnLabel,
         key: 'maturity',
         defaultSortOrder: 'descend',
         sorter: {
           compare: (left, right) => {
-            const leftDate = left.preClosedDate || left.maturityDate || '';
-            const rightDate = right.preClosedDate || right.maturityDate || '';
+            const leftDate = variant === 'closed' ? (left.preClosedDate || left.maturityDate || '') : (left.maturityDate || '');
+            const rightDate = variant === 'closed' ? (right.preClosedDate || right.maturityDate || '') : (right.maturityDate || '');
             return leftDate.localeCompare(rightDate);
           },
           multiple: 1,
         },
         render: (_, record) => {
-          const closureDate = record.preClosedDate || record.maturityDate;
-          if (!closureDate) return dash;
-          const days = daysUntil(closureDate);
+          const dateValue = variant === 'closed' ? (record.preClosedDate || record.maturityDate) : record.maturityDate;
+          if (!dateValue) return dash;
+          const days = daysUntil(dateValue);
           return (
             <div className="whitespace-nowrap">
-              <p className="font-mono text-xs leading-5 tabular-nums">{formatDate(closureDate)}</p>
+              <p className="font-mono text-xs leading-5 tabular-nums">{formatDate(dateValue)}</p>
               <div className="mt-0.5 flex min-h-4 flex-wrap items-center gap-1">
                 <span
                   className={`inline-flex rounded-full border px-1.5 py-0.5 font-mono text-[0.5625rem] leading-4 ${maturityClass(days)}`}
                 >
-                  {maturityLabel(closureDate, t)}
+                  {maturityLabel(dateValue, t)}
                 </span>
               </div>
             </div>
@@ -442,21 +480,50 @@ export default function DepositTable({
                 if (key === 'principal') {
                   return (
                     <Table.Summary.Cell key={key} index={idx} align="right">
-                      <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">{formatINR(totalPrincipal)}</span>
+                      <div className="whitespace-nowrap text-right">
+                        <p className="font-mono text-xs font-semibold leading-5 tabular-nums">{formatINR(totalPrincipal)}</p>
+                        <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+                      </div>
+                    </Table.Summary.Cell>
+                  );
+                }
+                if (key === 'realizedGain') {
+                  return (
+                    <Table.Summary.Cell key={key} index={idx} align="right">
+                      <div className="whitespace-nowrap text-right">
+                        <p className="font-mono text-xs font-semibold leading-5 tabular-nums text-folio-info-accent">{formatINR(totalRealizedGain)}</p>
+                        <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+                      </div>
+                    </Table.Summary.Cell>
+                  );
+                }
+                if (key === 'unrealizedGain') {
+                  return (
+                    <Table.Summary.Cell key={key} index={idx} align="right">
+                      <div className="whitespace-nowrap text-right">
+                        <p className="font-mono text-xs font-semibold leading-5 tabular-nums text-folio-success-accent">{formatINR(totalUnrealizedGain)}</p>
+                        <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+                      </div>
                     </Table.Summary.Cell>
                   );
                 }
                 if (key === 'currentValue') {
                   return (
                     <Table.Summary.Cell key={key} index={idx} align="right">
-                      <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">{formatINR(totalCurrentValue)}</span>
+                      <div className="whitespace-nowrap text-right">
+                        <p className="font-mono text-xs font-semibold leading-5 tabular-nums">{formatINR(totalProjectedValue)}</p>
+                        <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+                      </div>
                     </Table.Summary.Cell>
                   );
                 }
                 if (key === 'rate' || key === 'interestRate') {
                   return (
                     <Table.Summary.Cell key={key} index={idx} align="right">
-                      <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">{key === 'rate' || key === 'interestRate' ? formatPercent(weightedRate, 2) : ''}</span>
+                      <div className="whitespace-nowrap text-right">
+                        <p className="font-mono text-xs font-semibold leading-5 tabular-nums">{key === 'rate' || key === 'interestRate' ? formatPercent(weightedRate, 2) : ''}</p>
+                        <p className="mt-0.5 font-mono text-[0.625rem] leading-4">&nbsp;</p>
+                      </div>
                     </Table.Summary.Cell>
                   );
                 }

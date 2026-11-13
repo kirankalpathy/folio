@@ -3,10 +3,12 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import dayjs from 'dayjs';
 import type { DepositHolding, FinancialInstitution } from '../types';
+import { InterestCreditAnchor } from '../types';
 import { translate } from '../i18n';
 import { formatDate } from '../utils/date';
-import { calculateDepositValues, DepositLifecycleStatus, formatDepositTenure, getDepositLifecycleStatus } from '../utils/deposits';
+import { calculateDepositValues, DepositLifecycleStatus, formatDepositTenure, getDepositDerivedValues, getDepositLifecycleStatus } from '../utils/deposits';
 import { formatINR, formatNumber, formatPercent, getNumberFormat } from '../utils/finance';
 import { institutionLabel, listFinancialInstitutions } from './financialInstitutions';
 import {
@@ -91,6 +93,47 @@ function accountTypeLabel(value: string): string {
   }
 }
 
+function interestCreditAnchorLabel(value: string | undefined, accountType?: string): string {
+  if (value === InterestCreditAnchor.FinancialCalendar || (accountType === 'scss' && !value)) return translate('deposit.interestCreditAnchor.financialCalendar');
+  if (value === InterestCreditAnchor.AccountOpeningDate) return translate('deposit.interestCreditAnchor.accountOpeningDate');
+  return '';
+}
+
+function addOpeningPeriodsLocal(base: dayjs.Dayjs, periods: number, monthsPer: number, anchorDay: number): dayjs.Dayjs {
+  const targetMonth = base.month() + periods * monthsPer;
+  const y = base.year() + Math.floor(targetMonth / 12);
+  const m = ((targetMonth % 12) + 12) % 12;
+  const dim = new Date(y, m + 1, 0).getDate();
+  return dayjs(new Date(y, m, Math.min(anchorDay, dim))).startOf('day');
+}
+
+function interestCreditAnchorAlertText(d: DepositHolding): string | undefined {
+  const isRd = d.accountType === 'rd';
+  if (isRd || d.cumulativeInterest !== false || !d.payoutFrequency || d.payoutFrequency === 'monthly') return undefined;
+  const intervalKey = d.payoutFrequency === 'quarterly' ? 'deposit.interestCreditAnchor.interval.quarterly'
+    : d.payoutFrequency === 'semi-annual' ? 'deposit.interestCreditAnchor.interval.semiAnnual'
+    : 'deposit.interestCreditAnchor.interval.annual';
+  const interval = translate(intervalKey);
+  const anchor = d.interestCreditAnchor ?? (d.accountType === 'scss' ? InterestCreditAnchor.FinancialCalendar : InterestCreditAnchor.AccountOpeningDate);
+  const start = dayjs(d.startDate).startOf('day');
+  if (anchor === InterestCreditAnchor.FinancialCalendar) {
+    const boundaryMonths = d.payoutFrequency === 'quarterly' ? [2, 5, 8, 11] : d.payoutFrequency === 'semi-annual' ? [2, 8] : [2];
+    const base = start.isValid() ? start : dayjs().startOf('day');
+    let next: dayjs.Dayjs | null = null;
+    for (let y = base.year(); y <= base.year() + 2 && !next; y++) {
+      for (const m of boundaryMonths) {
+        const dt = dayjs(new Date(y, m + 1, 0)).startOf('day');
+        if (dt.isAfter(base, 'day') || dt.isSame(base, 'day')) { next = dt; break; }
+      }
+    }
+    return translate('deposit.interestCreditAnchor.alert.periodic', { interval, startDate: next ? formatDate(next.format('YYYY-MM-DD')) : '—' });
+  }
+  if (!start.isValid()) return translate('deposit.interestCreditAnchor.alert.periodic', { interval, startDate: '—' });
+  const monthsPer = d.payoutFrequency === 'quarterly' ? 3 : d.payoutFrequency === 'semi-annual' ? 6 : 12;
+  const firstPayout = addOpeningPeriodsLocal(start, 1, monthsPer, start.date());
+  return translate('deposit.interestCreditAnchor.alert.periodic', { interval, startDate: formatDate(firstPayout.format('YYYY-MM-DD')) });
+}
+
 function institutionFullName(d: DepositHolding, byId: Map<string, FinancialInstitution>): string {
   if (d.financialInstitutionId) {
     const fi = byId.get(d.financialInstitutionId);
@@ -108,33 +151,27 @@ const HEADERS = [
   'Principal / Total Deposited (INR)',
   'Recurring Amount (INR)',
   'Rate of Interest (% p.a.)',
+  'Interest (INR)',
+  'Realized Gain (INR)',
+  'Unrealized Gain (INR)',
+  'Total Returns (INR)',
   'Start Date',
   'Pre-closure Date',
   'Planned / Matured Date',
   'Tenure',
   'Cumulative / Compound',
   'Compounding / Payout Frequency',
+  'Interest Credit Date',
   'Rollover',
-  'Interest (INR)',
-  'Maturity Value (INR)',
   'Notes',
 ] as const;
 
 function buildRows(deposits: DepositHolding[], byId: Map<string, FinancialInstitution>) {
   return deposits.map((d) => {
     const isRd = d.accountType === 'rd';
-    const computed = calculateDepositValues({
-      accountType: d.accountType,
-      principal: d.principal,
-      recurringAmount: d.recurringAmount,
-      interestRate: d.interestRate,
-      startDate: d.startDate,
-      maturityDate: d.maturityDate,
-      cumulativeInterest: isRd ? true : (d.cumulativeInterest ?? false),
-      compoundingFrequency: d.compoundingFrequency,
-      payoutFrequency: d.payoutFrequency,
-    });
+    const derived = getDepositDerivedValues(d);
     const lifecycle = getDepositLifecycleStatus(d);
+    const showAnchor = !isRd && d.cumulativeInterest === false && !!d.payoutFrequency && d.payoutFrequency !== 'monthly';
     return {
       depositNumber: d.depositNumber ?? '',
       name: d.name,
@@ -144,15 +181,18 @@ function buildRows(deposits: DepositHolding[], byId: Map<string, FinancialInstit
       principal: d.principal,
       recurringAmount: d.recurringAmount ?? '',
       interestRate: d.interestRate,
+      interest: derived.totalInterest,
+      realizedGain: derived.realizedGain,
+      unrealizedGain: derived.unrealizedGain,
+      projectedValue: derived.totalReturns,
       startDate: d.startDate ? formatDate(d.startDate) : '',
       preClosedDate: d.preClosedDate ? formatDate(d.preClosedDate) : '',
       maturityDate: d.maturityDate ? formatDate(d.maturityDate) : '',
       tenure: formatDepositTenure(d.startDate, d.maturityDate) ?? '',
       cumulativeInterest: (isRd || d.cumulativeInterest) ? 'Yes' : 'No',
       frequency: frequencyLabel(d.cumulativeInterest === false && !isRd ? d.payoutFrequency : d.compoundingFrequency),
+      interestCreditDate: showAnchor ? interestCreditAnchorLabel(d.interestCreditAnchor, d.accountType) : '',
       rollover: rolloverLabel(d.rollover),
-      interest: computed.interest,
-      realizedValue: d.currentValue || computed.realizedValue,
       notes: d.notes ?? '',
     };
   });
@@ -174,16 +214,19 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
     { header: HEADERS[5], key: 'principal', width: 20 },
     { header: HEADERS[6], key: 'recurringAmount', width: 18 },
     { header: HEADERS[7], key: 'interestRate', width: 18 },
-    { header: HEADERS[8], key: 'startDate', width: 14 },
-    { header: HEADERS[9], key: 'preClosedDate', width: 16 },
-    { header: HEADERS[10], key: 'maturityDate', width: 18 },
-    { header: HEADERS[11], key: 'tenure', width: 22 },
-    { header: HEADERS[12], key: 'cumulativeInterest', width: 16 },
-    { header: HEADERS[13], key: 'frequency', width: 22 },
-    { header: HEADERS[14], key: 'rollover', width: 18 },
-    { header: HEADERS[15], key: 'interest', width: 16 },
-    { header: HEADERS[16], key: 'realizedValue', width: 18 },
-    { header: HEADERS[17], key: 'notes', width: 28 },
+    { header: HEADERS[8], key: 'interest', width: 16 },
+    { header: HEADERS[9], key: 'realizedGain', width: 18 },
+    { header: HEADERS[10], key: 'unrealizedGain', width: 18 },
+    { header: HEADERS[11], key: 'projectedValue', width: 20 },
+    { header: HEADERS[12], key: 'startDate', width: 14 },
+    { header: HEADERS[13], key: 'preClosedDate', width: 16 },
+    { header: HEADERS[14], key: 'maturityDate', width: 18 },
+    { header: HEADERS[15], key: 'tenure', width: 22 },
+    { header: HEADERS[16], key: 'cumulativeInterest', width: 16 },
+    { header: HEADERS[17], key: 'frequency', width: 22 },
+    { header: HEADERS[18], key: 'interestCreditDate', width: 24 },
+    { header: HEADERS[19], key: 'rollover', width: 18 },
+    { header: HEADERS[20], key: 'notes', width: 28 },
   ];
   const header = sheet.getRow(1);
   header.font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Calibri', size: 11 };
@@ -200,7 +243,9 @@ async function exportXlsx(rows: ReturnType<typeof buildRows>): Promise<boolean> 
     if (typeof r.recurringAmount === 'number') row.getCell('recurringAmount').numFmt = numFmt;
     row.getCell('interestRate').numFmt = rateFmt;
     row.getCell('interest').numFmt = numFmt;
-    row.getCell('realizedValue').numFmt = numFmt;
+    row.getCell('realizedGain').numFmt = numFmt;
+    row.getCell('unrealizedGain').numFmt = numFmt;
+    row.getCell('projectedValue').numFmt = numFmt;
     row.alignment = { vertical: 'middle' };
   });
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columns.length } };
@@ -226,9 +271,12 @@ async function exportCsv(rows: ReturnType<typeof buildRows>): Promise<boolean> {
       formatNumber(r.principal, 2),
       typeof r.recurringAmount === 'number' ? formatNumber(r.recurringAmount, 2) : '',
       formatNumber(r.interestRate, 2),
+      formatNumber(r.interest, 2),
+      formatNumber(r.realizedGain, 2),
+      formatNumber(r.unrealizedGain, 2),
+      formatNumber(r.projectedValue, 2),
       r.startDate, r.preClosedDate, r.maturityDate, r.tenure,
-      r.cumulativeInterest, r.frequency, r.rollover,
-      formatNumber(r.interest, 2), formatNumber(r.realizedValue, 2), r.notes,
+      r.cumulativeInterest, r.frequency, r.interestCreditDate, r.rollover, r.notes,
     ].map(csvEscape).join(','));
   }
   const path = await save({ title: 'Export deposits', defaultPath: folioFileName('depositSummary', 'csv'), filters: [{ name: 'Comma Separated Values', extensions: ['csv'] }] });
@@ -379,32 +427,25 @@ async function exportPdf(
   };
 
   const body = deposits.map((d) => {
-    const isRd = d.accountType === 'rd';
-    const computed = calculateDepositValues({
-      accountType: d.accountType,
-      principal: d.principal,
-      recurringAmount: d.recurringAmount,
-      interestRate: d.interestRate,
-      startDate: d.startDate,
-      maturityDate: d.maturityDate,
-      cumulativeInterest: isRd ? true : (d.cumulativeInterest ?? false),
-      compoundingFrequency: d.compoundingFrequency,
-      payoutFrequency: d.payoutFrequency,
-    });
+    const derived = getDepositDerivedValues(d);
     const lifecycle = lifecycleLabel(getDepositLifecycleStatus(d));
     const inst = institutionFullName(d, byId);
+    const showAnchor = d.accountType !== 'rd' && d.cumulativeInterest === false && !!d.payoutFrequency && d.payoutFrequency !== 'monthly';
     return [
       d.depositNumber ?? '',
       d.name,
       accountTypeLabel(d.accountType),
+      showAnchor ? interestCreditAnchorLabel(d.interestCreditAnchor, d.accountType) : '',
       inst,
       lifecycle,
       formatNumber(d.principal, 0),
       formatPercent(d.interestRate, 2),
+      formatNumber(derived.realizedGain, 0),
+      formatNumber(derived.unrealizedGain, 0),
       d.startDate ? formatDate(d.startDate) : '',
       d.preClosedDate ? formatDate(d.preClosedDate) : '',
       d.maturityDate ? formatDate(d.maturityDate) : '',
-      formatNumber(d.currentValue || computed.realizedValue, 0),
+      formatNumber(derived.totalReturns, 0),
     ];
   });
 
@@ -414,63 +455,69 @@ async function exportPdf(
       'Deposit Number',
       'Purpose/Name',
       'Account Type',
+      'Interest Credit Date',
       'Bank',
       'Status',
       'Principal',
       'Rate of Interest',
+      'Realized Gain',
+      'Unrealized Gain',
       'Start Date',
       'Pre-closure Date',
       'Planned / Matured Date',
-      'Maturity Value',
+      'Total Returns',
     ]],
     body,
     theme: 'grid',
-    styles: { font, fontSize: 7.5, cellPadding: { top: 4, right: 3, bottom: 4, left: 3 }, overflow: 'linebreak', textColor: [42, 26, 20], lineColor: [232, 224, 218], lineWidth: 0.5, valign: 'middle' },
-    headStyles: { fillColor: [200, 80, 45], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5, overflow: 'linebreak', halign: 'center' },
+    styles: { font, fontSize: 7, cellPadding: { top: 3, right: 2, bottom: 3, left: 2 }, overflow: 'linebreak', textColor: [42, 26, 20], lineColor: [232, 224, 218], lineWidth: 0.5, valign: 'middle' },
+    headStyles: { fillColor: [200, 80, 45], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.8, overflow: 'linebreak', halign: 'center' },
     alternateRowStyles: { fillColor: [250, 246, 243] },
     columnStyles: {
-      0: { cellWidth: 52, overflow: 'linebreak' },  // Deposit Number
-      1: { cellWidth: 90, overflow: 'linebreak' },  // Purpose/Name
-      2: { cellWidth: 66, overflow: 'linebreak' },  // Account Type
-      3: { cellWidth: 86, overflow: 'linebreak' },  // Bank
-      4: { cellWidth: 50, halign: 'center' },       // Status
-      5: { cellWidth: 80, halign: 'right' },        // Principal (accounting: currency left, value right)
-      6: { cellWidth: 54, halign: 'right' },        // Rate of Interest
-      7: { cellWidth: 58, halign: 'center' },       // Start Date
-      8: { cellWidth: 58, halign: 'center' },       // Pre-closure Date
-      9: { cellWidth: 66, halign: 'center' },       // Planned / Matured Date
-      10: { cellWidth: 80, halign: 'right' },       // Maturity Value (accounting)
+      0: { cellWidth: 40, overflow: 'linebreak' },  // Deposit Number
+      1: { cellWidth: 64, overflow: 'linebreak' },  // Purpose/Name
+      2: { cellWidth: 48, overflow: 'linebreak' },  // Account Type
+      3: { cellWidth: 54, overflow: 'linebreak' },  // Interest Credit Date
+      4: { cellWidth: 62, overflow: 'linebreak' },  // Bank
+      5: { cellWidth: 38, halign: 'center' },       // Status
+      6: { cellWidth: 62, halign: 'right' },        // Principal
+      7: { cellWidth: 38, halign: 'right' },        // Rate of Interest
+      8: { cellWidth: 56, halign: 'right' },        // Realized Gain
+      9: { cellWidth: 56, halign: 'right' },        // Unrealized Gain
+      10: { cellWidth: 46, halign: 'center' },      // Start Date
+      11: { cellWidth: 46, halign: 'center' },      // Pre-closure Date
+      12: { cellWidth: 52, halign: 'center' },      // Planned / Matured Date
+      13: { cellWidth: 68, halign: 'right' },       // Total Returns
     },
     margin: { left: marginX, right: marginX, top: 28, bottom: 28 },
     tableWidth: tableW,
     didDrawPage: (data) => drawPageChrome(data.pageNumber),
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 4) {
+      if (data.section === 'body' && data.column.index === 5) {
         const status = String(data.cell.raw || '');
         const rgb = STATUS_RGB[status];
         if (rgb) {
           data.cell.styles.fillColor = rgb;
           data.cell.styles.textColor = [255, 255, 255];
           data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fontSize = 7;
+          data.cell.styles.fontSize = 6.5;
         }
       }
-      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 10)) {
+      if (data.section === 'body' && [6, 8, 9, 13].includes(data.column.index)) {
         // Accounting style drawn in didDrawCell (currency left, value right)
         data.cell.text = [''];
       }
     },
     didDrawCell: (data) => {
-      if (data.section === 'body' && (data.column.index === 5 || data.column.index === 10)) {
+      if (data.section === 'body' && [6, 8, 9, 13].includes(data.column.index)) {
         const raw = String((data.row.raw as unknown[] | undefined)?.[data.column.index] ?? data.cell.raw ?? '');
         if (!raw) return;
         const { x, y: cy, width, height } = data.cell;
-        const padL = 3;
-        const padR = 3;
+        const padL = 2;
+        const padR = 2;
         doc.setFont(font, 'normal');
-        doc.setFontSize(7.5);
+        doc.setFontSize(7);
         doc.setTextColor(42, 26, 20);
-        const textY = cy + height / 2 + 2.5;
+        const textY = cy + height / 2 + 2.3;
         doc.text('Rs.', x + padL, textY, { align: 'left' });
         doc.text(raw, x + width - padR, textY, { align: 'right' });
       }
@@ -581,6 +628,8 @@ export async function exportDepositDetailPdf(
     cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
     compoundingFrequency: record.compoundingFrequency,
     payoutFrequency: record.payoutFrequency,
+    interestCreditAnchor: record.interestCreditAnchor,
+    interestPayoutAmount: record.interestPayoutAmount,
   });
   const tenure = formatDepositTenure(record.startDate, record.maturityDate);
   const operationType = record.operationType ?? 'single';
@@ -853,7 +902,7 @@ export async function exportDepositDetailPdf(
   if (isRd) investmentFields.push({ label: tr('deposit.fields.recurringAmount'), value: record.recurringAmount != null ? formatINR(record.recurringAmount) : '—' });
   else investmentFields.push({ label: tr('deposit.fields.principal'), value: formatINR(record.principal) });
   investmentFields.push(
-    { label: tr('deposit.fields.interestRate'), value: formatPercent(record.interestRate) },
+    { label: tr('deposit.fields.interestRate'), value: formatPercent(record.interestRate, 2) },
     { label: tr('deposit.fields.startDate'), value: record.startDate ? formatDate(record.startDate) : '—' },
     { label: tr('deposit.fields.maturityDate'), value: record.maturityDate ? formatDate(record.maturityDate) : '—' },
     { label: tr('deposit.fields.tenure'), value: tenure ?? '—' },
@@ -897,10 +946,18 @@ export async function exportDepositDetailPdf(
   const interestSubtext = showPayoutCredit
     ? `${tr('deposit.fields.totalInterestAccrued')}: ${formatINR(computed.interest, { decimals: 2 })}`
     : undefined;
+  const showInterestCreditAnchor = !isRd && record.cumulativeInterest === false && !!record.payoutFrequency && record.payoutFrequency !== 'monthly';
+  const anchorValue = showInterestCreditAnchor ? interestCreditAnchorLabel(record.interestCreditAnchor, record.accountType) : undefined;
+  const anchorAlert = showInterestCreditAnchor ? interestCreditAnchorAlertText(record) : undefined;
   const maturityFields: Field[] = [];
   if (!isRd) maturityFields.push({ label: tr('deposit.fields.cumulativeInterest'), value: boolText(record.cumulativeInterest) });
   maturityFields.push(
     { label: (isRd || record.cumulativeInterest !== false) ? tr('deposit.fields.compounding') : tr('deposit.fields.payoutFrequency'), value: freqText },
+  );
+  if (showInterestCreditAnchor) {
+    maturityFields.push({ label: tr('deposit.fields.interestCreditDate'), value: anchorValue || '—', subtext: anchorAlert });
+  }
+  maturityFields.push(
     { label: tr('deposit.fields.rollover'), value: labelFromOptions(ROLLOVER_OPTIONS as Array<{ value: string; label: string }>, record.rollover) },
     { label: tr(isRd ? 'deposit.fields.compoundInterest' : 'deposit.fields.interest'), value: interestValue, subtext: interestSubtext },
     { label: tr('deposit.fields.realizedValue'), value: formatINR(!isRd && record.cumulativeInterest === false ? computed.realizedValue : (record.currentValue ?? computed.realizedValue)) },
