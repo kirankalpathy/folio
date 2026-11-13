@@ -85,6 +85,7 @@ export default function DepositWizardStepInvestment({
       interestPayoutOption: InterestPayoutOption.Quarterly,
       cumulativeInterest: false,
       payoutFrequency: 'quarterly',
+      interestCreditAnchor: 'financial-calendar',
       rollover: 'none',
     } as Partial<DepositFormValues>);
   }, [isScss, form]);

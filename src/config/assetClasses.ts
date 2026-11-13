@@ -136,6 +136,10 @@ export interface AllocationMeta {
 export function getAllocationMeta(key: AllocationKey): AllocationMeta {
   if (key === 'deposits-fd') return { label: 'asset.deposits.fd', path: '/deposits', color: palette.asset.depositsFd };
   if (key === 'deposits-rd') return { label: 'asset.deposits.rd', path: '/deposits', color: palette.asset.depositsRd };
+  if (key === 'deposits-tax-saving') return { label: 'asset.deposits.taxSaving', path: '/deposits', color: palette.asset.depositsTaxSaving };
+  if (key === 'deposits-savings') return { label: 'asset.deposits.savings', path: '/deposits', color: palette.asset.depositsSavings };
+  if (key === 'deposits-nsc') return { label: 'asset.deposits.nsc', path: '/deposits', color: palette.asset.depositsNsc };
+  if (key === 'deposits-scss') return { label: 'asset.deposits.scss', path: '/deposits', color: palette.asset.depositsScss };
   if (key === 'deposits-other') return { label: 'asset.deposits.other', path: '/deposits', color: palette.asset.depositsOther };
   const meta = ASSET_CLASS_META[key as AssetClassKey];
   return { label: meta.label, path: meta.path, color: meta.color };

@@ -10,6 +10,7 @@ import { useI18n } from '../i18n';
 import PageHeader from '../components/common/PageHeader';
 import { getFinancialInstitution } from '../services/financialInstitutions';
 import ChangeDetailsSection from '../components/common/ChangeDetailsSection';
+import { formatINR } from '../utils/finance';
 
 function val(v?: string | number | null): ReactNode {
   if (v === undefined || v === null || v === '') return <span className="text-folio-ink/35 dark:text-white/30">—</span>;
@@ -140,7 +141,7 @@ export default function FinancialInstitutionDetailPage() {
     accountItems = [
       { key: 'cardNumber', label: t('institutions.fields.cardNumber'), children: val(record.cardNumber) },
       { key: 'cardNetwork', label: t('institutions.fields.cardNetwork'), children: val(record.cardNetwork) },
-      { key: 'creditLimit', label: t('institutions.fields.creditLimit'), children: val(record.creditLimit != null ? `₹ ${record.creditLimit.toLocaleString('en-IN')}` : undefined) },
+      { key: 'creditLimit', label: t('institutions.fields.creditLimit'), children: val(record.creditLimit != null ? formatINR(record.creditLimit) : undefined) },
       { key: 'billingCycle', label: t('institutions.fields.billingCycle'), children: val(record.billingCycleDay != null ? `${t('institutions.billingCycle.prefix')} ${record.billingCycleDay} ${t('institutions.billingCycle.suffix')}` : undefined) },
     ];
   } else if (category === 'investment-brokerage') {

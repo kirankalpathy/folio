@@ -16,13 +16,14 @@ interface NetWorthHeroProps {
 const numberTiles: Array<{ key: keyof NetWorthSummary; label: MessageKey }> = [
   { key: 'totalAssets', label: 'dashboard.netWorth.assets' },
   { key: 'totalLiabilities', label: 'dashboard.netWorth.liabilities' },
-  { key: 'totalInvested', label: 'dashboard.netWorth.invested' },
-  { key: 'unrealisedGain', label: 'dashboard.netWorth.gain' },
+  { key: 'realizedGain', label: 'dashboard.netWorth.realizedGain' },
+  { key: 'unrealisedGain', label: 'dashboard.netWorth.unrealizedGain' },
+  { key: 'totalGain', label: 'dashboard.netWorth.totalGain' },
 ];
 
 export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) {
   const { t } = useI18n();
-  const positive = summary.unrealisedGain >= 0;
+  const positive = (summary.realizedGain + summary.unrealisedGain) >= 0;
   const TrendIcon = positive ? ArrowUpRight : ArrowDownRight;
 
   return (
@@ -42,7 +43,7 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
             </span>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className="mt-2">
             {isLoading ? (
               <Skeleton.Input active size="large" className="!h-12 !w-64" />
             ) : (
@@ -50,34 +51,50 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
                 {formatINR(summary.netWorth)}
               </p>
             )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[0.625rem]',
-                positive
-                  ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300 dark:border-emerald-600/25 dark:bg-emerald-500/10 dark:text-emerald-700'
-                  : 'border-rose-400/25 bg-rose-400/10 text-rose-300 dark:border-rose-600/25 dark:bg-rose-500/10 dark:text-rose-700',
-              )}
-            >
-              <TrendIcon size={12} />
-              {formatPercent(summary.returnsPercentage)}
-            </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 xl:min-w-[520px]">
-          {numberTiles.map((tile) => (
-            <div key={tile.key} className="min-w-0 border-white/10 sm:border-l sm:pl-4 dark:border-folio-ink/10">
+        <div className="flex flex-wrap gap-x-5 gap-y-4 xl:flex-nowrap xl:gap-x-4">
+          {numberTiles.map((tile, index) => (
+            <div key={tile.key} className={cn('shrink-0 border-white/10 dark:border-folio-ink/10', index > 0 && 'xl:border-l xl:pl-4')}>
               <p className="font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-folio-cream/45 dark:text-folio-ink/45">
                 {t(tile.label)}
               </p>
-              <p
-                className={cn(
-                  'folio-value mt-1.5 truncate text-sm',
-                  tile.key === 'totalLiabilities' ? 'text-folio-accent dark:text-folio-primary' : 'text-folio-cream dark:text-folio-ink',
-                )}
-              >
-                {isLoading ? '—' : formatINR(Number(summary[tile.key]))}
-              </p>
+              {tile.key === 'totalGain' ? (
+                <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+                  <p className={cn('folio-value truncate text-sm', positive ? 'text-emerald-300 dark:text-emerald-700' : 'text-rose-300 dark:text-rose-700')}>
+                    {isLoading ? '—' : formatINR(summary.totalGain)}
+                  </p>
+                  {!isLoading && (
+                    <span
+                      className={cn(
+                        'inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 font-mono text-[0.625rem] leading-none',
+                        positive
+                          ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300 dark:border-emerald-600/25 dark:bg-emerald-500/10 dark:text-emerald-700'
+                          : 'border-rose-400/25 bg-rose-400/10 text-rose-300 dark:border-rose-600/25 dark:bg-rose-500/10 dark:text-rose-700',
+                      )}
+                    >
+                      <TrendIcon size={11} />
+                      {formatPercent(summary.returnsPercentage)}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p
+                  className={cn(
+                    'folio-value mt-1.5 truncate text-sm',
+                    tile.key === 'totalLiabilities'
+                      ? 'text-folio-accent dark:text-folio-primary'
+                      : tile.key === 'realizedGain'
+                        ? 'text-folio-info-accent'
+                        : tile.key === 'unrealisedGain'
+                          ? 'text-folio-success-accent'
+                          : 'text-folio-cream dark:text-folio-ink',
+                  )}
+                >
+                  {isLoading ? '—' : formatINR(Number(summary[tile.key]))}
+                </p>
+              )}
             </div>
           ))}
         </div>

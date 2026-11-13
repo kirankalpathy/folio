@@ -86,6 +86,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
       interestPayoutOption: 'quarterly',
       cumulativeInterest: false,
       payoutFrequency: 'quarterly',
+      interestCreditAnchor: 'financial-calendar',
       rollover: 'none',
       markedAsLien: false,
       lienReason: '',

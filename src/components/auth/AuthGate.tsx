@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Modal, Spin } from 'antd';
+import { Alert, Button, Modal } from 'antd';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { SettingsProvider } from '../../context/SettingsContext';
@@ -22,21 +22,11 @@ import FinancialInstitutionDetailPage from '../../pages/FinancialInstitutionDeta
 import ProfilePage from '../../pages/ProfilePage';
 import SettingsPage from '../../pages/SettingsPage';
 import LedgerPage from '../ledger/LedgerPage';
-import FolioLogo from '../common/FolioLogo';
+import AppLoadingScreen from '../common/AppLoadingScreen';
 
 function BootScreen() {
   const { t } = useI18n();
-  return (
-    <div className="grid min-h-screen place-items-center bg-folio-paper pt-[var(--folio-titlebar-height,0px)] dark:bg-folio-night">
-      <div className="flex flex-col items-center gap-5">
-        <FolioLogo />
-        <Spin size="small" />
-        <p className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-folio-ink/35 dark:text-white/30">
-          {t('auth.opening')}
-        </p>
-      </div>
-    </div>
-  );
+  return <AppLoadingScreen message={t('auth.opening')} />;
 }
 
 export default function AuthGate() {

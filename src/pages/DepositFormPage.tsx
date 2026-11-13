@@ -112,6 +112,7 @@ export default function DepositFormPage() {
         cumulativeInterest,
         compoundingFrequency: values.compoundingFrequency,
         payoutFrequency,
+        interestCreditAnchor: values.interestCreditAnchor,
       });
       const input = toDepositInput(values, { realizedValue: computed.realizedValue, totalDeposited: computed.totalDeposited, interestPayoutAmount: computed.interestPayoutAmount });
       if (isEdit && id) {

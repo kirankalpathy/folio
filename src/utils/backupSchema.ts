@@ -16,6 +16,7 @@ const PF_TYPES = ['EPF', 'PPF', 'VPF', 'NPS', 'OTHER'] as const;
 const DEPOSIT_TYPES = ['fd', 'rd', 'tax-saving', 'savings', 'nsc', 'scss', 'other'] as const;
 const COMPOUNDING = ['annual', 'semi-annual', 'quarterly', 'monthly'] as const;
 const PAYOUT_FREQUENCIES = COMPOUNDING;
+const INTEREST_CREDIT_ANCHORS = ['account-opening-date', 'financial-calendar'] as const;
 const ROLLOVERS = ['none', 'principal', 'principal-interest'] as const;
 const OPERATION_MODES = ['online', 'offline'] as const;
 const DEPOSIT_OPERATION_TYPES = ['single', 'joint', 'either-or-survivor', 'former-or-survivor'] as const;
@@ -97,6 +98,7 @@ const DEPOSIT_FIELDS: FieldRule[] = [
   ['compoundingFrequency', 'string', { optional: true, enum: COMPOUNDING }],
   ['cumulativeInterest', 'boolean', 'optional'],
   ['payoutFrequency', 'string', { optional: true, enum: PAYOUT_FREQUENCIES }],
+  ['interestCreditAnchor', 'string', { optional: true, enum: INTEREST_CREDIT_ANCHORS }],
   ['interestPayoutAmount', 'number', 'optional'],
   ['rollover', 'string', { optional: true, enum: ROLLOVERS }],
   ['operationMode', 'string', { optional: true, enum: OPERATION_MODES }],
@@ -453,6 +455,7 @@ export function validateBackupWithErrors(input: unknown): {
     currentValue: 'Current value',
     compoundingFrequency: 'Compounding frequency',
     payoutFrequency: 'Payout frequency',
+    interestCreditAnchor: 'Interest credit date',
     operationMode: 'Operation mode',
     operationType: 'Operation type',
     isPanLinked: 'PAN linked',

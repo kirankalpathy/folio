@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Alert, Button, Steps } from 'antd';
+import { Alert, App, Button, Steps } from 'antd';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 export interface WizardStepItem {
   title: ReactNode;
@@ -57,8 +58,20 @@ export default function Wizard({
   nextLabel = 'Next',
   children,
 }: WizardProps) {
+  const { t } = useI18n();
+  const { modal } = App.useApp();
   const lastStep = steps.length - 1;
   const isLast = currentStep >= lastStep;
+
+  const handleCancel = () => {
+    modal.confirm({
+      title: t('common.unsavedChanges.title'),
+      content: t('common.unsavedChanges.body'),
+      okText: t('common.unsavedChanges.proceed'),
+      cancelText: t('common.unsavedChanges.stay'),
+      onOk: () => onCancel(),
+    });
+  };
 
   return (
     <div className={className ?? 'flex h-full min-h-0 flex-1 flex-col'}>
@@ -73,7 +86,7 @@ export default function Wizard({
       <div className={bodyClassName ?? 'min-h-0 flex-1 overflow-y-auto pr-1'}>{children}</div>
       <div className={footerClassName ?? 'mt-4 flex shrink-0 items-center justify-between gap-2 border-t border-folio-ink/10 bg-folio-paper pt-3 dark:border-white/[0.07] dark:bg-folio-dark-elevated'}>
         <div className="flex items-center gap-2">
-          <Button onClick={onCancel}>{cancelLabel}</Button>
+          <Button onClick={handleCancel}>{cancelLabel}</Button>
           {currentStep > 0 ? (
             <Button onClick={onBack} icon={<ArrowLeft size={14} />}>
               {backLabel}

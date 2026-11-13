@@ -536,7 +536,7 @@ export default function DepositsPage() {
                 <Button onClick={() => { setSearch(''); setBankFilter([]); setLifecycleFilter([]); setAccountTypeFilter([]); setInterestPayoutFilter([]); setMaturityDateOp('=='); setMaturityDateValue(null); setOperationTypeFilter([]); }}>{t('common.clear')}</Button>
               </EmptyState>
             ) : (
-              <DepositTable deposits={filteredDeposits} loading={isLoading} onView={openView} onEdit={openEdit} onDelete={handleDelete} />
+              <DepositTable deposits={filteredDeposits} loading={isLoading} variant={depositTab} onView={openView} onEdit={openEdit} onDelete={handleDelete} />
             )}
       </ResponsiveTable>
     </div>

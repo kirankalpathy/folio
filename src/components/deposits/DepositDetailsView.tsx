@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { Alert, Descriptions } from 'antd';
 import type { DescriptionsProps } from 'antd';
-import { User, UserCheck, Users } from 'lucide-react';
+import dayjs from 'dayjs';
+import { Building2, User, UserCheck, UserRound, Users } from 'lucide-react';
 import type { DepositHolding, DepositOperationType, DepositType } from '../../types';
+import { InterestCreditAnchor } from '../../types';
 import { useI18n, type MessageKey } from '../../i18n';
 import { formatDate } from '../../utils/date';
 import { formatINR, formatPercent } from '../../utils/finance';
@@ -27,6 +29,46 @@ function operationTypeIcon(type: DepositOperationType): ReactNode {
   if (type === 'joint') return <Users size={15} className="text-folio-info dark:text-folio-info" />;
   if (type === 'either-or-survivor') return <Users size={15} className="text-violet-600 dark:text-violet-400" />;
   return <UserCheck size={15} className="text-emerald-600 dark:text-emerald-400" />;
+}
+
+function addOpeningPeriodsLocal(base: dayjs.Dayjs, periods: number, monthsPer: number, anchorDay: number): dayjs.Dayjs {
+  const targetMonth = base.month() + periods * monthsPer;
+  const y = base.year() + Math.floor(targetMonth / 12);
+  const m = ((targetMonth % 12) + 12) % 12;
+  const dim = new Date(y, m + 1, 0).getDate();
+  return dayjs(new Date(y, m, Math.min(anchorDay, dim))).startOf('day');
+}
+
+function interestCreditAnchorAlertNode(record: DepositHolding, t: (key: any, params?: any) => string): ReactNode | null {
+  const isRd = record.accountType === 'rd';
+  if (isRd || record.cumulativeInterest !== false || !record.payoutFrequency || record.payoutFrequency === 'monthly') return null;
+  const intervalText = t(record.payoutFrequency === 'quarterly'
+    ? 'deposit.interestCreditAnchor.interval.quarterly'
+    : record.payoutFrequency === 'semi-annual'
+      ? 'deposit.interestCreditAnchor.interval.semiAnnual'
+      : 'deposit.interestCreditAnchor.interval.annual');
+  const anchor = record.interestCreditAnchor ?? (record.accountType === 'scss' ? InterestCreditAnchor.FinancialCalendar : InterestCreditAnchor.AccountOpeningDate);
+  const start = dayjs(record.startDate).startOf('day');
+  let startText = '—';
+  if (anchor === InterestCreditAnchor.FinancialCalendar) {
+    const boundaryMonths = record.payoutFrequency === 'quarterly' ? [2, 5, 8, 11]
+      : record.payoutFrequency === 'semi-annual' ? [2, 8]
+      : [2];
+    const base = start.isValid() ? start : dayjs().startOf('day');
+    let next: dayjs.Dayjs | null = null;
+    for (let y = base.year(); y <= base.year() + 2 && !next; y++) {
+      for (const m of boundaryMonths) {
+        const d = dayjs(new Date(y, m + 1, 0)).startOf('day');
+        if (d.isAfter(base, 'day') || d.isSame(base, 'day')) { next = d; break; }
+      }
+    }
+    startText = next ? formatDate(next.format('YYYY-MM-DD')) : '—';
+  } else if (start.isValid()) {
+    const monthsPer = record.payoutFrequency === 'quarterly' ? 3 : record.payoutFrequency === 'semi-annual' ? 6 : 12;
+    const firstPayout = addOpeningPeriodsLocal(start, 1, monthsPer, start.date());
+    startText = formatDate(firstPayout.format('YYYY-MM-DD'));
+  }
+  return <>Interest will be credited every <strong>{intervalText}</strong>, starting from <strong>{startText}</strong>.</>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -58,6 +100,8 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
     cumulativeInterest: isRd ? true : (record.cumulativeInterest ?? false),
     compoundingFrequency: record.compoundingFrequency,
     payoutFrequency: record.payoutFrequency,
+    interestCreditAnchor: record.interestCreditAnchor,
+    interestPayoutAmount: record.interestPayoutAmount,
   });
   const accountOpt = ACCOUNT_OPTIONS.find((o) => o.value === record.accountType);
   const legacyAccountKeys: Partial<Record<string, MessageKey>> = { savings: 'deposit.account.savings', nsc: 'deposit.account.nsc', 'tax-saving': 'deposit.account.taxSaving' };
@@ -66,6 +110,9 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
   const operationType = record.operationType ?? 'single';
   const operationTypeLabel = OPERATION_TYPE_OPTIONS.find((o) => o.value === operationType)?.label;
   const rolloverLabel = ROLLOVER_OPTIONS.find((o) => o.value === (record.rollover ?? 'none'))?.label;
+  const showInterestCreditAnchor = !isRd && record.cumulativeInterest === false && !!record.payoutFrequency && record.payoutFrequency !== 'monthly';
+  const interestCreditAnchor = record.interestCreditAnchor ?? (record.accountType === 'scss' ? InterestCreditAnchor.FinancialCalendar : InterestCreditAnchor.AccountOpeningDate);
+  const interestCreditAnchorAlert = interestCreditAnchorAlertNode(record, t as any);
   const dp: Partial<DescriptionsProps> = {
     layout: 'vertical',
     column: { xs: 1, sm: 2 },
@@ -122,7 +169,7 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
           isRd
             ? { key: 'recurringAmount', label: t('deposit.fields.recurringAmount'), children: val(record.recurringAmount != null ? formatINR(record.recurringAmount) : undefined) }
             : { key: 'principal', label: t('deposit.fields.principal'), children: val(formatINR(record.principal)) },
-          { key: 'rate', label: t('deposit.fields.interestRate'), children: val(formatPercent(record.interestRate)) },
+          { key: 'rate', label: t('deposit.fields.interestRate'), children: val(formatPercent(record.interestRate, 2)) },
           { key: 'start', label: t('deposit.fields.startDate'), children: val(record.startDate ? formatDate(record.startDate) : undefined) },
           { key: 'maturity', label: t('deposit.fields.maturityDate'), children: val(record.maturityDate ? formatDate(record.maturityDate) : undefined) },
           { key: 'tenure', label: t('deposit.fields.tenure'), children: val(tenure) },
@@ -139,6 +186,9 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
         ]} />
       </Section>
       <Section title={t('deposit.section.maturity')}>
+        {interestCreditAnchorAlert && (
+          <Alert className="folio-message-strip folio-message-strip-info mb-3" showIcon type="info" title={interestCreditAnchorAlert} />
+        )}
         <Descriptions {...dp} items={[
           {
             key: 'payoutMode',
@@ -149,6 +199,18 @@ export default function DepositDetailsView({ record }: { record: DepositHolding 
                 : (PAYOUT_OPTIONS.find((o) => o.value === record.payoutFrequency)?.label ? t(PAYOUT_OPTIONS.find((o) => o.value === record.payoutFrequency)!.label) : undefined),
             ),
           },
+          ...(showInterestCreditAnchor ? [{
+            key: 'interestCreditAnchor',
+            label: t('deposit.fields.interestCreditDate'),
+            children: (
+              <span className="inline-flex items-center gap-2">
+                {interestCreditAnchor === InterestCreditAnchor.FinancialCalendar
+                  ? <Building2 size={15} className="text-violet-600 dark:text-violet-400" />
+                  : <UserRound size={15} className="text-sky-600 dark:text-sky-400" />}
+                <span>{t(interestCreditAnchor === InterestCreditAnchor.FinancialCalendar ? 'deposit.interestCreditAnchor.financialCalendar' : 'deposit.interestCreditAnchor.accountOpeningDate')}</span>
+              </span>
+            ),
+          }] : []),
           { key: 'rollover', label: t('deposit.fields.rollover'), children: val(rolloverLabel ? t(rolloverLabel) : undefined) },
           {
             key: 'interest',

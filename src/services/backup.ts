@@ -97,6 +97,9 @@ function recomputeDepositForRestore(record: unknown): Record<string, unknown> | 
   const startDate = typeof d.startDate === 'string' ? d.startDate : '';
   const maturityDate = typeof d.maturityDate === 'string' ? d.maturityDate : '';
 
+  const interestCreditAnchor = (!isRd && !cumulativeInterest && payoutFrequency && payoutFrequency !== 'monthly')
+    ? ((d.interestCreditAnchor === 'financial-calendar' || d.accountType === 'scss') ? 'financial-calendar' : 'account-opening-date')
+    : undefined;
   const computed = calculateDepositValues({
     accountType: d.accountType as DepositType | undefined,
     principal,
@@ -107,12 +110,15 @@ function recomputeDepositForRestore(record: unknown): Record<string, unknown> | 
     cumulativeInterest,
     compoundingFrequency,
     payoutFrequency,
+    interestCreditAnchor,
+    interestPayoutAmount: typeof d.interestPayoutAmount === 'number' && Number.isFinite(d.interestPayoutAmount) ? d.interestPayoutAmount : undefined,
   });
 
   const next: Record<string, unknown> = { ...d };
   next.cumulativeInterest = cumulativeInterest;
   next.payoutFrequency = payoutFrequency;
   next.compoundingFrequency = compoundingFrequency;
+  next.interestCreditAnchor = interestCreditAnchor;
   if (isRd) {
     next.markedAsLien = false;
     next.lienReason = undefined;

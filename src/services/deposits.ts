@@ -1,6 +1,6 @@
 import type { DepositHolding, DepositInput, DepositNominee } from '../types';
 import { translate } from '../i18n';
-import { calculateDepositAccruedValueAsOf, sanitizeDepositLienState } from '../utils/deposits';
+import { calculateDepositAccruedValueAsOf, getDepositDerivedValues, sanitizeDepositLienState } from '../utils/deposits';
 import { allRecords, deleteRecord, getRecord, putRecord } from './sqlite';
 import { getAuditActorEmail } from './currentUser';
 
@@ -22,6 +22,9 @@ function normalize(input: DepositInput): DepositInput {
   const financialInstitutionId = input.financialInstitutionId?.trim() || undefined;
   const cumulativeInterest = isRd ? true : input.cumulativeInterest;
   const payoutFrequency = (isRd || cumulativeInterest) ? undefined : input.payoutFrequency;
+  const interestCreditAnchor = (!isRd && !cumulativeInterest && payoutFrequency && payoutFrequency !== 'monthly')
+    ? (input.interestCreditAnchor === 'financial-calendar' ? 'financial-calendar' : 'account-opening-date')
+    : undefined;
   const interestPayoutAmount =
     !isRd && !cumulativeInterest && payoutFrequency && Number.isFinite(input.interestPayoutAmount)
       ? Math.max(0, input.interestPayoutAmount as number)
@@ -36,6 +39,7 @@ function normalize(input: DepositInput): DepositInput {
     recurringAmount: isRd && Number.isFinite(input.recurringAmount) ? Math.max(0, input.recurringAmount as number) : undefined,
     cumulativeInterest,
     payoutFrequency,
+    interestCreditAnchor,
     interestPayoutAmount,
     operationMode: input.operationMode === 'offline' ? 'offline' : 'online',
     notes: input.notes?.trim() || undefined,
@@ -106,12 +110,19 @@ function validate(input: DepositInput): void {
   }
 }
 
+function withRecomputedCurrentValue(record: DepositHolding, asOf: Date = new Date()): DepositHolding {
+  const currentValue = getDepositDerivedValues(record, asOf).currentValue;
+  return record.currentValue === currentValue ? record : { ...record, currentValue };
+}
+
 export async function listDeposits(): Promise<DepositHolding[]> {
-  return allRecords<DepositHolding>('deposits', 'maturityDate');
+  const records = await allRecords<DepositHolding>('deposits', 'maturityDate');
+  return records.map((record) => withRecomputedCurrentValue(record));
 }
 
 export async function getDeposit(id: string): Promise<DepositHolding | null> {
-  return getRecord<DepositHolding>('deposits', id);
+  const record = await getRecord<DepositHolding>('deposits', id);
+  return record ? withRecomputedCurrentValue(record) : null;
 }
 
 export async function createDeposit(input: DepositInput): Promise<DepositHolding> {

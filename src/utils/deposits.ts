@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType } from '../types';
+import type { CompoundingFrequency, DepositHolding, DepositPayoutFrequency, DepositType, InterestCreditAnchor } from '../types';
 import { calculateCompoundInterest, calculateReturnsPercentage, COMPOUNDING_PERIODS } from './finance';
 import { daysUntil } from './date';
 
@@ -13,9 +13,9 @@ export const PAYOUTS_PER_YEAR: Record<DepositPayoutFrequency, number> = {
 export interface DepositSummary {
   totalCurrentValue: number;
   totalPrincipal: number;
-  accruedGain: number;
+  realizedGain: number;
+  unrealizedGain: number;
   gainPercentage: number;
-  weightedAverageRate: number;
   maturingSoon: number;
   count: number;
 }
@@ -167,6 +167,8 @@ export function calculateDepositValues(input: {
   cumulativeInterest: boolean;
   compoundingFrequency?: CompoundingFrequency;
   payoutFrequency?: DepositPayoutFrequency;
+  interestCreditAnchor?: InterestCreditAnchor | string;
+  interestPayoutAmount?: number;
 }): DepositComputedValues {
   const rate = Number.isFinite(input.interestRate) ? Math.max(0, input.interestRate) : 0;
   const start = dayjs(input.startDate);
@@ -182,7 +184,6 @@ export function calculateDepositValues(input: {
     const months = Math.max(0, maturity.diff(start, 'month'));
     const totalDeposited = recurringAmount * months;
     if (!rate || months <= 0) return { interest: 0, realizedValue: totalDeposited, totalDeposited, months };
-    // RD is cumulative (compound interest) by default.
     const maturityValue = calculateRdMaturityValue(recurringAmount, rate, months, input.compoundingFrequency ?? 'quarterly');
     const interest = Math.max(0, maturityValue - totalDeposited);
     return { interest, realizedValue: totalDeposited + interest, totalDeposited, months };
@@ -192,21 +193,34 @@ export function calculateDepositValues(input: {
   if (!principal || !rate || !start.isValid() || !maturity.isValid() || !maturity.isAfter(start)) {
     return { interest: 0, realizedValue: principal, totalDeposited: principal, months: 0 };
   }
-  const years = maturity.diff(start, 'day') / 365;
-  if (years <= 0) return { interest: 0, realizedValue: principal, totalDeposited: principal, months: 0 };
 
-  if (input.cumulativeInterest) {
-    const compoundsPerYear = COMPOUNDING_PERIODS[input.compoundingFrequency ?? 'quarterly'] ?? 4;
-    const result = calculateCompoundInterest({ principal, annualRate: rate, years, compoundsPerYear });
-    const interest = Math.max(0, result.interestEarned);
+  const isCumulative = input.cumulativeInterest;
+  if (isCumulative) {
+    const years = maturity.diff(start, 'day') / 365;
+    if (years <= 0) return { interest: 0, realizedValue: principal, totalDeposited: principal, months: 0 };
+    const n = COMPOUNDING_PERIODS[input.compoundingFrequency ?? 'quarterly'] ?? 4;
+    const maturityValue = principal * Math.pow(1 + (rate / 100) / n, n * years);
+    const interest = Math.max(0, maturityValue - principal);
     return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0 };
   }
 
-  // Non-cumulative (interest payout): total interest over tenure (simple), realized includes principal.
-  const interest = Math.max(0, (principal * rate * years) / 100);
-  const payoutsPerYear = input.payoutFrequency ? PAYOUTS_PER_YEAR[input.payoutFrequency] : undefined;
-  const interestPayoutAmount = payoutsPerYear && payoutsPerYear > 0 ? (principal * rate) / 100 / payoutsPerYear : undefined;
-  return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0, interestPayoutAmount };
+  // Canonical non-cumulative engine: full-tenure expected interest from payout schedule/anchors/day-count rules.
+  const periodic = periodicPayoutAmount({
+    principal,
+    interestRate: rate,
+    payoutFrequency: input.payoutFrequency,
+    interestPayoutAmount: input.interestPayoutAmount,
+  } as Pick<DepositHolding, 'principal' | 'interestRate' | 'payoutFrequency' | 'interestPayoutAmount'>);
+  const slots = buildPayoutSchedule(input.startDate, input.maturityDate, input.payoutFrequency, input.accountType, input.interestCreditAnchor);
+  let interest = 0;
+  if (slots.length > 0 && (periodic > 0 || (principal > 0 && rate > 0))) {
+    interest = Math.max(0, slots.reduce((sum, s) => sum + slotPayoutAmount(s, periodic, principal, rate), 0));
+  } else {
+    const totalDays = maturity.diff(start, 'day');
+    const basis = dayCountBasis(maturity, isScssAccountType(input.accountType));
+    interest = totalDays > 0 ? Math.max(0, (principal * rate * totalDays) / 100 / basis) : 0;
+  }
+  return { interest, realizedValue: principal + interest, totalDeposited: principal, months: 0, interestPayoutAmount: periodic > 0 ? periodic : undefined };
 }
 
 export function calculateDepositAccruedValueAsOf(input: {
@@ -279,18 +293,360 @@ export function calculateDepositAccruedValueAsOf(input: {
   return principal + interest;
 }
 
+export interface DepositDerivedValues {
+  investedToDate: number;
+  currentValue: number;
+  realizedGain: number;
+  unrealizedGain: number;
+  totalInterest: number;
+  totalReturns: number;
+}
+
+type PayoutAnchorMode = 'opening-date' | 'calendar';
+
+export interface PayoutSlot {
+  /** Payout date (day granularity) — realized once asOf >= this date. */
+  date: dayjs.Dayjs;
+  /** Actual days covered by this payout period (for daily pro-rata). */
+  days: number;
+  /** True when this slot represents a full payout period (not a pro-rated stub). */
+  isFullPeriod: boolean;
+  /** Day-count basis for daily pro-rata of this slot (365, or 366 for SCSS leap-year periods). */
+  basis: number;
+}
+
+const CALENDAR_BOUNDARY_MONTHS: Record<string, number[]> = {
+  quarterly: [2, 5, 8, 11], // Mar 31, Jun 30, Sep 30, Dec 31 (0-indexed)
+  'semi-annual': [2, 8], // Mar 31, Sep 30
+  annual: [2], // Mar 31 (financial year end)
+};
+const MONTHS_PER_PERIOD: Record<string, number> = {
+  monthly: 1,
+  quarterly: 3,
+  'semi-annual': 6,
+  annual: 12,
+};
+
+function normalizePayoutFrequency(freq?: DepositPayoutFrequency | 'half-yearly' | 'annually' | string): 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | undefined {
+  switch (freq) {
+    case 'monthly': return 'monthly';
+    case 'quarterly': return 'quarterly';
+    case 'semi-annual':
+    case 'half-yearly': return 'semi-annual';
+    case 'annual':
+    case 'annually': return 'annual';
+    default: return undefined;
+  }
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function isScssAccountType(accountType?: string): boolean {
+  return accountType === 'scss';
+}
+
+/**
+ * Day-count basis for daily pro-rata:
+ * - SCSS (Post Office): Actual/366 in leap years, else Actual/365.
+ * - Others: Actual/365.
+ * Uses the period's end year for leap-year determination (covers periods spanning Feb 29).
+ */
+function dayCountBasis(periodEnd: dayjs.Dayjs, scss: boolean): number {
+  if (!scss) return 365;
+  // If the period crosses Feb 29 of a leap year, use 366; otherwise prefer end-year.
+  const y = periodEnd.year();
+  if (isLeapYear(y)) return 366;
+  const prev = y - 1;
+  if (isLeapYear(prev)) {
+    const feb29 = dayjs(new Date(prev, 1, 29)).startOf('day');
+    // Periods ending on/after Mar 1 of a non-leap year that started before Mar 1 could include Feb 29
+    if (!periodEnd.isBefore(feb29, 'day') && periodEnd.isBefore(dayjs(new Date(y, 2, 1)), 'day')) return 366;
+  }
+  return 365;
+}
+
+/**
+ * Anchor day-of-month from opening date, clamped to the last valid day of the target month.
+ * For opening-date anchoring on 29th/30th/31st, clamps to last valid day of shorter months
+ * without treating that month as partial/pro-rated (e.g. 31-Jan -> 28/29 Feb, 30 Apr).
+ */
+function openingDateAnchorInMonth(year: number, monthIdx: number, anchorDay: number): dayjs.Dayjs {
+  const dim = new Date(year, monthIdx + 1, 0).getDate();
+  return dayjs(new Date(year, monthIdx, Math.min(anchorDay, dim))).startOf('day');
+}
+
+function addOpeningPeriods(base: dayjs.Dayjs, periods: number, monthsPer: number, anchorDay: number): dayjs.Dayjs {
+  const targetMonth = base.month() + periods * monthsPer;
+  const y = base.year() + Math.floor(targetMonth / 12);
+  const m = ((targetMonth % 12) + 12) % 12;
+  return openingDateAnchorInMonth(y, m, anchorDay);
+}
+
+function monthEnd(year: number, monthIdx: number): dayjs.Dayjs {
+  return dayjs(new Date(year, monthIdx + 1, 0)).startOf('day');
+}
+
+function getPayoutAnchorMode(
+  freq: 'monthly' | 'quarterly' | 'semi-annual' | 'annual',
+  accountType?: string,
+  interestCreditAnchor?: InterestCreditAnchor | string,
+): PayoutAnchorMode {
+  // Monthly is always opening-date anchored. For non-monthly schemes the user-selected anchor applies.
+  if (freq === 'monthly') return 'opening-date';
+  if (interestCreditAnchor === 'financial-calendar') return 'calendar';
+  if (interestCreditAnchor === 'account-opening-date') return 'opening-date';
+  // Default: SCSS follows financial calendar; others default to account opening date.
+  if (isScssAccountType(accountType)) return 'calendar';
+  return 'opening-date';
+}
+
+/**
+ * Build payout schedule for a non-cumulative deposit per the engine rules:
+ * - Monthly: opening-date anchor (same day-of-month, clamped for 29/30/31). If maturity is not a whole month
+ *   relative to the last anchor, interest is pro-rated from last anchor to maturity and paid at maturity.
+ * - Financial calendar (quarterly/semi-annual/annual when selected): boundaries at quarter/half-year/year ends
+ *   (Mar 31, Jun 30, Sep 30, Dec 31 / Mar 31, Sep 30 / Mar 31). Pro-rate opening->first anchor and
+ *   last anchor->maturity when tenure is not aligned.
+ * - Opening-date anchoring (monthly always, and non-monthly when selected): anchored to opening date every N months
+ *   (clamped 29/30/31, not partial). If tenure is not a whole period, pro-rate last anchor -> maturity.
+ * - Realized = completed payouts (payout date <= asOf). Full periods pay the periodic amount; pro-rated stubs use
+ *   Actual/365 (or Actual/366 in leap years for SCSS).
+ */
+export function buildPayoutSchedule(
+  startDate: string,
+  maturityDate: string,
+  frequency?: DepositPayoutFrequency | string,
+  accountType?: string,
+  interestCreditAnchor?: InterestCreditAnchor | string,
+): PayoutSlot[] {
+  const start = dayjs(startDate).startOf('day');
+  const maturity = dayjs(maturityDate).startOf('day');
+  if (!start.isValid() || !maturity.isValid() || !maturity.isAfter(start, 'day')) return [];
+  const freq = normalizePayoutFrequency(frequency);
+  if (!freq) return [];
+  const scss = isScssAccountType(accountType);
+  const mode = getPayoutAnchorMode(freq, accountType, interestCreditAnchor);
+  const slots: PayoutSlot[] = [];
+
+  if (mode === 'calendar' && (freq === 'quarterly' || freq === 'semi-annual' || freq === 'annual')) {
+    const boundaryMonths = CALENDAR_BOUNDARY_MONTHS[freq] ?? [];
+    // Collect calendar boundaries strictly after start and <= maturity
+    const boundaries: dayjs.Dayjs[] = [];
+    for (let y = start.year(); y <= maturity.year(); y++) {
+      for (const m of boundaryMonths) {
+        const b = monthEnd(y, m);
+        if (b.isAfter(start, 'day') && !b.isAfter(maturity, 'day')) boundaries.push(b);
+      }
+    }
+    boundaries.sort((a, b) => a.valueOf() - b.valueOf());
+    let prev = start;
+    for (const b of boundaries) {
+      // First boundary may be a partial period from opening (pro-rated opening -> anchor)
+      const days = b.diff(prev, 'day');
+      // Determine if this is a full aligned calendar period: prev must be the previous same boundary
+      const monthsPer = MONTHS_PER_PERIOD[freq] ?? 3;
+      const expectedPrev = addOpeningPeriods(b, -1, monthsPer, 31); // previous boundary (month-end anchored)
+      const isFull = prev.isSame(expectedPrev, 'day');
+      slots.push({ date: b, days: Math.max(0, days), isFullPeriod: isFull, basis: dayCountBasis(b, scss) });
+      prev = b;
+    }
+    // Final stub: anchor -> maturity if maturity falls between boundaries (paid at maturity)
+    if (prev.isBefore(maturity, 'day')) {
+      const days = maturity.diff(prev, 'day');
+      slots.push({ date: maturity, days: Math.max(0, days), isFullPeriod: false, basis: dayCountBasis(maturity, scss) });
+    }
+    return slots;
+  }
+
+  // Opening-date anchoring (monthly always, and non-monthly when account-opening-date/default)
+  const anchorDay = start.date();
+  const monthsPer = MONTHS_PER_PERIOD[freq] ?? 1;
+  let prev = start;
+  for (let k = 1; ; k++) {
+    const d = addOpeningPeriods(start, k, monthsPer, anchorDay);
+    if (d.isAfter(maturity, 'day')) break;
+    const days = d.diff(prev, 'day');
+    // Opening-date anchor with 29/30/31 clamped to last valid day is NOT a partial/pro-rated month
+    slots.push({ date: d, days: Math.max(0, days), isFullPeriod: true, basis: dayCountBasis(d, scss) });
+    prev = d;
+  }
+  // If maturity is not a whole period relative to the last anchor, pro-rate last anchor -> maturity (paid at maturity)
+  if (prev.isBefore(maturity, 'day')) {
+    const days = maturity.diff(prev, 'day');
+    slots.push({ date: maturity, days: Math.max(0, days), isFullPeriod: false, basis: dayCountBasis(maturity, scss) });
+  }
+  return slots;
+}
+
+/** Full-period payout amount for a non-cumulative deposit (authoritative if provided). */
+function periodicPayoutAmount(
+  item: Pick<DepositHolding, 'principal' | 'interestRate' | 'payoutFrequency' | 'interestPayoutAmount'>,
+): number {
+  if (typeof item.interestPayoutAmount === 'number' && Number.isFinite(item.interestPayoutAmount)) {
+    return Math.max(0, item.interestPayoutAmount);
+  }
+  const freq = normalizePayoutFrequency(item.payoutFrequency);
+  const perYear: Record<string, number> = { monthly: 12, quarterly: 4, 'semi-annual': 2, annual: 1 };
+  const n = freq ? perYear[freq] ?? 0 : 0;
+  const p = Number.isFinite(item.principal) ? Math.max(0, item.principal) : 0;
+  const r = Number.isFinite(item.interestRate) ? Math.max(0, item.interestRate) : 0;
+  return n > 0 && p > 0 && r > 0 ? (p * r) / 100 / n : 0;
+}
+
+function slotPayoutAmount(
+  slot: PayoutSlot,
+  periodicFull: number,
+  principal: number,
+  rate: number,
+): number {
+  if (slot.days <= 0) return 0;
+  // Full periods pay the fixed periodic amount. Pro-rated (stub/partial) periods use daily pro-rata
+  // with Actual/365 (or Actual/366 in leap years for SCSS) per the engine rules.
+  if (slot.isFullPeriod) return periodicFull;
+  return Math.max(0, (principal * rate * slot.days) / 100 / slot.basis);
+}
+
+export function getDepositDerivedValues(
+  item: Pick<DepositHolding, 'accountType' | 'principal' | 'recurringAmount' | 'interestRate' | 'startDate' | 'maturityDate' | 'cumulativeInterest' | 'compoundingFrequency' | 'payoutFrequency' | 'interestCreditAnchor' | 'interestPayoutAmount' | 'preClosedDate' | 'preClosureCreditedValue' | 'markedAsLien'>,
+  asOf: Date = new Date(),
+): DepositDerivedValues {
+  const rawAsOf = dayjs(asOf).startOf('day');
+  const start = dayjs(item.startDate).startOf('day');
+  const maturity = dayjs(item.maturityDate).startOf('day');
+  const preClosed = item.preClosedDate ? dayjs(item.preClosedDate).startOf('day') : null;
+  const effectivePreClose = preClosed && preClosed.isValid() && !item.markedAsLien ? preClosed : null;
+  const asOfDay = effectivePreClose && effectivePreClose.isBefore(rawAsOf, 'day') ? effectivePreClose : rawAsOf;
+  const isRd = item.accountType === 'rd';
+  const cumulativeInterest = isRd ? true : (item.cumulativeInterest ?? false);
+  const principal = Number.isFinite(item.principal) ? Math.max(0, item.principal) : 0;
+  const rate = Number.isFinite(item.interestRate) ? Math.max(0, item.interestRate) : 0;
+
+  const full = calculateDepositValues({
+    accountType: item.accountType,
+    principal: item.principal,
+    recurringAmount: item.recurringAmount,
+    interestRate: item.interestRate,
+    startDate: item.startDate,
+    maturityDate: item.maturityDate,
+    cumulativeInterest,
+    compoundingFrequency: item.compoundingFrequency,
+    payoutFrequency: item.payoutFrequency,
+    interestCreditAnchor: item.interestCreditAnchor,
+    interestPayoutAmount: item.interestPayoutAmount,
+  });
+
+  // Invested to date (for reporting/principal-to-date context)
+  let investedToDate = 0;
+  if (isRd) {
+    const recurring = Number.isFinite(item.recurringAmount) ? Math.max(0, item.recurringAmount as number) : 0;
+    const totalMonths = start.isValid() && maturity.isValid() ? Math.max(0, maturity.diff(start, 'month')) : 0;
+    const capped = clampAsOfToTenure(item.startDate, item.maturityDate, asOfDay.toDate());
+    const monthsElapsed = capped && !asOfDay.isBefore(start, 'day') ? Math.max(0, Math.min(totalMonths, capped.diff(start, 'month'))) : 0;
+    investedToDate = recurring * monthsElapsed;
+  } else {
+    investedToDate = start.isValid() && !asOfDay.isBefore(start, 'day') ? principal : 0;
+  }
+
+  // currentValue remains accrued-to-date snapshot semantic (Option B, recomputed)
+  const currentValue = calculateDepositAccruedValueAsOf(
+    {
+      accountType: item.accountType,
+      principal: item.principal,
+      recurringAmount: item.recurringAmount,
+      interestRate: item.interestRate,
+      startDate: item.startDate,
+      maturityDate: item.maturityDate,
+      cumulativeInterest,
+      compoundingFrequency: item.compoundingFrequency,
+      payoutFrequency: item.payoutFrequency,
+      preClosedDate: item.preClosedDate,
+      preClosureCreditedValue: item.preClosureCreditedValue,
+      markedAsLien: item.markedAsLien,
+    },
+    asOfDay.toDate(),
+  );
+
+  // Method A: totalExpectedReturns (full-tenure interest), realizedGain (cash paid out to date), unrealizedGain = remainder
+  let totalExpectedReturns = Math.max(0, full.interest);
+  let realizedGain = 0;
+
+  const validTerm = start.isValid() && maturity.isValid() && maturity.isAfter(start, 'day');
+  if (validTerm) {
+    if (cumulativeInterest) {
+      // Canonical full-tenure expected interest from shared computation.
+      totalExpectedReturns = Math.max(0, full.interest);
+      // Cumulative: interest locked/reinvested until maturity (cash paid out at settlement).
+      if (asOfDay.isBefore(start, 'day')) {
+        realizedGain = 0;
+      } else if (!asOfDay.isBefore(maturity, 'day')) {
+        realizedGain = totalExpectedReturns;
+      } else {
+        realizedGain = 0;
+      }
+    } else {
+      // Non-cumulative: realized = completed payouts (payout date passed) based on canonical payout schedule.
+      const slots = buildPayoutSchedule(item.startDate, item.maturityDate, item.payoutFrequency, item.accountType, item.interestCreditAnchor);
+      const periodic = periodicPayoutAmount(item);
+      if (slots.length > 0 && (periodic > 0 || (principal > 0 && rate > 0))) {
+        const amounts = slots.map((s) => slotPayoutAmount(s, periodic, principal, rate));
+        // Keep expected total consistent with canonical full-tenure calculation.
+        totalExpectedReturns = Math.max(0, full.interest);
+        realizedGain = Math.max(0, amounts.reduce((sum, a, idx) => (slots[idx]!.date.isAfter(asOfDay, 'day') ? sum : sum + a), 0));
+      } else {
+        totalExpectedReturns = Math.max(0, full.interest);
+        realizedGain = 0;
+      }
+      // At/after maturity all payouts (including any maturity-date stub) are complete.
+      if (!asOfDay.isBefore(maturity, 'day')) realizedGain = totalExpectedReturns;
+      if (asOfDay.isBefore(start, 'day')) realizedGain = 0;
+    }
+  } else {
+    totalExpectedReturns = 0;
+    realizedGain = 0;
+  }
+
+  // Method A invariant: unrealizedGain = remaining unpaid return (realized payouts are as of the effective date,
+  // which is preClosedDate for pre-closed deposits not in lien, i.e. only payouts actually made before closure count).
+  let unrealizedGain = Math.max(0, totalExpectedReturns - realizedGain);
+  if (Math.abs(realizedGain + unrealizedGain - totalExpectedReturns) > 0.005) {
+    // clamp within floating-point rounding tolerance
+    unrealizedGain = Math.max(0, totalExpectedReturns - realizedGain);
+  }
+
+  const totalReturns = (isRd ? full.totalDeposited : principal) + totalExpectedReturns;
+
+  return {
+    investedToDate,
+    currentValue,
+    realizedGain,
+    unrealizedGain,
+    totalInterest: totalExpectedReturns,
+    totalReturns,
+  };
+}
+
 export function summarizeDeposits(
   deposits: DepositHolding[],
   asOf: Date = new Date(),
 ): DepositSummary {
   // Matured & pre-closed deposits are reference-only; exclude from portfolio/principal calculations.
   const portfolio = deposits.filter((item) => isPortfolioDeposit(item, asOf));
-  const totalCurrentValue = portfolio.reduce((sum, item) => sum + item.currentValue, 0);
-  const totalPrincipal = portfolio.reduce((sum, item) => sum + item.principal, 0);
-  const weightedRateBase = portfolio.reduce(
-    (sum, item) => sum + item.principal * item.interestRate,
-    0,
-  );
+
+  let totalCurrentValue = 0;
+  let totalPrincipal = 0;
+  let realizedGain = 0;
+  let unrealizedGain = 0;
+
+  for (const item of portfolio) {
+    const derived = getDepositDerivedValues(item, asOf);
+    totalCurrentValue += derived.currentValue;
+    totalPrincipal += derived.investedToDate;
+    realizedGain += derived.realizedGain;
+    unrealizedGain += derived.unrealizedGain;
+  }
+
   const maturingSoon = portfolio.filter((item) => {
     if (getDepositLifecycleStatus(item, asOf) !== 'active') return false;
     const days = daysUntil(item.maturityDate, asOf);
@@ -300,9 +656,9 @@ export function summarizeDeposits(
   return {
     totalCurrentValue,
     totalPrincipal,
-    accruedGain: totalCurrentValue - totalPrincipal,
+    realizedGain,
+    unrealizedGain,
     gainPercentage: calculateReturnsPercentage(totalPrincipal, totalCurrentValue),
-    weightedAverageRate: totalPrincipal > 0 ? weightedRateBase / totalPrincipal : 0,
     maturingSoon,
     count: portfolio.length,
   };

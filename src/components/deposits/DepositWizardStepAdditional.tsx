@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n';
 import { listDeposits } from '../../services/deposits';
 import { getDateFormatId } from '../../utils/date';
 import { isDobDisabled } from '../../config/validationConfig';
+import { formatPercent } from '../../utils/finance';
 import type { DepositNominee } from '../../types';
 import { NOMINEE_RELATIONSHIP_OPTIONS, newNominee, type DepositFormValues } from './depositFormModel';
 
@@ -95,7 +96,7 @@ export default function DepositWizardStepAdditional({ activeLocked: _activeLocke
             <div className="space-y-3">
               {fields.length > 0 && (
                 <div className={`text-xs ${Math.abs(totalShare - 100) > 0.001 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                  {t('deposit.nominee.totalShare')}: <span className="font-mono font-semibold tabular-nums">{totalShare.toFixed(2)}%</span>
+                  {t('deposit.nominee.totalShare')}: <span className="font-mono font-semibold tabular-nums">{formatPercent(totalShare)}</span>
                 </div>
               )}
               {fields.length === 0 && (

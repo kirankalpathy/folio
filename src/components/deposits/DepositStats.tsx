@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { AutoComplete, Tag } from 'antd';
-import { CalendarClock, Hash, Layers, Percent, PiggyBank } from 'lucide-react';
+import { CalendarClock, Hash, Layers, PiggyBank, TrendingUp } from 'lucide-react';
 import type { DepositHolding, DepositType } from '../../types';
 import { daysUntil } from '../../utils/date';
 import { DepositLifecycleStatus, getDepositLifecycleStatus, isPortfolioDeposit, type DepositSummary } from '../../utils/deposits';
-import { formatINR, formatPercent } from '../../utils/finance';
+import { formatINR } from '../../utils/finance';
 import { useI18n } from '../../i18n';
 import StatCard from '../common/StatCard';
 import { DEPOSIT_STATUS_SEMANTIC, FOLIO_TAG_CLASS, semanticTagStyle } from './DepositStatusTag';
@@ -161,10 +161,20 @@ export default function DepositStats({
         icon={<PiggyBank size={16} />}
       />
       <StatCard
-        label={t('deposit.stats.averageRoi')}
-        value={formatPercent(summary.weightedAverageRate, 2)}
-        hint={t('deposit.stats.weightedAverage')}
-        icon={<Percent size={16} />}
+        label={t('deposit.stats.gain')}
+        icon={<TrendingUp size={16} />}
+        value={(
+          <div className="space-y-1 text-[0.8125rem] leading-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-folio-ink/55 dark:text-white/45">{t('deposit.stats.realizedGain')}</span>
+              <span className="folio-value text-[0.95rem] font-semibold text-folio-info-accent">{formatINR(summary.realizedGain)}</span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-folio-ink/55 dark:text-white/45">{t('deposit.stats.unrealizedGain')}</span>
+              <span className="folio-value text-[0.95rem] font-semibold text-folio-success-accent">{formatINR(summary.unrealizedGain)}</span>
+            </div>
+          </div>
+        )}
       />
       <StatCard
         label={t('deposit.stats.maturingDeposits')}
