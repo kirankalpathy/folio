@@ -206,7 +206,7 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
           {(category === 'savings-account' || category === 'current-account') && (
             <div className="grid gap-x-4 sm:grid-cols-2">
               <Form.Item label={t('institutions.fields.accountNumber')} name="accountNumber" rules={[{ required: true, whitespace: true, message: t('institutions.validation.accountRequired') }]}>
-                <Input placeholder={t('institutions.placeholder.accountNumber')} />
+                <Input placeholder={t('institutions.placeholder.accountNumber')} disabled={isEdit} />
               </Form.Item>
               <Form.Item label={t('institutions.fields.ifsc')} name="ifscCode" rules={[{ required: true, whitespace: true, message: t('institutions.validation.ifscRequired') }]}>
                 <Input placeholder={t('institutions.placeholder.ifsc')} />

@@ -145,11 +145,11 @@ export default function FinancialInstitutionsPage() {
 
   const fiColumnDefs = useMemo<TableLayoutColumnDef[]>(
     () => [
+      { key: 'accountNumber', label: t('institutions.table.accountNumber'), defaultVisible: true },
       { key: 'name', label: t('institutions.table.name'), defaultVisible: true, required: true },
       { key: 'nickname', label: t('institutions.table.nickname'), defaultVisible: false },
       { key: 'category', label: t('institutions.table.category'), defaultVisible: true },
       { key: 'operationMode', label: t('institutions.table.operationMode'), defaultVisible: true },
-      { key: 'accountNumber', label: t('institutions.table.accountNumber'), defaultVisible: false },
       { key: 'ifscCode', label: t('institutions.table.ifsc'), defaultVisible: false },
       { key: 'cifNumber', label: t('institutions.table.cif'), defaultVisible: false },
       { key: 'branchName', label: t('institutions.table.branch'), defaultVisible: false },
