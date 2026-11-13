@@ -21,6 +21,7 @@ interface Props {
   onCancel: () => void;
   onSubmit: (values: FinancialInstitutionInput) => Promise<void>;
   submitLabel?: string;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function formatCardNumberInput(raw: string): string {
@@ -55,7 +56,7 @@ function CategoryLabel({ category, label }: { category: FinancialInstitutionCate
   return <span className="inline-flex items-center gap-2">{icons[category]}<span>{label}</span></span>;
 }
 
-export default function InstitutionWizard({ institution, onCancel, onSubmit, submitLabel }: Props) {
+export default function InstitutionWizard({ institution, onCancel, onSubmit, submitLabel, onDirtyChange }: Props) {
   const { t } = useI18n();
   const [form] = Form.useForm<InstitutionWizardValues>();
   const [step, setStep] = useState<WizardStep>(0);
@@ -64,9 +65,12 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
   const [showContact, setShowContact] = useState(false);
   const [showAddress, setShowAddress] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const hydratingRef = useRef(false);
   const category = (Form.useWatch('category', form) ?? 'savings-account') as FinancialInstitutionCategory;
+  const isEdit = Boolean(institution);
 
   useEffect(() => {
+    hydratingRef.current = true;
     form.resetFields();
     setStep(0);
     setShowError(false);
@@ -80,7 +84,10 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
       setShowContact(false);
       setShowAddress(false);
     }
-  }, [form, institution]);
+    onDirtyChange?.(false);
+    const id = window.requestAnimationFrame(() => { hydratingRef.current = false; });
+    return () => window.cancelAnimationFrame(id);
+  }, [form, institution, onDirtyChange]);
 
   const stepItems = useMemo(() => ([
     { title: t('institutions.step.overview') },
@@ -138,7 +145,17 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
       <div ref={topRef} />
       <Steps current={step} items={stepItems} size="small" className="mb-5" />
       {showError && <Alert type="error" showIcon title={t('institutions.formErrors')} className="mb-4" />}
-      <Form<InstitutionWizardValues> form={form} layout="vertical" requiredMark initialValues={defaultInstitutionValues()} autoComplete="off">
+      <Form<InstitutionWizardValues>
+        form={form}
+        layout="vertical"
+        requiredMark
+        initialValues={defaultInstitutionValues()}
+        autoComplete="off"
+        onValuesChange={() => {
+          if (!hydratingRef.current) onDirtyChange?.(true);
+          if (showError) setShowError(false);
+        }}
+      >
         <div style={{ display: step === 0 ? 'block' : 'none' }}>
           <div className="grid gap-x-4 sm:grid-cols-2">
             <Form.Item
@@ -394,18 +411,32 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
       </Form>
 
       <div className="mt-5 flex items-center justify-between gap-2 border-t border-folio-ink/10 pt-4 dark:border-white/[0.07]">
-        <Button onClick={step === 0 ? onCancel : goBack} icon={step === 0 ? undefined : <ArrowLeft size={14} />}>
-          {step === 0 ? t('common.cancel') : t('institutions.action.back')}
-        </Button>
-        {step < 2 ? (
-          <Button type="primary" onClick={() => void goNext()}>
-            <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
+        <div className="flex items-center gap-2">
+          <Button onClick={onCancel}>
+            {t('common.cancel')}
           </Button>
-        ) : (
-          <Button type="primary" loading={saving} onClick={() => void handleFinish().catch(() => {})}>
-            {submitText}
-          </Button>
-        )}
+          {step > 0 ? (
+            <Button onClick={goBack} icon={<ArrowLeft size={14} />}>
+              {t('institutions.action.back')}
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {isEdit && step < 2 ? (
+            <Button onClick={() => void handleFinish().catch(() => {})} loading={saving} disabled={saving}>
+              {submitText}
+            </Button>
+          ) : null}
+          {step < 2 ? (
+            <Button type="primary" onClick={() => void goNext()}>
+              <span className="inline-flex items-center gap-1.5">{t('institutions.action.next')} <ArrowRight size={14} /></span>
+            </Button>
+          ) : (
+            <Button type="primary" loading={saving} onClick={() => void handleFinish().catch(() => {})}>
+              {submitText}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
