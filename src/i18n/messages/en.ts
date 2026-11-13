@@ -431,6 +431,7 @@ export const en = {
   'deposit.filter.accountType': 'Account type',
   'deposit.filter.interestPayoutFrequency': 'Interest Payout Frequency',
   'deposit.filter.maturityDate': 'Maturity date',
+  'deposit.filter.closureDate': 'Closure date',
   'deposit.filter.operationType': 'Operation type',
   'deposit.filters.applied': '{count} record(s) • Filter(s) applied',
   'deposit.filters.clearAll': 'Clear All Filters',

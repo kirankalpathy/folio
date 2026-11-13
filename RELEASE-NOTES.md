@@ -2,6 +2,13 @@
 
 ## `v0.1.5`
 
+### Reliability & data safety
+- **Safer backup restore:** restoring a backup is now checked more thoroughly before anything changes, and if a backup can’t be restored safely the restore is stopped without affecting your existing data.
+- **Clear vs. delete data:** clearing ledger data now only removes your financial records while keeping your profile, settings, and sign-in setup intact; deleting all app data now fully resets the app to a clean state.
+- **Deposit values you can trust:** deposit values shown for active and planned deposits now reflect value accrued so far (instead of the full maturity amount), with pre-closure and lien cases handled more consistently.
+- **Lien handling:** deposits under lien are handled consistently and can’t be treated as matured or pre-closed until the lien is cleared.
+- **Deposit summary PDF:** fixed an issue where multi-page deposit summary PDFs could show missing or overwritten content on later pages.
+
 ### Deposits
 - **Senior Citizen Savings Scheme (SCSS):** added support for SCSS deposits with guided setup, eligibility reminder, amount and date rules, automatic 5-year maturity, quarterly interest payout defaults, and appropriate nominee/closure options.
 - **Pre-closure in the wizard:** pre-closure details are now captured in the **Maturity** step when applicable (including for active deposits), with a required pre-closure date, credited amount validation (cannot exceed realized value), and clearer realized/loss information.

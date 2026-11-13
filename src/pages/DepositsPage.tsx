@@ -128,8 +128,9 @@ export default function DepositsPage() {
       const operationType = d.operationType ?? 'single';
       if (operationTypeFilter.length > 0 && !operationTypeFilter.includes(operationType)) return false;
       if (maturityDateValue) {
-        if (!d.maturityDate) return false;
-        const md = dayjs(d.maturityDate);
+        const dateStr = depositTab === 'closed' ? (d.preClosedDate || d.maturityDate) : d.maturityDate;
+        if (!dateStr) return false;
+        const md = dayjs(dateStr);
         if (!md.isValid()) return false;
         const same = md.isSame(maturityDateValue, 'day');
         const before = md.isBefore(maturityDateValue, 'day');
@@ -145,7 +146,7 @@ export default function DepositsPage() {
       }
       return true;
     });
-  }, [deposits, institutions, search, bankFilter, lifecycleFilter, accountTypeFilter, interestPayoutFilter, maturityDateOp, maturityDateValue, operationTypeFilter]);
+  }, [deposits, institutions, search, bankFilter, lifecycleFilter, accountTypeFilter, interestPayoutFilter, maturityDateOp, maturityDateValue, operationTypeFilter, depositTab]);
 
   const hasFilters =
     search.trim().length > 0 ||
@@ -228,7 +229,7 @@ export default function DepositsPage() {
     if (maturityDateValue) {
       appliedFilters.push({
         type: 'date-op',
-        label: t('deposit.filter.maturityDate'),
+        label: depositTab === 'closed' ? t('deposit.filter.closureDate') : t('deposit.filter.maturityDate'),
         op: maturityDateOp,
         date: maturityDateValue.format('DD MMM YYYY'),
       });
@@ -448,13 +449,13 @@ export default function DepositsPage() {
                   style={{ width: 44 }}
                   popupMatchSelectWidth={56}
                   suffixIcon={null}
-                  aria-label={t('deposit.filter.maturityDate')}
+                  aria-label={depositTab === 'closed' ? t('deposit.filter.closureDate') : t('deposit.filter.maturityDate')}
                 />
                 <DatePicker
                   allowClear
                   value={maturityDateValue}
                   onChange={(value) => setMaturityDateValue(value)}
-                  placeholder={t('deposit.filter.maturityDate')}
+                  placeholder={depositTab === 'closed' ? t('deposit.filter.closureDate') : t('deposit.filter.maturityDate')}
                   format={getDateFormatId()}
                   disabledDate={isDateOutsidePickerBounds}
                   style={{ width: 'calc(100% - 44px)' }}

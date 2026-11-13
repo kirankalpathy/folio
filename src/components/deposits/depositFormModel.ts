@@ -16,6 +16,7 @@ import type {
   NomineeRelationship,
   OperationMode,
 } from '../../types';
+import { calculateDepositAccruedValueAsOf, sanitizeDepositLienState } from '../../utils/deposits';
 
 export const InterestPayoutOption = {
   Cumulative: 'cumulative',
@@ -251,43 +252,44 @@ export function defaultDepositValues(): DepositFormValues {
 }
 
 export function toFormValues(deposit: DepositHolding): DepositFormValues {
-  const isRd = deposit.accountType === 'rd';
-  const isScss = isScssAccountType(deposit.accountType);
-  const interestPayoutOption = toInterestPayoutOption(deposit);
-  const cumulativeInterest = deriveCumulativeInterest(deposit.accountType, interestPayoutOption);
-  const payoutFrequency = derivePeriodicPayoutFrequency(deposit.accountType, interestPayoutOption) ?? deposit.payoutFrequency ?? 'annual';
+  const sanitized = sanitizeDepositLienState(deposit);
+  const isRd = sanitized.accountType === 'rd';
+  const isScss = isScssAccountType(sanitized.accountType);
+  const interestPayoutOption = toInterestPayoutOption(sanitized as DepositHolding);
+  const cumulativeInterest = deriveCumulativeInterest(sanitized.accountType, interestPayoutOption);
+  const payoutFrequency = derivePeriodicPayoutFrequency(sanitized.accountType, interestPayoutOption) ?? sanitized.payoutFrequency ?? 'annual';
   return {
-    depositNumber: deposit.depositNumber ?? '',
-    name: deposit.name,
-    financialInstitutionId: deposit.financialInstitutionId,
-    bankName: deposit.bankName,
-    accountType: deposit.accountType,
-    operationType: deposit.operationType ?? 'single',
-    jointHolders: (deposit.jointHolders ?? []).map((h) => ({
+    depositNumber: sanitized.depositNumber ?? '',
+    name: sanitized.name,
+    financialInstitutionId: sanitized.financialInstitutionId,
+    bankName: sanitized.bankName,
+    accountType: sanitized.accountType,
+    operationType: sanitized.operationType ?? 'single',
+    jointHolders: (sanitized.jointHolders ?? []).map((h) => ({
       name: h.name ?? '',
       dateOfBirth: h.dateOfBirth ? dayjs(h.dateOfBirth) : undefined,
       share: Number.isFinite(h.share) ? h.share : undefined,
     })),
-    principal: deposit.principal,
-    recurringAmount: deposit.recurringAmount,
-    interestRate: deposit.interestRate,
-    compoundingFrequency: deposit.compoundingFrequency ?? 'quarterly',
+    principal: sanitized.principal,
+    recurringAmount: sanitized.recurringAmount,
+    interestRate: sanitized.interestRate,
+    compoundingFrequency: sanitized.compoundingFrequency ?? 'quarterly',
     cumulativeInterest,
     payoutFrequency,
     interestPayoutOption,
-    rollover: isScss ? 'none' : (deposit.rollover ?? 'none'),
-    operationMode: deposit.operationMode ?? 'online',
-    isPanLinked: deposit.isPanLinked ?? true,
-    isTaxExempt: deposit.isTaxExempt ?? false,
-    markedAsLien: isRd || isScss ? false : Boolean(deposit.markedAsLien),
-    lienReason: isRd || isScss ? '' : (deposit.lienReason ?? ''),
-    preClosed: Boolean(deposit.preClosedDate),
-    preClosedDate: deposit.preClosedDate ? dayjs(deposit.preClosedDate) : undefined,
-    preClosureCreditedValue: deposit.preClosureCreditedValue,
-    startDate: deposit.startDate ? dayjs(deposit.startDate) : undefined,
-    maturityDate: deposit.maturityDate ? dayjs(deposit.maturityDate) : undefined,
-    notes: deposit.notes ?? '',
-    nominees: (deposit.nominees ?? []).map((n) => ({
+    rollover: isScss ? 'none' : (sanitized.rollover ?? 'none'),
+    operationMode: sanitized.operationMode ?? 'online',
+    isPanLinked: sanitized.isPanLinked ?? true,
+    isTaxExempt: sanitized.isTaxExempt ?? false,
+    markedAsLien: isRd || isScss ? false : Boolean(sanitized.markedAsLien),
+    lienReason: isRd || isScss ? '' : (sanitized.lienReason ?? ''),
+    preClosed: Boolean(sanitized.preClosedDate),
+    preClosedDate: sanitized.preClosedDate ? dayjs(sanitized.preClosedDate) : undefined,
+    preClosureCreditedValue: sanitized.preClosureCreditedValue,
+    startDate: sanitized.startDate ? dayjs(sanitized.startDate) : undefined,
+    maturityDate: sanitized.maturityDate ? dayjs(sanitized.maturityDate) : undefined,
+    notes: sanitized.notes ?? '',
+    nominees: (sanitized.nominees ?? []).map((n) => ({
       name: n.name ?? '',
       relationship: n.relationship ?? 'other',
       dateOfBirth: n.dateOfBirth ? dayjs(n.dateOfBirth) : undefined,
@@ -330,7 +332,6 @@ export function toDepositInput(
   const jointHolders = operationType === 'single'
     ? []
     : (values.jointHolders ?? []).map(toJointHolderInput).filter((h): h is DepositJointHolder => Boolean(h));
-  const markedAsLien = isRd || isScss ? false : Boolean(values.markedAsLien);
   const cumulativeInterest = deriveCumulativeInterest(values.accountType, values.interestPayoutOption);
   const periodicPayoutFrequency = derivePeriodicPayoutFrequency(values.accountType, values.interestPayoutOption);
   const recurringAmount = isRd && Number.isFinite(values.recurringAmount) ? Math.max(0, values.recurringAmount as number) : undefined;
@@ -338,7 +339,8 @@ export function toDepositInput(
   const interestPayoutAmount = (!isRd && !cumulativeInterest && Number.isFinite(computed.interestPayoutAmount))
     ? computed.interestPayoutAmount
     : undefined;
-  return {
+
+  const base: DepositInput = {
     depositNumber: values.depositNumber.trim().toUpperCase().replace(/[^A-Z0-9_/-]/g, ''),
     name: values.name.trim(),
     bankName: values.bankName.trim(),
@@ -348,7 +350,7 @@ export function toDepositInput(
     jointHolders: jointHolders.length ? jointHolders : undefined,
     principal,
     recurringAmount,
-    currentValue: computed.realizedValue,
+    currentValue: 0,
     interestRate: values.interestRate,
     compoundingFrequency: values.compoundingFrequency,
     cumulativeInterest,
@@ -358,8 +360,8 @@ export function toDepositInput(
     operationMode: values.operationMode ?? 'online',
     isPanLinked: Boolean(values.isPanLinked),
     isTaxExempt: Boolean(values.isTaxExempt),
-    markedAsLien,
-    lienReason: markedAsLien ? (values.lienReason?.trim() || undefined) : undefined,
+    markedAsLien: isRd || isScss ? false : Boolean(values.markedAsLien),
+    lienReason: values.lienReason?.trim() || undefined,
     preClosedDate: values.preClosed ? (values.preClosedDate?.format('YYYY-MM-DD') ?? dayjs().format('YYYY-MM-DD')) : undefined,
     preClosureCreditedValue: values.preClosed && Number.isFinite(values.preClosureCreditedValue) ? values.preClosureCreditedValue : undefined,
     startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : '',
@@ -367,4 +369,23 @@ export function toDepositInput(
     notes: values.notes?.trim() || undefined,
     nominees: nominees.length ? nominees : undefined,
   };
+  const sanitized = sanitizeDepositLienState(base);
+  sanitized.currentValue = calculateDepositAccruedValueAsOf(
+    {
+      accountType: sanitized.accountType,
+      principal: sanitized.principal,
+      recurringAmount: sanitized.recurringAmount,
+      interestRate: sanitized.interestRate,
+      startDate: sanitized.startDate,
+      maturityDate: sanitized.maturityDate,
+      cumulativeInterest: sanitized.cumulativeInterest ?? false,
+      compoundingFrequency: sanitized.compoundingFrequency,
+      payoutFrequency: sanitized.payoutFrequency,
+      preClosedDate: sanitized.preClosedDate,
+      preClosureCreditedValue: sanitized.preClosureCreditedValue,
+      markedAsLien: sanitized.markedAsLien,
+    },
+    new Date(),
+  );
+  return sanitized;
 }

@@ -364,9 +364,12 @@ async function exportPdf(
   }
 
   const drawPageChrome = (pageNumber: number) => {
+    // Page 1 background is painted before content. For subsequent pages, paint only margins
+    // (header/footer bands) so autoTable body content is not overwritten.
     if (pageNumber > 1) {
       doc.setFillColor(250, 246, 243);
-      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+      doc.rect(0, 0, pageWidth, 28, 'F');
+      doc.rect(0, pageHeight - 28, pageWidth, 28, 'F');
     }
     doc.setFont(font, 'normal');
     doc.setFontSize(8);

@@ -1,5 +1,6 @@
 import type { DepositHolding, DepositInput, DepositNominee } from '../types';
 import { translate } from '../i18n';
+import { calculateDepositAccruedValueAsOf, sanitizeDepositLienState } from '../utils/deposits';
 import { allRecords, deleteRecord, getRecord, putRecord } from './sqlite';
 import { getAuditActorEmail } from './currentUser';
 
@@ -19,14 +20,13 @@ function normalizeNominees(nominees: DepositNominee[] | undefined): DepositNomin
 function normalize(input: DepositInput): DepositInput {
   const isRd = input.accountType === 'rd';
   const financialInstitutionId = input.financialInstitutionId?.trim() || undefined;
-  const markedAsLien = isRd ? false : Boolean(input.markedAsLien);
   const cumulativeInterest = isRd ? true : input.cumulativeInterest;
   const payoutFrequency = (isRd || cumulativeInterest) ? undefined : input.payoutFrequency;
   const interestPayoutAmount =
     !isRd && !cumulativeInterest && payoutFrequency && Number.isFinite(input.interestPayoutAmount)
       ? Math.max(0, input.interestPayoutAmount as number)
       : undefined;
-  return {
+  const base: DepositInput = {
     ...input,
     depositNumber: input.depositNumber?.trim() || undefined,
     name: input.name.trim(),
@@ -38,11 +38,29 @@ function normalize(input: DepositInput): DepositInput {
     payoutFrequency,
     interestPayoutAmount,
     operationMode: input.operationMode === 'offline' ? 'offline' : 'online',
-    markedAsLien,
-    lienReason: markedAsLien ? (input.lienReason?.trim() || undefined) : undefined,
     notes: input.notes?.trim() || undefined,
     nominees: normalizeNominees(input.nominees),
   };
+  const sanitized = sanitizeDepositLienState(base);
+  // Enforce accrued-to-date current value semantic.
+  sanitized.currentValue = calculateDepositAccruedValueAsOf(
+    {
+      accountType: sanitized.accountType,
+      principal: sanitized.principal,
+      recurringAmount: sanitized.recurringAmount,
+      interestRate: sanitized.interestRate,
+      startDate: sanitized.startDate,
+      maturityDate: sanitized.maturityDate,
+      cumulativeInterest: sanitized.cumulativeInterest ?? false,
+      compoundingFrequency: sanitized.compoundingFrequency,
+      payoutFrequency: sanitized.payoutFrequency,
+      preClosedDate: sanitized.preClosedDate,
+      preClosureCreditedValue: sanitized.preClosureCreditedValue,
+      markedAsLien: sanitized.markedAsLien,
+    },
+    new Date(),
+  );
+  return sanitized;
 }
 
 function validate(input: DepositInput): void {
