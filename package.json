@@ -2,7 +2,7 @@
   "name": "folio",
   "private": true,
   "version": "0.1.5",
-  "build": "261114.0",
+  "build": "261114.1",
   "versionChannel": "dev",
   "license": "MIT",
   "type": "module",

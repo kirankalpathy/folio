@@ -3,6 +3,8 @@
 ## `v0.1.5`
 
 ### Accuracy & consistency
+- **Deposits first in Portfolio:** Deposits now appear first in the Portfolio section for quicker access.
+- **Net Worth banner layout:** fixed an issue where values in the Net Worth banner could overlap when the sidebar was expanded.
 - **Consistent deposit calculations:** deposit totals (including interest and gains) now use the same calculation across the deposits table, deposit details, and exports, so values match everywhere.
 - **Consistent number formatting:** amounts and percentages now follow your selected number format and show 2 decimal places consistently across tables, details, summaries, and exports for clearer, more reliable values.
 - **Clearer gain colors:** **Realized Gain** and **Unrealized Gain** now use consistent, easy-to-distinguish colors across the app.
