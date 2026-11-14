@@ -114,10 +114,10 @@ export const ASSET_CLASS_META: Record<AssetClassKey, AssetClassMeta> = {
 };
 
 export const ASSET_CLASS_ORDER: AssetClassKey[] = [
+  'deposits',
   'stocks',
   'bonds',
   'pf',
-  'deposits',
   'commodities',
   'debts',
 ];

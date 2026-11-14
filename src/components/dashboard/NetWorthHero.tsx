@@ -54,15 +54,15 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-x-5 gap-y-4 xl:flex-nowrap xl:gap-x-4">
-          {numberTiles.map((tile, index) => (
-            <div key={tile.key} className={cn('shrink-0 border-white/10 dark:border-folio-ink/10', index > 0 && 'xl:border-l xl:pl-4')}>
+        <div className="flex flex-wrap items-start gap-x-5 gap-y-4">
+          {numberTiles.map((tile) => (
+            <div key={tile.key} className="min-w-0">
               <p className="font-mono text-[0.5625rem] uppercase tracking-[0.14em] text-folio-cream/45 dark:text-folio-ink/45">
                 {t(tile.label)}
               </p>
               {tile.key === 'totalGain' ? (
-                <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
-                  <p className={cn('folio-value truncate text-sm', positive ? 'text-emerald-300 dark:text-emerald-700' : 'text-rose-300 dark:text-rose-700')}>
+                <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+                  <p className={cn('folio-value text-sm', positive ? 'text-emerald-300 dark:text-emerald-700' : 'text-rose-300 dark:text-rose-700')}>
                     {isLoading ? '—' : formatINR(summary.totalGain)}
                   </p>
                   {!isLoading && (
@@ -82,7 +82,7 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
               ) : (
                 <p
                   className={cn(
-                    'folio-value mt-1.5 truncate text-sm',
+                    'folio-value mt-1.5 text-sm',
                     tile.key === 'totalLiabilities'
                       ? 'text-folio-accent dark:text-folio-primary'
                       : tile.key === 'realizedGain'
