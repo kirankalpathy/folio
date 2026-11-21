@@ -24,7 +24,8 @@
 
 - **Deposits** — Fixed Deposits (FD) and Recurring Deposits (RD), with maturity tracking, interest calculations, and lifecycle status.
 - **Financial Institutions** — banks, issuers, wallets, and platforms connected to your records.
-- **Other portfolio areas** — stocks, bonds, PF/PPF, commodities, and debts (available in the app).
+- **Stocks** — track brokers, holdings, and categories across NSE/BSE.
+- **Other portfolio areas** — bonds, PF/PPF, commodities, and debts (available in the app).
 
 ---
 
@@ -66,6 +67,7 @@
 
 - **Add an account:** go to *Financial Institutions* → use the guided form to add a bank, wallet, issuer, or platform.
 - **Track a deposit:** open *Deposits* → create a new deposit → follow the 4-step wizard.
+- **Track stocks:** set up your Demat and transfer accounts, add brokers, refresh symbol listings, then add holdings.
 - **Export deposits:** in the *Deposits* list, use the export option to save your list as **Excel, CSV, or PDF**.
 - **Back up your data:** open *Settings → Backup & Restore* → create a local backup file.
 - **Restore from a backup:** in *Settings → Backup & Restore*, choose a backup file to restore (review prompts carefully).
@@ -75,6 +77,13 @@
 
 - **Deposits** — create, view, and edit deposits with step-by-step validation (unique deposit numbers, amount/rate/date rules, pre-closure dates). Track lifecycle status: Planned, Active, Matured, Pre-closed, In Lien.
 - **Financial Institutions** — add and manage banks, issuers, wallets, and platforms. Safety check before deletion (can't delete if linked to deposits).
+- **Stocks** — manage your stock investing setup in one place:
+  - **Before you start:** add the required Financial Institutions first — a **Demat Account** (for holding securities) and a **Savings/Current Account** (used as the linked transfer account for sale proceeds and payouts).
+  - **Brokers:** add one or more brokers you trade through. Multiple brokers can use the same Demat account. Each broker should be linked to a Savings/Current transfer account where proceeds and payouts are credited.
+  - **Holdings:** add NSE/BSE symbols and link each holding to the broker you trade it with. The same symbol can be held with multiple brokers. You can optionally assign one or more categories to organize holdings.
+  - **Categories:** use Folio’s default categories or create your own custom categories to group investments. Default categories are preloaded and cannot be edited or deleted.
+  - **Symbol listings:** click **Refresh** in Symbol Listings to sync the latest NSE/BSE symbol data from verified sources before adding holdings.
+  - **Flow:** *Financial Institutions (Demat + Savings/Current) → Brokers → Holdings*.
 - **Profile & Security** — set up a profile with photo, name, email, phone. Optional passcode protection with recovery via Passkey file.
 - **Settings** — appearance (Light/Dark/System theme), regional formatting (number/date formats), backup & restore, danger zone (clear data/delete ledger), and about/version info.
 - **Export** — export deposits and financial institutions as Excel, CSV, or PDF.

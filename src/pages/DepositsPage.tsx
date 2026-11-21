@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Equal, EqualNot, Minus, PiggyBank, Plus, Sea
 import type { DepositHolding, DepositOperationType, DepositType } from '../types';
 import { useDeposits } from '../hooks/useDeposits';
 import { useFinancialInstitutions } from '../hooks/useFinancialInstitutions';
+import { useTableSort } from '../hooks/useTableSort';
 import { institutionLabel } from '../services/financialInstitutions';
 import { DepositLifecycleStatus, getDepositLifecycleStatus, isClosedDepositStatus, summarizeDeposits } from '../utils/deposits';
 import { getDateFormatId } from '../utils/date';
@@ -74,6 +75,7 @@ export default function DepositsPage() {
   const [maturityDateOp, setMaturityDateOp] = useState<MaturityDateOp>('==');
   const [maturityDateValue, setMaturityDateValue] = useState<Dayjs | null>(null);
   const [operationTypeFilter, setOperationTypeFilter] = useState<DepositOperationType[]>([]);
+  const depositSort = useTableSort();
   const summary = useMemo(() => summarizeDeposits(deposits), [deposits]);
   const resolvedBankName = (d: DepositHolding) => {
     const inst = d.financialInstitutionId ? institutions.find((fi) => fi.id === d.financialInstitutionId) : undefined;
@@ -296,6 +298,8 @@ export default function DepositsPage() {
       />
 
       <ResponsiveTable
+        sortActive={depositSort.sortActive}
+        onClearSort={depositSort.clearSort}
         beforeFilters={
           <div className="flex flex-wrap gap-1.5">
             <button
@@ -536,7 +540,7 @@ export default function DepositsPage() {
                 <Button onClick={() => { setSearch(''); setBankFilter([]); setLifecycleFilter([]); setAccountTypeFilter([]); setInterestPayoutFilter([]); setMaturityDateOp('=='); setMaturityDateValue(null); setOperationTypeFilter([]); }}>{t('common.clear')}</Button>
               </EmptyState>
             ) : (
-              <DepositTable deposits={filteredDeposits} loading={isLoading} variant={depositTab} onView={openView} onEdit={openEdit} onDelete={handleDelete} />
+              <DepositTable deposits={filteredDeposits} loading={isLoading} variant={depositTab} onView={openView} onEdit={openEdit} onDelete={handleDelete} sortControl={depositSort} />
             )}
       </ResponsiveTable>
     </div>

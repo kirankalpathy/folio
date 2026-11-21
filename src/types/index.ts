@@ -257,6 +257,34 @@ export interface StockBroker extends BaseRecord {
 
 export type StockBrokerInput = Omit<StockBroker, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'changedBy' | 'changedAt'>;
 
+export const StockCategoryType = {
+  MarketCap: 'market_cap',
+  Instrument: 'instrument',
+  Style: 'style',
+  Sector: 'sector',
+} as const;
+export type StockCategoryType = (typeof StockCategoryType)[keyof typeof StockCategoryType];
+
+export const STOCK_CATEGORY_TYPE_LABELS: Record<StockCategoryType, string> = {
+  [StockCategoryType.MarketCap]: 'Market Cap',
+  [StockCategoryType.Instrument]: 'Instrument',
+  [StockCategoryType.Style]: 'Style',
+  [StockCategoryType.Sector]: 'Sector',
+};
+
+export interface StockCategory extends BaseRecord {
+  name: string;
+  description?: string;
+  type?: StockCategoryType;
+  preloaded?: boolean;
+}
+
+export interface StockCategoryInput {
+  name: string;
+  description?: string;
+  type?: StockCategoryType;
+}
+
 export interface StockHolding extends BaseRecord {
   symbol: string;
   name: string;
@@ -268,6 +296,7 @@ export interface StockHolding extends BaseRecord {
   currentPrice: number;
   purchaseDate: string;
   brokerId?: string;
+  categoryIds?: string[];
 }
 
 export interface BondHolding extends BaseRecord {
@@ -562,6 +591,7 @@ export interface NetWorthSummary {
 export interface ApplicationBackupData {
   stockBrokers?: StockBroker[];
   stocks: StockHolding[];
+  stockCategories?: StockCategory[];
   bonds: BondHolding[];
   pfAccounts: PFAccount[];
   deposits: DepositHolding[];
@@ -581,6 +611,7 @@ export interface ApplicationBackupSchema {
 export interface BackupRecordCounts {
   stockBrokers: number;
   stocks: number;
+  stockCategories: number;
   bonds: number;
   pfAccounts: number;
   deposits: number;
@@ -598,6 +629,10 @@ export interface BackupReportRow {
   errors: number;
   /** Render as an indented child row (e.g. deposit subtypes). */
   indent?: boolean;
+  /** Optional group heading row (no counts emphasis). */
+  heading?: boolean;
+  /** Optional tooltip i18n key shown next to the label. */
+  tooltipKey?: string;
   /** Optional error category breakdown (category -> affected record count), shown when error count is clicked. */
   errorCategories?: Record<string, number>;
 }

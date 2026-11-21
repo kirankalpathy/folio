@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
-import { Badge, Button, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { ArrowLeft, Bell, Menu, Moon, PanelLeft, PanelLeftClose, Sun, X } from 'lucide-react';
 import { isTauri } from '@tauri-apps/api/core';
 import { usePortfolio } from '../../hooks/usePortfolio';
@@ -164,7 +164,7 @@ export default function Layout() {
       </div>
 
       <div className="flex min-w-0 flex-1 items-center justify-center px-2">
-        <UniversalSearch className="max-w-[38rem]" />
+        <UniversalSearch className="max-w-[18rem] sm:max-w-[22rem] lg:max-w-[26rem]" />
       </div>
 
       <div className="flex min-w-0 items-center justify-end gap-1 overflow-hidden">
@@ -181,15 +181,13 @@ export default function Layout() {
             </div>
           </div>
         )}
-        <Badge dot={false} offset={[-2, 2]} className="shrink-0">
-          <Button
-            type="text"
-            size="small"
-            aria-label={t('header.notifications')}
-            icon={<Bell size={14} />}
-            className="!h-7 !w-7 !min-w-0"
-          />
-        </Badge>
+        <Button
+          type="text"
+          size="small"
+          aria-label={t('header.notifications')}
+          icon={<Bell size={14} />}
+          className="!h-7 !w-7 !min-w-0 shrink-0"
+        />
         <Button
           type="text"
           size="small"

@@ -146,7 +146,10 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
     ? customizable.filter((c) => (defs.get(c.key)?.label ?? '').toLowerCase().includes(normalizedQuery))
     : customizable;
 
-  if (!enabled) return null;
+  if (!enabled) {
+    const actionsLabel = columns.find((c) => c.locked)?.label ?? t('common.actions');
+    return <span>{actionsLabel}</span>;
+  }
 
   return (
     <Popover

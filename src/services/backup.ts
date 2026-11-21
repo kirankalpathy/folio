@@ -13,8 +13,9 @@ import { parseBackup } from '../utils/backupSchema';
 import { calculateDepositAccruedValueAsOf, calculateDepositValues, sanitizeDepositLienState } from '../utils/deposits';
 import { folioFileName } from '../utils/fileNaming';
 import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
+import { initializeProfileDefaults } from './profileInitialization';
 
-const FINANCIAL_TABLES = ['stockBrokers', 'stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
+const FINANCIAL_TABLES = ['stockBrokers', 'stocks', 'stockCategories', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
 const ALL_TABLES = [...FINANCIAL_TABLES, 'profile', 'credentials'] as const;
 const DEXIE_NAME = 'folio';
 
@@ -40,9 +41,10 @@ export function totalRecords(counts: BackupRecordCounts): number {
 }
 
 export async function createBackup(): Promise<ApplicationBackupSchema> {
-  const [stockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions] = await Promise.all([
+  const [stockBrokers, stocks, stockCategories, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions] = await Promise.all([
     allRecords('stockBrokers'),
     allRecords('stocks'),
+    allRecords('stockCategories'),
     allRecords('bonds'),
     allRecords('pfAccounts'),
     allRecords('deposits', 'maturityDate'),
@@ -50,12 +52,13 @@ export async function createBackup(): Promise<ApplicationBackupSchema> {
     allRecords('debts'),
     allRecords<FinancialInstitution>('financialInstitutions'),
   ]);
+  const customStockCategories = (stockCategories as any[]).filter((c) => !c?.preloaded);
   return {
     app: 'folio',
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     baseCurrency: 'INR',
-    data: { stockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions } as ApplicationBackupSchema['data'],
+    data: { stockBrokers, stocks, stockCategories: customStockCategories, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions } as ApplicationBackupSchema['data'],
   };
 }
 
@@ -215,8 +218,8 @@ function prepareRecordsForRestore(table: (typeof FINANCIAL_TABLES)[number], reco
   return { records, input: records.length, success: records.length, errors: 0 };
 }
 
-function row(itemLabelKey: string, success: number, errors: number, indent = false): BackupReportRow {
-  return { itemLabelKey, success, errors, indent };
+function row(itemLabelKey: string, success: number, errors: number, indent = false, extra: Partial<BackupReportRow> = {}): BackupReportRow {
+  return { itemLabelKey, success, errors, indent, ...extra };
 }
 
 function buildRestoreReport(preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore>): BackupReport {
@@ -232,9 +235,17 @@ function buildRestoreReport(preparedByTable: Record<(typeof FINANCIAL_TABLES)[nu
     }
   }
 
+  const stockBrokers = preparedByTable.stockBrokers;
+  const stocks = preparedByTable.stocks;
+  const stockCategories = preparedByTable.stockCategories;
+  if (stockBrokers.input > 0 || stocks.input > 0 || stockCategories.input > 0) {
+    rows.push(row('backup.category.stocksGroup', stockBrokers.success + stocks.success + stockCategories.success, stockBrokers.errors + stocks.errors + stockCategories.errors, false, { heading: true }));
+    if (stockBrokers.input > 0) rows.push(row('backup.category.stockBrokers', stockBrokers.success, stockBrokers.errors, true));
+    if (stocks.input > 0) rows.push(row('backup.category.stocks', stocks.success, stocks.errors, true));
+    if (stockCategories.input > 0) rows.push(row('backup.category.stockCategories', stockCategories.success, stockCategories.errors, true, { tooltipKey: 'backup.category.stockCategoriesTooltip' }));
+  }
+
   const others: Array<{ key: (typeof FINANCIAL_TABLES)[number]; labelKey: string }> = [
-    { key: 'stockBrokers', labelKey: 'backup.category.stockBrokers' },
-    { key: 'stocks', labelKey: 'backup.category.stocks' },
     { key: 'bonds', labelKey: 'backup.category.bonds' },
     { key: 'pfAccounts', labelKey: 'backup.category.pfAccounts' },
     { key: 'commodities', labelKey: 'backup.category.commodities' },
@@ -263,9 +274,17 @@ export function buildExportReport(backup: ApplicationBackupSchema): BackupReport
     }
   }
 
+  const stockBrokersArr = backup.data.stockBrokers ?? [];
+  const stocksArr = backup.data.stocks ?? [];
+  const stockCategoriesArr = (backup.data.stockCategories ?? []).filter((c: any) => !c?.preloaded);
+  if (stockBrokersArr.length > 0 || stocksArr.length > 0 || stockCategoriesArr.length > 0) {
+    rows.push(row('backup.category.stocksGroup', stockBrokersArr.length + stocksArr.length + stockCategoriesArr.length, 0, false, { heading: true }));
+    if (stockBrokersArr.length > 0) rows.push(row('backup.category.stockBrokers', stockBrokersArr.length, 0, true));
+    if (stocksArr.length > 0) rows.push(row('backup.category.stocks', stocksArr.length, 0, true));
+    if (stockCategoriesArr.length > 0) rows.push(row('backup.category.stockCategories', stockCategoriesArr.length, 0, true, { tooltipKey: 'backup.category.stockCategoriesTooltip' }));
+  }
+
   const others: Array<{ key: keyof ApplicationBackupSchema['data']; labelKey: string }> = [
-    { key: 'stockBrokers', labelKey: 'backup.category.stockBrokers' },
-    { key: 'stocks', labelKey: 'backup.category.stocks' },
     { key: 'bonds', labelKey: 'backup.category.bonds' },
     { key: 'pfAccounts', labelKey: 'backup.category.pfAccounts' },
     { key: 'commodities', labelKey: 'backup.category.commodities' },
@@ -286,6 +305,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   const preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore> = {
     stockBrokers: prepareRecordsForRestore('stockBrokers', (backup.data.stockBrokers ?? (backup.data as unknown as Record<string, unknown>).stockPortfolios ?? []) as unknown[]),
     stocks: prepareRecordsForRestore('stocks', backup.data.stocks),
+    stockCategories: prepareRecordsForRestore('stockCategories' as any, ((backup.data.stockCategories ?? []) as any[]).filter((c) => !c?.preloaded)),
     bonds: prepareRecordsForRestore('bonds', backup.data.bonds),
     pfAccounts: prepareRecordsForRestore('pfAccounts', backup.data.pfAccounts),
     deposits: prepareRecordsForRestore('deposits', backup.data.deposits),
@@ -304,6 +324,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   const counts: BackupRecordCounts = {
     stockBrokers: preparedByTable.stockBrokers.success,
     stocks: preparedByTable.stocks.success,
+    stockCategories: preparedByTable.stockCategories.success,
     bonds: preparedByTable.bonds.success,
     pfAccounts: preparedByTable.pfAccounts.success,
     deposits: preparedByTable.deposits.success,
@@ -321,6 +342,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
         for (const table of FINANCIAL_TABLES) await clearTableSilent(db, table);
         await bulkPutRecordsSilent(db, 'stockBrokers', preparedByTable.stockBrokers.records);
         await bulkPutRecordsSilent(db, 'stocks', preparedByTable.stocks.records);
+        await bulkPutRecordsSilent(db, 'stockCategories', preparedByTable.stockCategories.records);
         await bulkPutRecordsSilent(db, 'bonds', preparedByTable.bonds.records);
         await bulkPutRecordsSilent(db, 'pfAccounts', preparedByTable.pfAccounts.records);
         await bulkPutRecordsSilent(db, 'deposits', preparedByTable.deposits.records);
@@ -330,6 +352,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
       });
       // Keep storage layers consistent: remove Dexie residue so it cannot be re-migrated over restored data.
       await clearDexieResidue();
+      await initializeProfileDefaults();
       console.info('[folio/backup] restore complete', { counts, institutions: preparedByTable.financialInstitutions.success, attempt });
       return { counts, total: totalRecords(counts), report };
     } catch (error) {
@@ -357,6 +380,7 @@ export async function clearFinancialRecords(): Promise<void> {
   });
   // Keep storage layers consistent and prevent Dexie residue from re-migrating.
   await clearDexieResidue();
+  await initializeProfileDefaults();
 }
 
 export async function clearLedgerData(): Promise<void> {

@@ -52,6 +52,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
   const operationType = (Form.useWatch('operationType', form) ?? 'single') as DepositOperationType;
   const jointHolders = (Form.useWatch('jointHolders', form) ?? []) as Array<{ share?: number }>;
   const [createInstitutionOpen, setCreateInstitutionOpen] = useState(false);
+  const [institutionSelectOpen, setInstitutionSelectOpen] = useState(false);
   const [holderSuggestions, setHolderSuggestions] = useState<DepositJointHolder[]>([]);
   const { institutions, create } = useFinancialInstitutions();
   const options = useMemo(
@@ -115,6 +116,8 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
       <Form.Item name="financialInstitutionId" label={t('deposit.fields.institution')} className="sm:col-span-2" rules={[{ required: true, message: t('deposit.validation.institutionRequired') }]}>
         <Select
           showSearch
+          open={institutionSelectOpen}
+          onOpenChange={setInstitutionSelectOpen}
           optionFilterProp="label"
           disabled={locked}
           options={options}
@@ -130,7 +133,7 @@ export default function DepositWizardStepOverview({ activeLocked = false, termin
               </p>
               <div className="min-w-0">{menu}</div>
               <Divider style={{ margin: '4px 0' }} />
-              <Button type="text" icon={<Plus size={14} />} onClick={() => setCreateInstitutionOpen(true)} className="justify-start">
+              <Button type="text" icon={<Plus size={14} />} onClick={() => { setInstitutionSelectOpen(false); setCreateInstitutionOpen(true); }} className="justify-start">
                 {t('deposit.createInstitution')}
               </Button>
             </div>

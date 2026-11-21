@@ -8,6 +8,7 @@ import {
   getDb as getDbTauri,
   getRecord as getRecordTauri,
   getSymbolMasterStats as getSymbolMasterStatsTauri,
+  searchSymbolMaster as searchSymbolMasterTauri,
   loadPortfolioSnapshotSqlite as loadPortfolioSnapshotSqliteTauri,
   putRecord as putRecordTauri,
   putRecordSilent as putRecordSilentTauri,
@@ -17,10 +18,11 @@ import {
   withTransaction as withTransactionTauri,
   type SqliteDb,
   type SymbolMasterStats,
+  type SymbolMasterSearchResult,
 } from './sqlite.tauri';
 
 type SqlValue = string | number | null;
-export type { SqliteDb, SymbolMasterStats };
+export type { SqliteDb, SymbolMasterStats, SymbolMasterSearchResult };
 export const FOLIO_SQLITE_NAME = 'folio.db';
 
 function assertTauri(): void {
@@ -94,4 +96,9 @@ export async function getSymbolMasterStats(exchange: string): Promise<SymbolMast
 export async function replaceSymbolMasterByExchange(exchange: string, rows: unknown[]): Promise<void> {
   assertTauri();
   return replaceSymbolMasterByExchangeTauri(exchange, rows);
+}
+
+export async function searchSymbolMaster(exchange: string, query: string, limit = 50): Promise<SymbolMasterSearchResult[]> {
+  assertTauri();
+  return searchSymbolMasterTauri(exchange, query, limit);
 }

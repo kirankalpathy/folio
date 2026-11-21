@@ -23,6 +23,8 @@ export default function FilterMultiSelect({
   popupMatchSelectWidth = false,
   optionRender,
   value,
+  options,
+  children,
   popupClassName,
   maxTagPlaceholder,
   classNames,
@@ -44,13 +46,14 @@ export default function FilterMultiSelect({
       suffix={suffixIcon}
       popupMatchSelectWidth={popupMatchSelectWidth}
       value={value}
+      options={options}
       classNames={{
         ...(typeof classNames === 'object' && classNames ? classNames : {}),
         popup: {
           ...(typeof classNames === 'object' && classNames?.popup ? classNames.popup : {}),
           root: [
             typeof classNames === 'object' ? classNames?.popup?.root : undefined,
-            'folio-multiselect-dropdown',
+            'folio-multiselect-dropdown border border-folio-ink/10 dark:border-white/10 rounded-lg shadow-folio',
             popupClassName,
           ].filter(Boolean).join(' '),
         },
@@ -71,7 +74,9 @@ export default function FilterMultiSelect({
       }
       className={`w-full min-w-0 ${className ?? ''}`}
       {...props}
-    />
+    >
+      {children}
+    </Select>
   );
 }
 

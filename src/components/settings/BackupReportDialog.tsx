@@ -1,4 +1,6 @@
 import { Fragment, useState, type ReactNode } from 'react';
+import { Tooltip } from 'antd';
+import { Info } from 'lucide-react';
 import type { BackupReport } from '../../types';
 import type { MessageKey } from '../../i18n';
 
@@ -39,7 +41,16 @@ export function ReportTable({ report, t, mode = 'result' }: { report: BackupRepo
                 <tr className="border-b border-folio-ink/[0.06] last:border-b-0 dark:border-white/[0.06]">
                   <td className={`py-2 pr-3 ${r.indent ? 'pl-5 text-folio-ink/80 dark:text-white/75' : 'font-medium text-folio-ink dark:text-white/90'}`}>
                     {r.indent ? <span className="mr-1.5 text-folio-ink/35 dark:text-white/30">↳</span> : null}
-                    {r.itemLabel ?? t(r.itemLabelKey as MessageKey, r.itemLabelParams)}
+                    <span className="inline-flex items-center gap-1.5">
+                      <span>{r.itemLabel ?? t(r.itemLabelKey as MessageKey, r.itemLabelParams)}</span>
+                      {r.tooltipKey ? (
+                        <Tooltip title={t(r.tooltipKey as MessageKey)}>
+                          <span className="inline-flex cursor-help text-folio-ink/45 dark:text-white/45" aria-label={t(r.tooltipKey as MessageKey)}>
+                            <Info size={13} />
+                          </span>
+                        </Tooltip>
+                      ) : null}
+                    </span>
                   </td>
                   <td className="py-2 pr-3 text-right tabular-nums text-folio-ink dark:text-white/90">{isResult ? total : r.success}</td>
                   {isResult ? (

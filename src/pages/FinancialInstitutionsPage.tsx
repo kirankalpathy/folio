@@ -18,6 +18,8 @@ import { institutionLabel, isFinancialInstitutionLinked } from '../services/fina
 import { exportInstitutions, type InstitutionExportFormat } from '../services/institutionExport';
 import type { PdfFilter } from '../services/pdfExportUtils';
 import { formatINR } from '../utils/finance';
+import { numberSorter, stringSorter } from '../utils/tableSort';
+import { useTableSort } from '../hooks/useTableSort';
 
 function UpiIdCell({ upiIdRaw }: { upiIdRaw?: string | null }) {
   const { t } = useI18n();
@@ -174,6 +176,7 @@ export default function FinancialInstitutionsPage() {
     [t],
   );
   const { layout: fiLayout } = useTableLayout('financial-institutions', fiColumnDefs);
+  const fiSort = useTableSort();
 
   const buildPdfFilters = (): PdfFilter[] => {
     const filters: PdfFilter[] = [];
@@ -222,9 +225,9 @@ export default function FinancialInstitutionsPage() {
 
   const allFiColumns = useMemo<Record<string, NonNullable<React.ComponentProps<typeof Table<FinancialInstitution>>['columns']>[number]>>(
     () => ({
-      name: { title: t('institutions.table.name'), dataIndex: 'name', key: 'name', render: (name: string) => <span className="font-medium"><TruncatedText text={name} maxLength={30} block className="max-w-[260px]" /></span> },
-      nickname: { title: t('institutions.table.nickname'), key: 'nickname', render: (_, r) => textCell(r.nickname) },
-      category: { title: t('institutions.table.category'), dataIndex: 'category', key: 'category', render: (c: FinancialInstitutionCategory) => t(`institutions.category.${c}` as never) },
+      name: { title: t('institutions.table.name'), dataIndex: 'name', key: 'name', sorter: stringSorter<FinancialInstitution>((r) => r.name), render: (name: string) => <span className="font-medium"><TruncatedText text={name} maxLength={30} block className="max-w-[260px]" /></span> },
+      nickname: { title: t('institutions.table.nickname'), key: 'nickname', sorter: stringSorter<FinancialInstitution>((r) => r.nickname), render: (_, r) => textCell(r.nickname) },
+      category: { title: t('institutions.table.category'), dataIndex: 'category', key: 'category', sorter: stringSorter<FinancialInstitution>((r) => t(`institutions.category.${r.category}` as never)), render: (c: FinancialInstitutionCategory) => t(`institutions.category.${c}` as never) },
       operationMode: {
         title: t('institutions.table.operationMode'),
         dataIndex: 'operationMode',
@@ -238,14 +241,14 @@ export default function FinancialInstitutionsPage() {
           );
         },
       },
-      accountNumber: { title: t('institutions.table.accountNumber'), key: 'accountNumber', render: (_, r) => textCell(r.accountNumber ?? r.dematAccountNumber) },
-      ifscCode: { title: t('institutions.table.ifsc'), key: 'ifscCode', render: (_, r) => textCell(r.ifscCode) },
+      accountNumber: { title: t('institutions.table.accountNumber'), key: 'accountNumber', sorter: stringSorter<FinancialInstitution>((r) => r.accountNumber ?? r.dematAccountNumber), render: (_, r) => textCell(r.accountNumber ?? r.dematAccountNumber) },
+      ifscCode: { title: t('institutions.table.ifsc'), key: 'ifscCode', sorter: stringSorter<FinancialInstitution>((r) => r.ifscCode), render: (_, r) => textCell(r.ifscCode) },
       cifNumber: { title: t('institutions.table.cif'), key: 'cifNumber', render: (_, r) => textCell(r.cifNumber) },
-      branchName: { title: t('institutions.table.branch'), key: 'branchName', render: (_, r) => textCell(r.branchName) },
+      branchName: { title: t('institutions.table.branch'), key: 'branchName', sorter: stringSorter<FinancialInstitution>((r) => r.branchName), render: (_, r) => textCell(r.branchName) },
       swiftCode: { title: t('institutions.table.swift'), key: 'swiftCode', render: (_, r) => textCell(r.swiftCode) },
-      cardNumber: { title: t('institutions.table.cardNumber'), key: 'cardNumber', render: (_, r) => textCell(r.cardNumber) },
+      cardNumber: { title: t('institutions.table.cardNumber'), key: 'cardNumber', sorter: stringSorter<FinancialInstitution>((r) => r.cardNumber), render: (_, r) => textCell(r.cardNumber) },
       cardNetwork: { title: t('institutions.table.cardNetwork'), key: 'cardNetwork', render: (_, r) => textCell(r.cardNetwork) },
-      creditLimit: { title: t('institutions.table.creditLimit'), key: 'creditLimit', align: 'right', render: (_, r) => r.creditLimit != null ? <span className="font-mono text-xs tabular-nums">{formatINR(r.creditLimit)}</span> : dash },
+      creditLimit: { title: t('institutions.table.creditLimit'), key: 'creditLimit', align: 'right', sorter: numberSorter<FinancialInstitution>((r) => r.creditLimit), render: (_, r) => r.creditLimit != null ? <span className="font-mono text-xs tabular-nums">{formatINR(r.creditLimit)}</span> : dash },
       billingCycleDay: { title: t('institutions.table.billingCycle'), key: 'billingCycleDay', render: (_, r) => r.billingCycleDay != null ? `${t('institutions.billingCycle.prefix')} ${r.billingCycleDay} ${t('institutions.billingCycle.suffix')}` : dash },
       dematAccountNumber: { title: t('institutions.table.demat'), key: 'dematAccountNumber', render: (_, r) => textCell(r.dematAccountNumber) },
       uniqueClientCode: { title: t('institutions.table.ucc'), key: 'uniqueClientCode', render: (_, r) => textCell(r.uniqueClientCode) },
@@ -253,7 +256,7 @@ export default function FinancialInstitutionsPage() {
       segments: { title: t('institutions.table.segments'), key: 'segments', render: (_, r) => (r.segments?.length ? r.segments.map((s) => t(`institutions.segment.${s}` as never)).join(', ') : dash) },
       walletId: { title: t('institutions.table.walletId'), key: 'walletId', render: (_, r) => textCell(r.walletId) },
       linkedMobile: { title: t('institutions.table.linkedMobile'), key: 'linkedMobile', render: (_, r) => textCell(r.linkedMobile) },
-      upiId: { title: t('institutions.table.upiId'), key: 'upiId', render: (_, r) => <UpiIdCell upiIdRaw={r.upiId} /> },
+      upiId: { title: t('institutions.table.upiId'), key: 'upiId', sorter: stringSorter<FinancialInstitution>((r) => r.upiId), render: (_, r) => <UpiIdCell upiIdRaw={r.upiId} /> },
       contactPerson: { title: t('institutions.table.contactPerson'), key: 'contactPerson', render: (_, r) => textCell(r.contactPerson) },
       contactEmail: { title: t('institutions.table.contactEmail'), key: 'contactEmail', render: (_, r) => textCell(r.contactEmail) },
       contactPhone: { title: t('institutions.table.contactPhone'), key: 'contactPhone', render: (_, r) => textCell(r.contactPhone) },
@@ -336,6 +339,8 @@ export default function FinancialInstitutionsPage() {
       <InstitutionStats institutions={institutions} />
 
       <ResponsiveTable
+        sortActive={fiSort.sortActive}
+        onClearSort={fiSort.clearSort}
         filters={
           <>
             <Input
@@ -433,10 +438,11 @@ export default function FinancialInstitutionsPage() {
               loading={isLoading}
               dataSource={filteredInstitutions}
               pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: filteredInstitutions.length <= 10 }}
+              onChange={fiSort.onChange as any}
               onRow={(record) => ({ onClick: () => navigate(`/institutions/${record.id}`), style: { cursor: 'pointer' } })}
               locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<div className="py-2"><p className="text-sm font-medium">{t('institutions.emptyTitle')}</p><p className="mt-1 text-xs text-folio-ink/45 dark:text-white/40">{t('institutions.emptyBody')}</p></div>} /> }}
               scroll={{ x: 'max-content' }}
-              columns={fiColumns}
+              columns={fiSort.applySort(fiColumns as any) as any}
             />
           </div>
         )}

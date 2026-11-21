@@ -1,7 +1,7 @@
 import type { ApplicationBackupSchema } from '../types';
 import { translate } from '../i18n';
 
-type FieldKind = 'string' | 'number' | 'date' | 'boolean';
+type FieldKind = 'string' | 'number' | 'date' | 'boolean' | 'string[]';
 type FieldExtra =
   | 'optional'
   | readonly string[]
@@ -9,6 +9,7 @@ type FieldExtra =
 type FieldRule = readonly [key: string, kind: FieldKind, extra?: FieldExtra];
 
 const EXCHANGES = ['NSE', 'BSE', 'NASDAQ', 'NYSE', 'OTHER'] as const;
+const STOCK_CATEGORY_TYPES = ['market_cap', 'instrument', 'style', 'sector'] as const;
 const STOCK_INSTRUMENTS = ['equity', 'etf', 'reit', 'invit'] as const;
 const STOCK_BROKER_CURRENCIES = ['INR'] as const;
 const BOND_TYPES = ['government', 'corporate', 'tax-free', 'other'] as const;
@@ -63,6 +64,15 @@ const STOCK_FIELDS: FieldRule[] = [
   ['currentPrice', 'number'],
   ['purchaseDate', 'date'],
   ['brokerId', 'string', 'optional'],
+  ['categoryIds', 'string[]', 'optional'],
+];
+
+const STOCK_CATEGORY_FIELDS: FieldRule[] = [
+  ...BASE_FIELDS,
+  ['name', 'string'],
+  ['description', 'string', 'optional'],
+  ['type', 'string', { optional: true, enum: STOCK_CATEGORY_TYPES }],
+  ['preloaded', 'boolean', 'optional'],
 ];
 
 const BOND_FIELDS: FieldRule[] = [
@@ -233,6 +243,10 @@ function validateField(record: Record<string, unknown>, rule: FieldRule): string
   if (value === undefined) return meta.optional ? null : `missing required "${key}"`;
   if (kind === 'number') return typeof value === 'number' && Number.isFinite(value) ? null : `"${key}" must be a valid number`;
   if (kind === 'boolean') return typeof value === 'boolean' ? null : `"${key}" must be true or false`;
+  if (kind === 'string[]') {
+    if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) return `"${key}" must be a list of text values`;
+    return null;
+  }
   if (typeof value !== 'string') return `"${key}" must be text`;
   if (kind === 'date' && Number.isNaN(Date.parse(value))) return `"${key}" must be a valid date`;
   if (meta.enumValues && !meta.enumValues.includes(value)) return `"${key}" has an unsupported value "${value}"`;
@@ -401,6 +415,11 @@ export function parseBackup(input: unknown): ApplicationBackupSchema {
     validateCollection('financialInstitutions', input.data.financialInstitutions, FINANCIAL_INSTITUTION_FIELDS, issues);
   } else {
     input.data.financialInstitutions = [];
+  }
+  if (input.data.stockCategories !== undefined) {
+    validateCollection('stockCategories', input.data.stockCategories, STOCK_CATEGORY_FIELDS, issues);
+  } else {
+    input.data.stockCategories = [];
   }
 
   if (issues.length > 0) fail(formatValidationIssues(issues));
@@ -682,7 +701,11 @@ export function validateBackupWithErrors(input: unknown): {
         if (kind === 'boolean' && typeof val !== 'boolean') {
           addError(name, index, item, key, `"${key}" must be true or false`, val);
         }
-        if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') {
+        if (kind === 'string[]') {
+          if (!Array.isArray(val) || !val.every((v) => typeof v === 'string')) {
+            addError(name, index, item, key, `"${key}" must be a list of text values`, val);
+          }
+        } else if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') {
           addError(name, index, item, key, `"${key}" must be text`, val);
         }
         if (kind === 'date' && typeof val === 'string' && Number.isNaN(Date.parse(val))) {
@@ -813,7 +836,11 @@ export function validateBackupWithErrors(input: unknown): {
           }
           if (kind === 'number' && (typeof val !== 'number' || !Number.isFinite(val))) addError('stockBrokers', index, item, key, `"${key}" must be a valid number`, val);
           if (kind === 'boolean' && typeof val !== 'boolean') addError('stockBrokers', index, item, key, `"${key}" must be true or false`, val);
-          if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') addError('stockBrokers', index, item, key, `"${key}" must be text`, val);
+          if (kind === 'string[]') {
+            if (!Array.isArray(val) || !val.every((v) => typeof v === 'string')) addError('stockBrokers', index, item, key, `"${key}" must be a list of text values`, val);
+          } else if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') {
+            addError('stockBrokers', index, item, key, `"${key}" must be text`, val);
+          }
           if (kind === 'date' && typeof val === 'string' && Number.isNaN(Date.parse(val))) addError('stockBrokers', index, item, key, `"${key}" must be a valid date`, val);
           if (meta.enumValues && typeof val === 'string' && !meta.enumValues.includes(val)) addError('stockBrokers', index, item, key, `"${key}" has an unsupported value "${val}"`, val);
         }
@@ -829,6 +856,51 @@ export function validateBackupWithErrors(input: unknown): {
     }
   } else {
     input.data.stockBrokers = [];
+  }
+
+  // Stock categories (optional)
+  const scValue = input.data.stockCategories;
+  if (scValue !== undefined) {
+    if (!Array.isArray(scValue)) {
+      addError('stockCategories', -1, {}, 'stockCategories', 'must be a list', scValue, 'Stock Categories');
+    } else {
+      const scIds = new Set<string>();
+      scValue.forEach((item, index) => {
+        totalRecords++;
+        if (!isRecord(item)) {
+          addError('stockCategories', index, {}, 'stockCategories', 'not a valid object', item, 'Record');
+          return;
+        }
+        for (const field of STOCK_CATEGORY_FIELDS) {
+          const [key, kind, extra] = field;
+          const val = resolveAuditAlias(item, key);
+          const meta = fieldMeta(extra);
+          if (val === undefined) {
+            if (!meta.optional) addError('stockCategories', index, item, key, `missing required "${key}"`, val);
+            continue;
+          }
+          if (kind === 'number' && (typeof val !== 'number' || !Number.isFinite(val))) addError('stockCategories', index, item, key, `"${key}" must be a valid number`, val);
+          if (kind === 'boolean' && typeof val !== 'boolean') addError('stockCategories', index, item, key, `"${key}" must be true or false`, val);
+          if (kind === 'string[]') {
+            if (!Array.isArray(val) || !val.every((v) => typeof v === 'string')) addError('stockCategories', index, item, key, `"${key}" must be a list of text values`, val);
+          } else if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') {
+            addError('stockCategories', index, item, key, `"${key}" must be text`, val);
+          }
+          if (kind === 'date' && typeof val === 'string' && Number.isNaN(Date.parse(val))) addError('stockCategories', index, item, key, `"${key}" must be a valid date`, val);
+          if (meta.enumValues && typeof val === 'string' && !meta.enumValues.includes(val)) addError('stockCategories', index, item, key, `"${key}" has an unsupported value "${val}"`, val);
+        }
+        const id = item.id;
+        if (typeof id !== 'string' || id.length === 0) {
+          addError('stockCategories', index, item, 'id', 'missing required "id"', id);
+        } else {
+          if (!isUuid(id)) addError('stockCategories', index, item, 'id', '"id" must be a valid UUID', id);
+          if (scIds.has(id)) addError('stockCategories', index, item, 'id', 'has a duplicate id', id);
+          else scIds.add(id);
+        }
+      });
+    }
+  } else {
+    input.data.stockCategories = [];
   }
 
   // Financial institutions
@@ -860,7 +932,11 @@ export function validateBackupWithErrors(input: unknown): {
           if (kind === 'boolean' && typeof val !== 'boolean') {
             addError('financialInstitutions', index, item, key, `"${key}" must be true or false`, val);
           }
-          if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') {
+          if (kind === 'string[]') {
+            if (!Array.isArray(val) || !val.every((v) => typeof v === 'string')) {
+              addError('financialInstitutions', index, item, key, `"${key}" must be a list of text values`, val);
+            }
+          } else if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') {
             addError('financialInstitutions', index, item, key, `"${key}" must be text`, val);
           }
           if (kind === 'date' && typeof val === 'string' && Number.isNaN(Date.parse(val))) {

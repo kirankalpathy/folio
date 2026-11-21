@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import type { TableProps } from 'antd';
-import { AutoComplete, Table, Tag } from 'antd';
+import { Table, Tag } from 'antd';
+import { useTablePagination } from '../../hooks/useTablePagination';
 import type { DepositHolding } from '../../types';
 import { daysUntil, formatDate } from '../../utils/date';
 import { formatINR, formatPercent } from '../../utils/finance';
@@ -28,6 +29,12 @@ interface DepositTableProps {
   onDelete: (deposit: DepositHolding) => void;
   onView?: (deposit: DepositHolding) => void;
   variant?: 'active' | 'closed';
+  sortControl?: {
+    sortActive: boolean;
+    onChange: NonNullable<TableProps['onChange']>;
+    clearSort: () => void;
+    applySort: (cols: any[]) => any[];
+  };
 }
 
 const TABLE_ID = 'deposits-summary';
@@ -39,6 +46,7 @@ export default function DepositTable({
   onDelete,
   onView,
   variant = 'active',
+  sortControl,
 }: DepositTableProps) {
   const { t } = useI18n();
   const maturityColumnLabel = variant === 'closed' ? t('deposit.table.closureDate') : t('deposit.table.maturityDate');
@@ -65,40 +73,12 @@ export default function DepositTable({
     () => (totalPrincipal > 0 ? deposits.reduce((sum, d) => sum + (d.principal || 0) * (d.interestRate || 0), 0) / totalPrincipal : 0),
     [deposits, totalPrincipal],
   );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [pageSizeInput, setPageSizeInput] = useState('10');
-  const pageSizeOptions = [5, 10, 15, 20, 25, 30, 50, 100].map((n) => ({ value: String(n), label: String(n) }));
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const scrollTableLeft = () => {
     const el = tableWrapRef.current?.querySelector<HTMLElement>('.ant-table-content, .ant-table-body, .ant-table-container');
     if (el) el.scrollLeft = 0;
   };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [deposits]);
-
-  useEffect(() => {
-    setPageSizeInput(String(pageSize));
-  }, [pageSize]);
-
-  const commitPageSize = (raw: string) => {
-    const trimmed = raw.trim();
-    if (!/^\d+$/.test(trimmed)) {
-      setPageSizeInput(String(pageSize));
-      return;
-    }
-    const n = Number.parseInt(trimmed, 10);
-    if (!Number.isFinite(n) || n < 1) {
-      setPageSizeInput(String(pageSize));
-      return;
-    }
-    const clamped = Math.min(100, n);
-    setPageSize(clamped);
-    setPageSizeInput(String(clamped));
-    setCurrentPage(1);
-  };
+  const pagination = useTablePagination({ resetDeps: [deposits] });
 
   const columnDefs = useMemo<TableLayoutColumnDef[]>(
     () => [
@@ -428,46 +408,11 @@ export default function DepositTable({
     <div ref={tableWrapRef}>
       <Table<DepositHolding>
       rowKey="id"
-      columns={columns}
+      columns={(sortControl ? sortControl.applySort(columns as any) : columns) as any}
       dataSource={deposits}
       loading={loading}
-      pagination={{
-        current: currentPage,
-        pageSize,
-        showSizeChanger: false,
-        align: 'center',
-        showTotal: (total, range) => (
-          <>
-            <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-folio-ink/55 dark:text-white/50">
-              <AutoComplete
-                size="small"
-                value={pageSizeInput}
-                options={pageSizeOptions}
-                onSelect={(value) => commitPageSize(value)}
-                onChange={(value) => setPageSizeInput(value.replace(/[^\d]/g, ''))}
-                onBlur={() => commitPageSize(pageSizeInput)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitPageSize(pageSizeInput);
-                    (e.currentTarget as HTMLElement).blur();
-                  }
-                }}
-                style={{ width: 64 }}
-                popupMatchSelectWidth={64}
-                filterOption={(input, option) => (option?.value ?? '').includes(input)}
-              />
-              <span>items</span>
-            </span>
-            <span className="text-[0.75rem] text-folio-ink/55 dark:text-white/50">
-              {total > 0 ? `${range[0]}-${range[1]} of ${total}` : `0 of ${total}`}
-            </span>
-          </>
-        ),
-        onChange: (page) => {
-          setCurrentPage(page);
-        },
-      }}
+      pagination={pagination}
+      onChange={sortControl?.onChange as any}
       size="middle"
       scroll={{ x: 'max-content' }}
       showSorterTooltip={{ title: t('deposit.table.sortTip') }}

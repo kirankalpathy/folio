@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { AutoComplete, Input } from 'antd';
-import { Landmark, PiggyBank, Search } from 'lucide-react';
+import { CandlestickChart, Landmark, PiggyBank, Search } from 'lucide-react';
 import { useDeposits } from '../../hooks/useDeposits';
 import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
+import { useStockHoldings } from '../../hooks/useStockHoldings';
 import { useI18n } from '../../i18n';
 import { accountLabel } from '../deposits/depositTableHelpers';
 import { cn } from '../../utils/cn';
@@ -12,7 +13,7 @@ interface SearchOption {
   value: string;
   path: string;
   label: string;
-  type: 'deposit' | 'institution';
+  type: 'deposit' | 'institution' | 'holding';
   subtitle?: string;
   searchText: string;
 }
@@ -32,6 +33,7 @@ export default function UniversalSearch({ className }: UniversalSearchProps) {
   const { t } = useI18n();
   const { deposits } = useDeposits();
   const { institutions } = useFinancialInstitutions();
+  const { holdings } = useStockHoldings();
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,8 +73,21 @@ export default function UniversalSearch({ className }: UniversalSearchProps) {
       };
     });
 
-    return [...institutionOptions, ...depositOptions];
-  }, [deposits, institutions, t]);
+    const holdingOptions: SearchOption[] = holdings.map((h) => {
+      const label = h.symbol || t('universalSearch.type.holding');
+      const parts = [h.name, h.exchange].filter(Boolean);
+      return {
+        value: `holding:${h.id}`,
+        path: '/stocks',
+        label,
+        type: 'holding',
+        subtitle: parts.join(' · '),
+        searchText: [label, h.name, h.exchange, t('universalSearch.type.holding')].filter(Boolean).join(' '),
+      };
+    });
+
+    return [...institutionOptions, ...depositOptions, ...holdingOptions];
+  }, [deposits, institutions, holdings, t]);
 
   const filtered = useMemo(() => {
     const q = query.trim();
@@ -91,11 +106,12 @@ export default function UniversalSearch({ className }: UniversalSearchProps) {
     const groups: Array<{ label: string; options: Array<{ value: string; label: ReactNode }> }> = [];
     const inst = filtered.filter((o) => o.type === 'institution');
     const deps = filtered.filter((o) => o.type === 'deposit');
+    const holds = filtered.filter((o) => o.type === 'holding');
 
     const renderOption = (o: SearchOption) => (
       <div className="flex min-w-0 items-center gap-2 py-0.5">
         <span className="shrink-0 text-folio-ink/45 dark:text-white/45">
-          {o.type === 'institution' ? <Landmark size={14} /> : <PiggyBank size={14} />}
+          {o.type === 'institution' ? <Landmark size={14} /> : o.type === 'holding' ? <CandlestickChart size={14} /> : <PiggyBank size={14} />}
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[0.8125rem] text-folio-ink dark:text-folio-cream">{o.label}</div>
@@ -107,6 +123,7 @@ export default function UniversalSearch({ className }: UniversalSearchProps) {
     const groupDefs = [
       { key: 'institution', label: t('universalSearch.type.institution'), items: inst },
       { key: 'deposit', label: t('universalSearch.type.deposit'), items: deps },
+      { key: 'holding', label: t('universalSearch.type.holding'), items: holds },
     ].filter((g) => g.items.length > 0)
       .sort((a, b) => filtered.indexOf(a.items[0]!) - filtered.indexOf(b.items[0]!));
 
@@ -132,7 +149,7 @@ export default function UniversalSearch({ className }: UniversalSearchProps) {
   };
 
   return (
-    <div ref={containerRef} data-no-drag data-tauri-drag-region="false" className={cn('relative w-full', !className?.includes('max-w-') && 'max-w-[40rem]', className)}>
+    <div ref={containerRef} data-no-drag data-tauri-drag-region="false" className={cn('relative w-full min-w-0', !className?.includes('max-w-') && 'max-w-[24rem]', className)}>
       <AutoComplete
         value={query}
         options={options}

@@ -1,5 +1,16 @@
 # RELEASE NOTES
 
+## `v0.1.7`
+
+### Stocks & holdings
+- **Holdings workflow:** add/edit holdings with mandatory Exchange, Symbol, and Broker; broker/category dropdowns support quick add actions, category selection is limited to 5, and default categories are preloaded/protected.
+- **Smarter stock tables:** Holdings, Brokers, and Categories tabs now show counts, icons, clearer stat cards, data-driven filters, sortable columns, and clear-sort controls. Categories can be shown as tags in holdings, and broker delete is disabled when linked holdings exist.
+- **Symbol & search improvements:** symbol master refresh supports NSE EQUITY + SME_EQUITY, Universal Search now includes holdings, and dropdown/search UX is more consistent across the app.
+
+### Reliability & consistency
+- **Profile initialization:** default stock categories/symbol setup runs on new profile and after restore/clear-all-records flows.
+- **Smart table rules:** consistent behavior for filters, sorting, pagination, customize actions, and ellipsis tooltips; Clear Sort and Clear Filters controls now appear consistently across smart tables when applicable.
+
 ## `v0.1.6`
 
 ### Brokers & holdings

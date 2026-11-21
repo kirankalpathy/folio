@@ -4,6 +4,7 @@ import type { AssetClassMeta } from '../../config/assetClasses';
 import type { LedgerRow } from '../../utils/ledger';
 import { useI18n } from '../../i18n';
 import { formatINR } from '../../utils/finance';
+import { useTablePagination } from '../../hooks/useTablePagination';
 
 interface LedgerTableProps {
   rows: LedgerRow[];
@@ -12,6 +13,7 @@ interface LedgerTableProps {
 
 export default function LedgerTable({ rows, meta }: LedgerTableProps) {
   const { t } = useI18n();
+  const pagination = useTablePagination({ resetDeps: [rows, meta] });
   const columns: TableProps<LedgerRow>['columns'] = [
     {
       title: t('ledger.table.holding'),
@@ -73,7 +75,7 @@ export default function LedgerTable({ rows, meta }: LedgerTableProps) {
       rowKey="id"
       columns={columns}
       dataSource={rows}
-      pagination={false}
+      pagination={pagination}
       size="middle"
       scroll={{ x: 820 }}
     />

@@ -12,6 +12,7 @@ export default function StockBrokerWizardStepTransferAccount() {
   const { t } = useI18n();
   const form = Form.useFormInstance<StockBrokerFormValues>();
   const [createInstitutionOpen, setCreateInstitutionOpen] = useState(false);
+  const [selectOpen, setSelectOpen] = useState(false);
   const { institutions, create } = useFinancialInstitutions();
 
   const options = useMemo(
@@ -45,13 +46,15 @@ export default function StockBrokerWizardStepTransferAccount() {
         <Select
           showSearch
           autoFocus
+          open={selectOpen}
+          onOpenChange={setSelectOpen}
           optionFilterProp="label"
           options={options}
           placeholder={t('stocks.brokers.placeholder.transferAccount')}
           notFoundContent={(
             <div className="py-1">
               <p className="mb-2 text-xs text-folio-ink/55 dark:text-white/45">{t('stocks.brokers.noTransferAccounts')}</p>
-              <Button type="link" icon={<Plus size={14} />} onClick={() => setCreateInstitutionOpen(true)} className="!px-0">
+              <Button type="link" icon={<Plus size={14} />} onClick={() => { setSelectOpen(false); setCreateInstitutionOpen(true); }} className="!px-0">
                 {t('stocks.brokers.addInstitution')}
               </Button>
             </div>
@@ -67,7 +70,7 @@ export default function StockBrokerWizardStepTransferAccount() {
               </p>
               <div className="min-w-0">{menu}</div>
               <Divider style={{ margin: '4px 0' }} />
-              <Button type="text" icon={<Plus size={14} />} onClick={() => setCreateInstitutionOpen(true)} className="justify-start">
+              <Button type="text" icon={<Plus size={14} />} onClick={() => { setSelectOpen(false); setCreateInstitutionOpen(true); }} className="justify-start">
                 {t('stocks.brokers.addInstitution')}
               </Button>
             </div>

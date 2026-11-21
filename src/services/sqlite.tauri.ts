@@ -1,6 +1,7 @@
 import Database from '@tauri-apps/plugin-sql';
 import Dexie from 'dexie';
 import type { AuthCredential, BondHolding, CommodityHolding, DebtItem, DepositHolding, PFAccount, PortfolioSnapshot, StockHolding, StockBroker, UserProfile } from '../types';
+import { DEFAULT_STOCK_CATEGORIES } from '../config/stockCategories';
 import { emitDbChange } from './dbEvents';
 
 export const FOLIO_SQLITE_NAME = 'folio.db';
@@ -13,8 +14,8 @@ export interface SqliteDb {
   select: <T = Record<string, SqlValue>>(sql: string, bind?: SqlValue[]) => Promise<T[]>;
 }
 
-type TableName = 'stockBrokers' | 'stocks' | 'bonds' | 'pfAccounts' | 'deposits' | 'commodities' | 'debts' | 'profile' | 'credentials' | 'financialInstitutions';
-const DATA_TABLES: TableName[] = ['stockBrokers', 'stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'profile', 'credentials', 'financialInstitutions'];
+type TableName = 'stockBrokers' | 'stocks' | 'stockCategories' | 'bonds' | 'pfAccounts' | 'deposits' | 'commodities' | 'debts' | 'profile' | 'credentials' | 'financialInstitutions';
+const DATA_TABLES: TableName[] = ['stockBrokers', 'stocks', 'stockCategories', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'profile', 'credentials', 'financialInstitutions'];
 const ALL_AUDITED_TABLES = [...DATA_TABLES, 'settings'] as const;
 type FolioSqliteGlobal = typeof globalThis & {
   __folioDbPromise?: Promise<SqliteDb> | null;
@@ -140,6 +141,7 @@ async function initSchema(db: SqliteDb): Promise<void> {
   }
   await db.execute(`CREATE TABLE IF NOT EXISTS stockBrokers (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS stocks (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS stockCategories (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS bonds (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS pfAccounts (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS deposits (id TEXT PRIMARY KEY, maturityDate TEXT, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
@@ -154,6 +156,7 @@ async function initSchema(db: SqliteDb): Promise<void> {
   await migrateAuditColumns(db);
   try { await db.execute(`ALTER TABLE symbolMaster ADD COLUMN source TEXT`); } catch { /* column may already exist */ }
   await migrateScripMasterToSymbolMaster(db);
+  await seedDefaultStockCategoriesIfNeeded(db);
 }
 
 async function tableCount(db: SqliteDb, table: string): Promise<number> {
@@ -259,22 +262,23 @@ function normalizeStoredProfileForMigration(row: Record<string, unknown>): UserP
 async function migrateFromDexieIfNeeded(db: SqliteDb): Promise<void> {
   for (const t of DATA_TABLES) if ((await tableCount(db, t)) > 0) return;
   const dexie = new Dexie(DEXIE_NAME);
-  dexie.version(1).stores({ stockBrokers: 'id', stocks: 'id', bonds: 'id', pfAccounts: 'id', deposits: 'id, maturityDate', commodities: 'id', debts: 'id', profile: 'id', credentials: 'id' });
+  dexie.version(1).stores({ stockBrokers: 'id', stocks: 'id', stockCategories: 'id', bonds: 'id', pfAccounts: 'id', deposits: 'id, maturityDate', commodities: 'id', debts: 'id', profile: 'id', credentials: 'id' });
   const openOk = await dexie.open().then(() => true).catch(() => false);
   if (!openOk) return;
   try {
     const safeArray = async (table: string) => { try { return await dexie.table(table).toArray(); } catch { return []; } };
-    const [stockBrokers, legacyStockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts, profile, credentials] = await Promise.all([
-      safeArray('stockBrokers'), safeArray('stockPortfolios'), dexie.table('stocks').toArray(), dexie.table('bonds').toArray(), dexie.table('pfAccounts').toArray(), dexie.table('deposits').toArray(),
-      dexie.table('commodities').toArray(), dexie.table('debts').toArray(), dexie.table('profile').toArray(), dexie.table('credentials').toArray(),
+    const [stockBrokers, legacyStockBrokers, stocks, stockCategories, bonds, pfAccounts, deposits, commodities, debts, profile, credentials] = await Promise.all([
+      safeArray('stockBrokers'), safeArray('stockPortfolios'), safeArray('stocks'), safeArray('stockCategories'), safeArray('bonds'), safeArray('pfAccounts'), safeArray('deposits'),
+      safeArray('commodities'), safeArray('debts'), safeArray('profile'), safeArray('credentials'),
     ]);
     const allStockBrokers = stockBrokers.length > 0 ? stockBrokers : legacyStockBrokers;
-    const total = allStockBrokers.length + stocks.length + bonds.length + pfAccounts.length + deposits.length + commodities.length + debts.length + profile.length + credentials.length;
+    const total = allStockBrokers.length + stocks.length + stockCategories.length + bonds.length + pfAccounts.length + deposits.length + commodities.length + debts.length + profile.length + credentials.length;
     if (total === 0) return;
     await db.execute('BEGIN');
     try {
       for (const row of allStockBrokers as StockBroker[]) await putJson(db, 'stockBrokers', row.id, row, { updatedAt: row.updatedAt });
       for (const row of stocks as StockHolding[]) await putJson(db, 'stocks', row.id, row, { updatedAt: row.updatedAt });
+      for (const row of stockCategories as Array<Record<string, unknown>>) await putJson(db, 'stockCategories', String(row.id ?? crypto.randomUUID()), row, { updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : null });
       for (const row of bonds as BondHolding[]) await putJson(db, 'bonds', row.id, row, { updatedAt: row.updatedAt });
       for (const row of pfAccounts as PFAccount[]) await putJson(db, 'pfAccounts', row.id, row, { updatedAt: row.updatedAt });
       for (const row of deposits as DepositHolding[]) await putJson(db, 'deposits', row.id, row, { maturityDate: row.maturityDate, updatedAt: row.updatedAt });
@@ -292,6 +296,9 @@ function normalizeLegacyRecord(table: string, value: unknown): unknown {
   const rec = value as Record<string, unknown>;
   if (table === 'stocks' && rec.brokerId === undefined && typeof rec.portfolioId === 'string') {
     rec.brokerId = rec.portfolioId;
+  }
+  if (table === 'stocks' && rec.categoryIds === undefined && typeof rec.categoryId === 'string' && rec.categoryId) {
+    rec.categoryIds = [rec.categoryId];
   }
   return rec;
 }
@@ -456,6 +463,14 @@ export interface SymbolMasterStats {
   lastUpdatedAt: string | null;
 }
 
+export interface SymbolMasterSearchResult {
+  symbol: string;
+  name: string;
+  exchange: string;
+  series?: string;
+  isin?: string;
+}
+
 export async function getSymbolMasterStats(exchange: string): Promise<SymbolMasterStats> {
   return runSerialized(async () => {
     const db = await getDb();
@@ -489,6 +504,76 @@ export async function replaceSymbolMasterByExchange(exchange: string, rows: unkn
   });
 }
 
+export async function searchSymbolMaster(exchange: string, query: string, limit = 50): Promise<SymbolMasterSearchResult[]> {
+  const q = query.trim().toUpperCase();
+  if (q.length < 3) return [];
+  return runSerialized(async () => {
+    const db = await getDb();
+    const like = `%${q}%`;
+    const rows = await db.select<{ data: string }>(
+      `SELECT data FROM symbolMaster
+       WHERE json_extract(data, '$.exchange') = $1
+         AND (UPPER(json_extract(data, '$.symbol')) LIKE $2 OR UPPER(json_extract(data, '$.name')) LIKE $2)
+       ORDER BY
+         CASE WHEN UPPER(json_extract(data, '$.symbol')) = $3 THEN 0
+              WHEN UPPER(json_extract(data, '$.symbol')) LIKE $4 THEN 1
+              WHEN UPPER(json_extract(data, '$.name')) LIKE $4 THEN 2
+              ELSE 3 END,
+         json_extract(data, '$.symbol') ASC
+       LIMIT $5`,
+      [exchange, like, q, `${q}%`, limit]
+    );
+    return rows.map((r) => {
+      try {
+        const d = JSON.parse(r.data) as Record<string, unknown>;
+        return {
+          symbol: String(d.symbol ?? ''),
+          name: String(d.name ?? ''),
+          exchange: String(d.exchange ?? exchange),
+          series: typeof d.series === 'string' ? d.series : undefined,
+          isin: typeof d.isin === 'string' ? d.isin : undefined,
+        } as SymbolMasterSearchResult;
+      } catch {
+        return null;
+      }
+    }).filter((r): r is SymbolMasterSearchResult => r !== null && !!r.symbol);
+  });
+}
+
+
+async function seedDefaultStockCategoriesIfNeeded(db: SqliteDb): Promise<void> {
+  try {
+    const flagId = 'stockCategoriesDefaultsSeeded_v2';
+    const flagRows = await db.select<{ id: string }>(`SELECT id FROM settings WHERE id = $1 LIMIT 1`, [flagId]);
+    if (flagRows.length > 0) return;
+    await db.execute(`DELETE FROM stockCategories`);
+    const now = new Date().toISOString();
+    for (const def of DEFAULT_STOCK_CATEGORIES) {
+      const record = {
+        id: crypto.randomUUID(),
+        name: def.category,
+        description: def.description,
+        type: def.type,
+        preloaded: true,
+        createdAt: now,
+        updatedAt: now,
+        changedAt: now,
+      };
+      const json = JSON.stringify(record);
+      await db.execute(
+        `INSERT OR REPLACE INTO stockCategories (id, updatedAt, createdAt, changedAt, createdBy, changedBy, data) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [record.id, now, now, now, null, null, json]
+      );
+    }
+    const flagData = JSON.stringify({ id: flagId, seededAt: now });
+    await db.execute(
+      `INSERT OR REPLACE INTO settings (id, createdAt, changedAt, createdBy, changedBy, data) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [flagId, now, now, null, null, flagData]
+    );
+  } catch {
+    // ignore - can be retried on next launch
+  }
+}
 export async function resetLocalLedgerData(): Promise<void> {
   const db = await getDb();
   for (const t of DATA_TABLES) await db.execute(`DELETE FROM ${t}`);

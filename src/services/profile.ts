@@ -1,6 +1,7 @@
 import type { ProfileInput, UserProfile } from '../types';
 import { translate } from '../i18n';
 import { getRecord, putRecord, updateAuditActorInAllTables } from './sqlite';
+import { initializeProfileDefaults } from './profileInitialization';
 import { setAuditActorEmailCache } from './currentUser';
 
 export const PROFILE_ID = 'primary';
@@ -91,5 +92,8 @@ export async function saveProfile(input: ProfileInput): Promise<UserProfile> {
     }
   }
   setAuditActorEmailCache(nextEmail);
+  if (!existing) {
+    await initializeProfileDefaults();
+  }
   return profile;
 }
