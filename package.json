@@ -1,7 +1,7 @@
 {
   "name": "folio",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.1.6",
   "build": "261122.0",
   "versionChannel": "dev",
   "license": "MIT",

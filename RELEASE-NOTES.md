@@ -1,19 +1,10 @@
 # RELEASE NOTES
 
-## `v0.1.7`
-
-### Stocks & holdings
-- **Holdings workflow:** add/edit holdings with mandatory Exchange, Symbol, and Broker; broker/category dropdowns support quick add actions, category selection is limited to 5, and default categories are preloaded/protected.
-- **Smarter stock tables:** Holdings, Brokers, and Categories tabs now show counts, icons, clearer stat cards, data-driven filters, sortable columns, and clear-sort controls. Categories can be shown as tags in holdings, and broker delete is disabled when linked holdings exist.
-- **Symbol & search improvements:** symbol master refresh supports NSE EQUITY + SME_EQUITY, Universal Search now includes holdings, and dropdown/search UX is more consistent across the app.
-
-### Reliability & consistency
-- **Profile initialization:** default stock categories/symbol setup runs on new profile and after restore/clear-all-records flows.
-- **Smart table rules:** consistent behavior for filters, sorting, pagination, customize actions, and ellipsis tooltips; Clear Sort and Clear Filters controls now appear consistently across smart tables when applicable.
-
 ## `v0.1.6`
 
 ### Brokers & holdings
+- **Holdings workflow:** add/edit holdings with mandatory Exchange, Symbol, and Broker; broker/category dropdowns support quick add actions, category selection is limited to 5, and default categories are preloaded/protected.
+- **Smarter stock tables:** Holdings, Brokers, and Categories tabs now show counts, icons, clearer stat cards, data-driven filters, sortable columns, and clear-sort controls. Categories can be shown as tags in holdings, and broker delete is disabled when linked holdings exist.
 - **Brokers tab:** added a Brokers tab in Stocks to help you manage your brokerage/demat accounts in one place, with a clear table showing broker name, account details, symbols, invested value, market value, and unrealized gain/loss.
 - **Add or edit brokers easily:** you can now add and edit brokers using a guided step-by-step form. Select the brokerage/demat Financial Institution, then link a Savings or Current account for transfers and payouts.
 - **Find brokers quickly:** search and filter brokers by name, nickname, account number, Demat Account, or Transfer Account.
@@ -21,8 +12,12 @@
 - **NSE symbol master refresh:** Symbol Listings can now be refreshed from NSE EQUITY and SME_EQUITY lists, combining both sources and showing NSE/BSE counts with the last updated time.
 
 ### Search & navigation
-- **Universal search:** added a search bar in the shell bar so you can quickly find Financial Institutions and Deposits by name, deposit number, account type, bank name, or bank nickname, then jump directly to the matching record.
+- **Universal search:** added a search bar in the shell bar so you can quickly find Financial Institutions, Deposits, and Holdings by name or key details, then jump directly to the matching record.
 - **Smarter search results:** search now handles close matches and shows the best match first when there’s an exact match.
+
+### Reliability & consistency
+- **Profile initialization:** default stock categories/symbol setup runs on new profile and after restore/clear-all-records flows.
+- **Smart table rules:** consistent behavior for filters, sorting, pagination, customize actions, and ellipsis tooltips; Clear Sort and Clear Filters controls now appear consistently across smart tables when applicable.
 
 ### Clarity & polish
 - **Title bar date:** the app title now shows **Folio - [Current Date]** using your selected date format from Regional Formatting settings.
