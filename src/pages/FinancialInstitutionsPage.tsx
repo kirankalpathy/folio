@@ -238,7 +238,7 @@ export default function FinancialInstitutionsPage() {
           );
         },
       },
-      accountNumber: { title: t('institutions.table.accountNumber'), key: 'accountNumber', render: (_, r) => textCell(r.accountNumber) },
+      accountNumber: { title: t('institutions.table.accountNumber'), key: 'accountNumber', render: (_, r) => textCell(r.accountNumber ?? r.dematAccountNumber) },
       ifscCode: { title: t('institutions.table.ifsc'), key: 'ifscCode', render: (_, r) => textCell(r.ifscCode) },
       cifNumber: { title: t('institutions.table.cif'), key: 'cifNumber', render: (_, r) => textCell(r.cifNumber) },
       branchName: { title: t('institutions.table.branch'), key: 'branchName', render: (_, r) => textCell(r.branchName) },

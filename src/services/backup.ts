@@ -14,7 +14,7 @@ import { calculateDepositAccruedValueAsOf, calculateDepositValues, sanitizeDepos
 import { folioFileName } from '../utils/fileNaming';
 import { allRecords, bulkPutRecordsSilent, clearTableSilent, withTransaction } from './sqlite';
 
-const FINANCIAL_TABLES = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
+const FINANCIAL_TABLES = ['stockBrokers', 'stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'financialInstitutions'] as const;
 const ALL_TABLES = [...FINANCIAL_TABLES, 'profile', 'credentials'] as const;
 const DEXIE_NAME = 'folio';
 
@@ -40,7 +40,8 @@ export function totalRecords(counts: BackupRecordCounts): number {
 }
 
 export async function createBackup(): Promise<ApplicationBackupSchema> {
-  const [stocks, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions] = await Promise.all([
+  const [stockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions] = await Promise.all([
+    allRecords('stockBrokers'),
     allRecords('stocks'),
     allRecords('bonds'),
     allRecords('pfAccounts'),
@@ -54,7 +55,7 @@ export async function createBackup(): Promise<ApplicationBackupSchema> {
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     baseCurrency: 'INR',
-    data: { stocks, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions } as ApplicationBackupSchema['data'],
+    data: { stockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts, financialInstitutions } as ApplicationBackupSchema['data'],
   };
 }
 
@@ -232,6 +233,7 @@ function buildRestoreReport(preparedByTable: Record<(typeof FINANCIAL_TABLES)[nu
   }
 
   const others: Array<{ key: (typeof FINANCIAL_TABLES)[number]; labelKey: string }> = [
+    { key: 'stockBrokers', labelKey: 'backup.category.stockBrokers' },
     { key: 'stocks', labelKey: 'backup.category.stocks' },
     { key: 'bonds', labelKey: 'backup.category.bonds' },
     { key: 'pfAccounts', labelKey: 'backup.category.pfAccounts' },
@@ -262,6 +264,7 @@ export function buildExportReport(backup: ApplicationBackupSchema): BackupReport
   }
 
   const others: Array<{ key: keyof ApplicationBackupSchema['data']; labelKey: string }> = [
+    { key: 'stockBrokers', labelKey: 'backup.category.stockBrokers' },
     { key: 'stocks', labelKey: 'backup.category.stocks' },
     { key: 'bonds', labelKey: 'backup.category.bonds' },
     { key: 'pfAccounts', labelKey: 'backup.category.pfAccounts' },
@@ -281,6 +284,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   // Always perform full schema/record validation (no bypass).
   const backup = parseBackup(parsed);
   const preparedByTable: Record<(typeof FINANCIAL_TABLES)[number], PreparedRestore> = {
+    stockBrokers: prepareRecordsForRestore('stockBrokers', (backup.data.stockBrokers ?? (backup.data as unknown as Record<string, unknown>).stockPortfolios ?? []) as unknown[]),
     stocks: prepareRecordsForRestore('stocks', backup.data.stocks),
     bonds: prepareRecordsForRestore('bonds', backup.data.bonds),
     pfAccounts: prepareRecordsForRestore('pfAccounts', backup.data.pfAccounts),
@@ -298,6 +302,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
   }
 
   const counts: BackupRecordCounts = {
+    stockBrokers: preparedByTable.stockBrokers.success,
     stocks: preparedByTable.stocks.success,
     bonds: preparedByTable.bonds.success,
     pfAccounts: preparedByTable.pfAccounts.success,
@@ -314,6 +319,7 @@ export async function restoreBackup(source: unknown): Promise<RestoreResult> {
       await withTransaction(async (db) => {
         try { await db.execute('PRAGMA busy_timeout = 8000'); } catch { /* ignore */ }
         for (const table of FINANCIAL_TABLES) await clearTableSilent(db, table);
+        await bulkPutRecordsSilent(db, 'stockBrokers', preparedByTable.stockBrokers.records);
         await bulkPutRecordsSilent(db, 'stocks', preparedByTable.stocks.records);
         await bulkPutRecordsSilent(db, 'bonds', preparedByTable.bonds.records);
         await bulkPutRecordsSilent(db, 'pfAccounts', preparedByTable.pfAccounts.records);

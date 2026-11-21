@@ -6,6 +6,7 @@ import { useFinancialInstitutions } from '../../hooks/useFinancialInstitutions';
 import { useI18n } from '../../i18n';
 import { accountLabel } from '../deposits/depositTableHelpers';
 import { cn } from '../../utils/cn';
+import { matchScore } from '../../utils/search';
 
 interface SearchOption {
   value: string;
@@ -22,64 +23,6 @@ function navigateTo(path: string): void {
   window.location.hash = hash;
 }
 
-function levenshtein(a: string, b: string): number {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  const curr = new Array<number>(b.length + 1);
-  for (let i = 1; i <= a.length; i += 1) {
-    curr[0] = i;
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(curr[j - 1]! + 1, prev[j]! + 1, prev[j - 1]! + cost);
-    }
-    for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j]!;
-  }
-  return prev[b.length]!;
-}
-
-function similarity(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1;
-  return 1 - levenshtein(a, b) / maxLen;
-}
-
-function matchScore(query: string, text: string, threshold = 0.8): number {
-  const q = query.toLowerCase().trim();
-  const t = text.toLowerCase();
-  if (!q) return 0;
-  if (t.includes(q)) return 3;
-
-  const queryTokens = q.split(/\s+/).filter(Boolean);
-  const textTokens = t.split(/[\s·,/_-]+/).filter(Boolean);
-
-  let allTokensContained = true;
-  let allTokensFuzzy = true;
-
-  for (const qt of queryTokens) {
-    if (t.includes(qt)) continue;
-    allTokensContained = false;
-    const fuzzyToken = textTokens.some((tt) => {
-      if (tt.includes(qt) || qt.includes(tt)) return true;
-      if (similarity(qt, tt) >= threshold) return true;
-      if (tt.length > qt.length) {
-        for (let i = 0; i <= tt.length - qt.length; i += 1) {
-          if (similarity(qt, tt.slice(i, i + qt.length)) >= threshold) return true;
-        }
-      }
-      return false;
-    });
-    if (!fuzzyToken) {
-      allTokensFuzzy = false;
-      break;
-    }
-  }
-
-  if (allTokensContained) return 2;
-  if (allTokensFuzzy) return 1;
-  return 0;
-}
 
 interface UniversalSearchProps {
   className?: string;
@@ -199,7 +142,7 @@ export default function UniversalSearch({ className }: UniversalSearchProps) {
         style={{ width: '100%' }}
         popupMatchSelectWidth
         getPopupContainer={() => containerRef.current ?? document.body}
-        popupClassName="border border-folio-ink/10 dark:border-white/10 rounded-lg shadow-folio"
+        classNames={{ popup: { root: 'border border-folio-ink/10 dark:border-white/10 rounded-lg shadow-folio' } }}
         notFoundContent={query.trim() && filtered.length === 0 ? <span className="text-xs text-folio-ink/45 dark:text-white/40">{t('universalSearch.empty')}</span> : null}
       >
         <Input

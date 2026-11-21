@@ -208,6 +208,21 @@ export type AuthCredential = PasscodeCredential | PasscodeFreeCredential;
 
 
 
+export const StockBrokerCurrency = {
+  INR: 'INR',
+} as const;
+export type StockBrokerCurrency = (typeof StockBrokerCurrency)[keyof typeof StockBrokerCurrency];
+
+export interface StockBroker extends BaseRecord {
+  name: string;
+  nickname?: string;
+  financialInstitutionId?: string;
+  transferAccountId?: string;
+  currency: StockBrokerCurrency;
+}
+
+export type StockBrokerInput = Omit<StockBroker, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'changedBy' | 'changedAt'>;
+
 export interface StockHolding extends BaseRecord {
   symbol: string;
   name: string;
@@ -218,6 +233,7 @@ export interface StockHolding extends BaseRecord {
   averageCost: number;
   currentPrice: number;
   purchaseDate: string;
+  brokerId?: string;
 }
 
 export interface BondHolding extends BaseRecord {
@@ -434,6 +450,7 @@ export interface DebtItem extends BaseRecord {
 }
 
 export interface PortfolioSnapshot {
+  stockBrokers: StockBroker[];
   stocks: StockHolding[];
   bonds: BondHolding[];
   pfAccounts: PFAccount[];
@@ -509,6 +526,7 @@ export interface NetWorthSummary {
 }
 
 export interface ApplicationBackupData {
+  stockBrokers?: StockBroker[];
   stocks: StockHolding[];
   bonds: BondHolding[];
   pfAccounts: PFAccount[];
@@ -527,6 +545,7 @@ export interface ApplicationBackupSchema {
 }
 
 export interface BackupRecordCounts {
+  stockBrokers: number;
   stocks: number;
   bonds: number;
   pfAccounts: number;

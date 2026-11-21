@@ -23,6 +23,8 @@ import ProvidentFundsPage from '../../pages/ProvidentFundsPage';
 import ProfilePage from '../../pages/ProfilePage';
 import SettingsPage from '../../pages/SettingsPage';
 import LedgerPage from '../ledger/LedgerPage';
+import StocksPage from '../../pages/StocksPage';
+import StockBrokerFormPage from '../../pages/StockBrokerFormPage';
 import AppLoadingScreen from '../common/AppLoadingScreen';
 
 function BootScreen() {
@@ -95,7 +97,9 @@ export default function AuthGate() {
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<DashboardPage />} />
-              <Route path="stocks" element={<LedgerPage assetClass="stocks" />} />
+              <Route path="stocks" element={<StocksPage />} />
+              <Route path="stocks/brokers/new" element={<StockBrokerFormPage />} />
+              <Route path="stocks/brokers/:id/edit" element={<StockBrokerFormPage />} />
               <Route path="bonds" element={<LedgerPage assetClass="bonds" />} />
               <Route path="pf" element={<LedgerPage assetClass="pf" />} />
               <Route path="provident-funds" element={<ProvidentFundsPage />} />

@@ -2,6 +2,12 @@
 
 ## `v0.1.6`
 
+### Brokers & holdings
+- **Brokers tab:** added a Brokers tab in Stocks to help you manage your brokerage/demat accounts in one place, with a clear table showing broker name, account details, symbols, invested value, market value, and unrealized gain/loss.
+- **Add or edit brokers easily:** you can now add and edit brokers using a guided step-by-step form. Select the brokerage/demat Financial Institution, then link a Savings or Current account for transfers and payouts.
+- **Find brokers quickly:** search and filter brokers by name, nickname, account number, Demat Account, or Transfer Account.
+- **Holdings tab:** renamed the holdings tab to **Holdings** for clearer, simpler naming.
+
 ### Search & navigation
 - **Universal search:** added a search bar in the shell bar so you can quickly find Financial Institutions and Deposits by name, deposit number, account type, bank name, or bank nickname, then jump directly to the matching record.
 - **Smarter search results:** search now handles close matches and shows the best match first when there’s an exact match.
@@ -9,6 +15,9 @@
 ### Clarity & polish
 - **Title bar date:** the app title now shows **Folio - [Current Date]** using your selected date format from Regional Formatting settings.
 - **Net Worth banner:** Unrealized Gain in the Net Worth banner now uses the same green shade as Total Gain for clearer, more consistent gain colors.
+- **Demat account numbers:** Financial Institution tables now show the Demat account number in the Account Number column when applicable.
+- **More consistent selection fields:** multi-select fields now look and behave more consistently across the app.
+- **Table customization:** the table customization button is now placed in the table header for a cleaner, more consistent layout.
 
 ## `v0.1.5`
 

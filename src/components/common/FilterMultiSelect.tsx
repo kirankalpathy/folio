@@ -12,8 +12,8 @@ type FilterMultiSelectProps = Omit<SelectProps<string[], FilterOption>, 'mode' |
 };
 
 /**
- * Consistent multiselect for table filters: stable sizing (no shrink on selection),
- * responsive tags, and standard multiselect icons.
+ * Consistent multiselect for filters and forms: stable sizing (no shrink on selection),
+ * responsive tags, checkbox option rendering, and standard multiselect styling.
  */
 export default function FilterMultiSelect({
   className,

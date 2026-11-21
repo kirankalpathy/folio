@@ -10,6 +10,7 @@ type FieldRule = readonly [key: string, kind: FieldKind, extra?: FieldExtra];
 
 const EXCHANGES = ['NSE', 'BSE', 'NASDAQ', 'NYSE', 'OTHER'] as const;
 const STOCK_INSTRUMENTS = ['equity', 'etf', 'reit', 'invit'] as const;
+const STOCK_BROKER_CURRENCIES = ['INR'] as const;
 const BOND_TYPES = ['government', 'corporate', 'tax-free', 'other'] as const;
 const COUPON_FREQUENCIES = ['annual', 'semi-annual', 'quarterly', 'monthly', 'zero-coupon'] as const;
 const PF_TYPES = ['EPF', 'PPF', 'VPF', 'NPS', 'OTHER'] as const;
@@ -41,6 +42,15 @@ const BASE_FIELDS: FieldRule[] = [
   ['notes', 'string', 'optional'],
 ];
 
+const STOCK_BROKER_FIELDS: FieldRule[] = [
+  ...BASE_FIELDS,
+  ['name', 'string'],
+  ['nickname', 'string', 'optional'],
+  ['financialInstitutionId', 'string', 'optional'],
+  ['transferAccountId', 'string', 'optional'],
+  ['currency', 'string', STOCK_BROKER_CURRENCIES],
+];
+
 const STOCK_FIELDS: FieldRule[] = [
   ...BASE_FIELDS,
   ['symbol', 'string'],
@@ -52,6 +62,7 @@ const STOCK_FIELDS: FieldRule[] = [
   ['averageCost', 'number'],
   ['currentPrice', 'number'],
   ['purchaseDate', 'date'],
+  ['brokerId', 'string', 'optional'],
 ];
 
 const BOND_FIELDS: FieldRule[] = [
@@ -365,9 +376,26 @@ export function parseBackup(input: unknown): ApplicationBackupSchema {
   }
   if (!isRecord(input.data)) fail(translate('errors.backup.noData'));
 
+  // Normalize legacy field names
+  if (Array.isArray(input.data.stocks)) {
+    for (const s of input.data.stocks) {
+      if (isRecord(s) && s.brokerId === undefined && typeof s.portfolioId === 'string') {
+        s.brokerId = s.portfolioId;
+      }
+    }
+  }
+
   const issues: string[] = [];
   for (const [name, fields] of COLLECTIONS) {
     validateCollection(name, input.data[name], fields, issues);
+  }
+  if (input.data.stockBrokers === undefined && input.data.stockPortfolios !== undefined) {
+    input.data.stockBrokers = input.data.stockPortfolios;
+  }
+  if (input.data.stockBrokers !== undefined) {
+    validateCollection('stockBrokers', input.data.stockBrokers, STOCK_BROKER_FIELDS, issues);
+  } else {
+    input.data.stockBrokers = [];
   }
   if (input.data.financialInstitutions !== undefined) {
     validateCollection('financialInstitutions', input.data.financialInstitutions, FINANCIAL_INSTITUTION_FIELDS, issues);
@@ -552,6 +580,7 @@ export function validateBackupWithErrors(input: unknown): {
   let totalRecords = 0;
 
   const ENTITY_LABEL_KEYS: Record<string, string> = {
+    stockBrokers: 'backup.category.stockBrokers',
     stocks: 'backup.category.stocks',
     bonds: 'backup.category.bonds',
     pfAccounts: 'backup.category.pfAccounts',
@@ -610,6 +639,18 @@ export function validateBackupWithErrors(input: unknown): {
   }
 
   // simplifyReason removed — replaced by friendlyReasonFor above
+
+  // Normalize legacy field names
+  if (Array.isArray(input.data.stocks)) {
+    for (const s of input.data.stocks) {
+      if (isRecord(s) && s.brokerId === undefined && typeof s.portfolioId === 'string') {
+        s.brokerId = s.portfolioId;
+      }
+    }
+  }
+  if (input.data.stockBrokers === undefined && input.data.stockPortfolios !== undefined) {
+    input.data.stockBrokers = input.data.stockPortfolios;
+  }
 
   // Validate each collection
   for (const [name, fields] of COLLECTIONS) {
@@ -746,6 +787,50 @@ export function validateBackupWithErrors(input: unknown): {
     });
   }
 
+  // Stock brokers (optional for legacy backups; accept legacy stockPortfolios key)
+  if (input.data.stockBrokers === undefined && input.data.stockPortfolios !== undefined) {
+    input.data.stockBrokers = input.data.stockPortfolios;
+  }
+  const spValue = input.data.stockBrokers;
+  if (spValue !== undefined) {
+    if (!Array.isArray(spValue)) {
+      addError('stockBrokers', -1, {}, 'stockBrokers', 'must be a list', spValue, 'Stock Brokers');
+    } else {
+      const spIds = new Set<string>();
+      spValue.forEach((item, index) => {
+        totalRecords++;
+        if (!isRecord(item)) {
+          addError('stockBrokers', index, {}, 'stockBrokers', 'not a valid object', item, 'Record');
+          return;
+        }
+        for (const field of STOCK_BROKER_FIELDS) {
+          const [key, kind, extra] = field;
+          const val = resolveAuditAlias(item, key);
+          const meta = fieldMeta(extra);
+          if (val === undefined) {
+            if (!meta.optional) addError('stockBrokers', index, item, key, `missing required "${key}"`, val);
+            continue;
+          }
+          if (kind === 'number' && (typeof val !== 'number' || !Number.isFinite(val))) addError('stockBrokers', index, item, key, `"${key}" must be a valid number`, val);
+          if (kind === 'boolean' && typeof val !== 'boolean') addError('stockBrokers', index, item, key, `"${key}" must be true or false`, val);
+          if (typeof val !== 'string' && kind !== 'number' && kind !== 'boolean') addError('stockBrokers', index, item, key, `"${key}" must be text`, val);
+          if (kind === 'date' && typeof val === 'string' && Number.isNaN(Date.parse(val))) addError('stockBrokers', index, item, key, `"${key}" must be a valid date`, val);
+          if (meta.enumValues && typeof val === 'string' && !meta.enumValues.includes(val)) addError('stockBrokers', index, item, key, `"${key}" has an unsupported value "${val}"`, val);
+        }
+        const id = item.id;
+        if (typeof id !== 'string' || id.length === 0) {
+          addError('stockBrokers', index, item, 'id', 'missing required "id"', id);
+        } else {
+          if (!isUuid(id)) addError('stockBrokers', index, item, 'id', '"id" must be a valid UUID', id);
+          if (spIds.has(id)) addError('stockBrokers', index, item, 'id', 'has a duplicate id', id);
+          else spIds.add(id);
+        }
+      });
+    }
+  } else {
+    input.data.stockBrokers = [];
+  }
+
   // Financial institutions
   const fiValue = input.data.financialInstitutions;
   if (fiValue !== undefined) {
@@ -808,7 +893,7 @@ export function validateBackupWithErrors(input: unknown): {
   const valid = errors.length === 0;
 
   // Per-entity summaries
-  const entityOrder = ['financialInstitutions', 'stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts'];
+  const entityOrder = ['financialInstitutions', 'stockBrokers', 'stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts'];
   const entities: RestoreEntitySummary[] = [];
   for (const key of entityOrder) {
     const labelKey = ENTITY_LABEL_KEYS[key] ?? key;

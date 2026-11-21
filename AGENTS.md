@@ -64,6 +64,7 @@ This document summarizes the engineering and product conventions established for
 - **Accessibility/interaction**: follow established UX rules (e.g., global text selection limited to editable/text-entry contexts; consistent focus/contrast; clear validation messages).
 - **Icons and components**: use existing libraries/patterns (Lucide icons, AntD components) consistently. Lucide icons inherit the global stroke weight from `--folio-icon-stroke-width` in `src/index.css`; do not set per-icon `strokeWidth` unless a documented exception is needed.
 - **Reuse over re-engineering**: try to reuse UI framework components and existing patterns as much as possible. Implement custom logic **IF AND ONLY IF** it adds value and makes absolute sense. If something can be achieved with the standard framework (AntD, Tailwind, React, Tauri plugins), prioritize that over custom implementations. Avoid re-engineering as much as possible. Before building a custom component, check if AntD or an existing shared component already provides the needed functionality.
+- **Multi-select fields**: all multi-select fields across the application must use the same style and behavior. Use the reusable `FilterMultiSelect` component (`src/components/common/FilterMultiSelect.tsx`) for consistent checkbox option rendering, selected-state icons, responsive tag count, and dropdown styling. Do not create ad-hoc `Select mode="multiple"` implementations with different option renderers/suffix icons unless there is a documented exception.
 
 ## 5. Internationalization (i18n)
 

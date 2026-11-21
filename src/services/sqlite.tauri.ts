@@ -1,6 +1,6 @@
 import Database from '@tauri-apps/plugin-sql';
 import Dexie from 'dexie';
-import type { AuthCredential, BondHolding, CommodityHolding, DebtItem, DepositHolding, PFAccount, PortfolioSnapshot, StockHolding, UserProfile } from '../types';
+import type { AuthCredential, BondHolding, CommodityHolding, DebtItem, DepositHolding, PFAccount, PortfolioSnapshot, StockHolding, StockBroker, UserProfile } from '../types';
 import { emitDbChange } from './dbEvents';
 
 export const FOLIO_SQLITE_NAME = 'folio.db';
@@ -13,8 +13,8 @@ export interface SqliteDb {
   select: <T = Record<string, SqlValue>>(sql: string, bind?: SqlValue[]) => Promise<T[]>;
 }
 
-type TableName = 'stocks' | 'bonds' | 'pfAccounts' | 'deposits' | 'commodities' | 'debts' | 'profile' | 'credentials' | 'financialInstitutions';
-const DATA_TABLES: TableName[] = ['stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'profile', 'credentials', 'financialInstitutions'];
+type TableName = 'stockBrokers' | 'stocks' | 'bonds' | 'pfAccounts' | 'deposits' | 'commodities' | 'debts' | 'profile' | 'credentials' | 'financialInstitutions';
+const DATA_TABLES: TableName[] = ['stockBrokers', 'stocks', 'bonds', 'pfAccounts', 'deposits', 'commodities', 'debts', 'profile', 'credentials', 'financialInstitutions'];
 const ALL_AUDITED_TABLES = [...DATA_TABLES, 'settings'] as const;
 type FolioSqliteGlobal = typeof globalThis & {
   __folioDbPromise?: Promise<SqliteDb> | null;
@@ -126,6 +126,19 @@ async function initSchema(db: SqliteDb): Promise<void> {
   try { await db.execute('PRAGMA busy_timeout = 8000'); } catch { /* ignore if unsupported */ }
   try { await db.execute('PRAGMA journal_mode = WAL'); } catch { /* ignore if unsupported */ }
   try { await db.execute('PRAGMA synchronous = NORMAL'); } catch { /* ignore if unsupported */ }
+  // Migrate legacy stockPortfolios table -> stockBrokers
+  const hasLegacyPortfolios = await db.select<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name='stockPortfolios'");
+  const hasBrokers = await db.select<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name='stockBrokers'");
+  if (hasLegacyPortfolios.length > 0 && hasBrokers.length === 0) {
+    await db.execute('ALTER TABLE stockPortfolios RENAME TO stockBrokers');
+  } else if (hasLegacyPortfolios.length > 0 && hasBrokers.length > 0) {
+    // both exist - move rows if brokers empty
+    const brokerCount = await tableCount(db, 'stockBrokers');
+    if (brokerCount === 0) {
+      await db.execute('INSERT OR IGNORE INTO stockBrokers SELECT * FROM stockPortfolios');
+    }
+  }
+  await db.execute(`CREATE TABLE IF NOT EXISTS stockBrokers (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS stocks (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS bonds (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS pfAccounts (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
@@ -226,18 +239,21 @@ function normalizeStoredProfileForMigration(row: Record<string, unknown>): UserP
 async function migrateFromDexieIfNeeded(db: SqliteDb): Promise<void> {
   for (const t of DATA_TABLES) if ((await tableCount(db, t)) > 0) return;
   const dexie = new Dexie(DEXIE_NAME);
-  dexie.version(1).stores({ stocks: 'id', bonds: 'id', pfAccounts: 'id', deposits: 'id, maturityDate', commodities: 'id', debts: 'id', profile: 'id', credentials: 'id' });
+  dexie.version(1).stores({ stockBrokers: 'id', stocks: 'id', bonds: 'id', pfAccounts: 'id', deposits: 'id, maturityDate', commodities: 'id', debts: 'id', profile: 'id', credentials: 'id' });
   const openOk = await dexie.open().then(() => true).catch(() => false);
   if (!openOk) return;
   try {
-    const [stocks, bonds, pfAccounts, deposits, commodities, debts, profile, credentials] = await Promise.all([
-      dexie.table('stocks').toArray(), dexie.table('bonds').toArray(), dexie.table('pfAccounts').toArray(), dexie.table('deposits').toArray(),
+    const safeArray = async (table: string) => { try { return await dexie.table(table).toArray(); } catch { return []; } };
+    const [stockBrokers, legacyStockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts, profile, credentials] = await Promise.all([
+      safeArray('stockBrokers'), safeArray('stockPortfolios'), dexie.table('stocks').toArray(), dexie.table('bonds').toArray(), dexie.table('pfAccounts').toArray(), dexie.table('deposits').toArray(),
       dexie.table('commodities').toArray(), dexie.table('debts').toArray(), dexie.table('profile').toArray(), dexie.table('credentials').toArray(),
     ]);
-    const total = stocks.length + bonds.length + pfAccounts.length + deposits.length + commodities.length + debts.length + profile.length + credentials.length;
+    const allStockBrokers = stockBrokers.length > 0 ? stockBrokers : legacyStockBrokers;
+    const total = allStockBrokers.length + stocks.length + bonds.length + pfAccounts.length + deposits.length + commodities.length + debts.length + profile.length + credentials.length;
     if (total === 0) return;
     await db.execute('BEGIN');
     try {
+      for (const row of allStockBrokers as StockBroker[]) await putJson(db, 'stockBrokers', row.id, row, { updatedAt: row.updatedAt });
       for (const row of stocks as StockHolding[]) await putJson(db, 'stocks', row.id, row, { updatedAt: row.updatedAt });
       for (const row of bonds as BondHolding[]) await putJson(db, 'bonds', row.id, row, { updatedAt: row.updatedAt });
       for (const row of pfAccounts as PFAccount[]) await putJson(db, 'pfAccounts', row.id, row, { updatedAt: row.updatedAt });
@@ -251,19 +267,29 @@ async function migrateFromDexieIfNeeded(db: SqliteDb): Promise<void> {
   } finally { dexie.close(); }
 }
 
+function normalizeLegacyRecord(table: string, value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const rec = value as Record<string, unknown>;
+  if (table === 'stocks' && rec.brokerId === undefined && typeof rec.portfolioId === 'string') {
+    rec.brokerId = rec.portfolioId;
+  }
+  return rec;
+}
+
 export async function allRecords<T>(table: string, orderBy?: string): Promise<T[]> {
   return runSerialized(async () => {
     const db = await getDb();
     const sql = orderBy ? `SELECT data FROM ${table} ORDER BY ${orderBy} ASC` : `SELECT data FROM ${table}`;
     const rows = await db.select<{ data: string }>(sql);
-    return rows.map((r) => parseJson<T>(r.data)).filter((v): v is T => v !== null);
+    return rows.map((r) => normalizeLegacyRecord(table, parseJson<T>(r.data))).filter((v): v is T => v !== null);
   });
 }
 export async function getRecord<T>(table: string, id: string): Promise<T | null> {
   return runSerialized(async () => {
     const db = await getDb();
     const rows = await db.select<{ data: string }>(`SELECT data FROM ${table} WHERE id = $1 LIMIT 1`, [id]);
-    return parseJson<T>(rows[0]?.data);
+    const parsed = parseJson<T>(rows[0]?.data);
+    return (parsed == null ? null : normalizeLegacyRecord(table, parsed)) as T | null;
   });
 }
 export async function putRecord(table: string, id: string, data: unknown, extra?: Record<string, SqlValue>): Promise<void> {
@@ -305,11 +331,11 @@ export async function withTransaction(fn: (db: SqliteDb) => void | Promise<void>
   });
 }
 export async function loadPortfolioSnapshotSqlite(): Promise<PortfolioSnapshot> {
-  const [stocks, bonds, pfAccounts, deposits, commodities, debts] = await Promise.all([
-    allRecords<StockHolding>('stocks'), allRecords<BondHolding>('bonds'), allRecords<PFAccount>('pfAccounts'),
+  const [stockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts] = await Promise.all([
+    allRecords<StockBroker>('stockBrokers'), allRecords<StockHolding>('stocks'), allRecords<BondHolding>('bonds'), allRecords<PFAccount>('pfAccounts'),
     allRecords<DepositHolding>('deposits', 'maturityDate'), allRecords<CommodityHolding>('commodities'), allRecords<DebtItem>('debts'),
   ]);
-  return { stocks, bonds, pfAccounts, deposits, commodities, debts };
+  return { stockBrokers, stocks, bonds, pfAccounts, deposits, commodities, debts };
 }
 export async function putRecordSilent(db: SqliteDb, table: string, id: string, data: unknown, extra?: Record<string, SqlValue>): Promise<void> { await putJson(db, table, id, data, extra); }
 export async function clearTableSilent(db: SqliteDb, table: string): Promise<void> { await db.execute(`DELETE FROM ${table}`); }

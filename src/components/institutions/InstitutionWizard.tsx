@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Button, Form, Input, InputNumber, Select, Steps } from 'antd';
-import { ArrowLeft, ArrowRight, Building2, CopyCheck, CreditCard, Globe, Landmark, LineChart, MapPin, Users, Wallet, WifiOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, CreditCard, Globe, Landmark, LineChart, MapPin, Users, Wallet, WifiOff } from 'lucide-react';
 import type { CardNetwork, FinancialInstitution, FinancialInstitutionCategory, FinancialInstitutionInput, InvestmentSegment } from '../../types';
 import { useI18n } from '../../i18n';
 import { listFinancialInstitutions } from '../../services/financialInstitutions';
 import { UPI_ID_REGEX } from '../../utils/upi';
 import MobileInput, { mobileInputRules } from '../common/MobileInput';
+import FilterMultiSelect from '../common/FilterMultiSelect';
 import { CARD_NETWORK_COLORS } from '../../theme/palette';
 import {
   defaultInstitutionValues,
@@ -297,9 +298,7 @@ export default function InstitutionWizard({ institution, onCancel, onSubmit, sub
                 <Input placeholder={t('institutions.placeholder.dpId')} />
               </Form.Item>
               <Form.Item label={t('institutions.fields.segments')} name="segments" className="sm:col-span-2" rules={[{ required: true, type: 'array', min: 1, message: t('institutions.validation.segmentsRequired') }]}>
-                <Select
-                  mode="multiple"
-                  suffixIcon={<CopyCheck size={14} className="text-folio-ink/40 dark:text-white/35" />}
+                <FilterMultiSelect
                   placeholder={t('institutions.validation.segmentsRequired')}
                   options={(['cash-equity-mf', 'equity-fo', 'commodities', 'debt'] as InvestmentSegment[]).map((s) => ({
                     value: s,
