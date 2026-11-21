@@ -8,6 +8,7 @@ interface StatCardProps {
   value?: ReactNode;
   hint?: ReactNode;
   icon?: ReactNode;
+  action?: ReactNode;
   tone?: StatTone;
   onValueClick?: () => void;
   valueAriaLabel?: string;
@@ -25,6 +26,7 @@ export default function StatCard({
   value,
   hint,
   icon,
+  action,
   tone = 'default',
   onValueClick,
   valueAriaLabel,
@@ -33,7 +35,7 @@ export default function StatCard({
     <div className="folio-card p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="folio-label min-w-0 flex-1 font-semibold">{label}</div>
-        {icon && <span className="text-folio-ink/30 dark:text-white/30">{icon}</span>}
+        {action ? <div className="shrink-0">{action}</div> : icon ? <span className="text-folio-ink/30 dark:text-white/30">{icon}</span> : null}
       </div>
       {value !== undefined && value !== null && value !== '' ? (
         onValueClick ? (

@@ -159,7 +159,7 @@ export default function TableLayoutControl({ tableId, columns, placement = 'bott
       }}
       autoAdjustOverflow
       getPopupContainer={() => document.body}
-      overlayInnerStyle={{ padding: 12, width: 320, maxWidth: 'min(92vw, 320px)' }}
+      styles={{ container: { padding: 12, width: 320, maxWidth: 'min(92vw, 320px)' } }}
       content={
         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-2">

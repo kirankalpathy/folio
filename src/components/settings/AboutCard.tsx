@@ -3,6 +3,7 @@ import { Tag } from 'antd';
 import pkg from '../../../package.json';
 import { useI18n } from '../../i18n';
 import { INDIA_FLAG_COLORS } from '../../theme/palette';
+import { SYMBOL_MASTER_CONFIG } from '../../config/symbolMasterConfig';
 
 function IndianFlagIcon({ className }: { className?: string }) {
   return (
@@ -60,6 +61,34 @@ export default function AboutCard() {
           ) : (
             <span className="text-sm text-folio-ink/50 dark:text-white/45">—</span>
           )}
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-1">
+        <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-folio-ink/45 dark:text-white/40">
+          {t('settings.about.symbolListings')}
+        </p>
+        <div className="divide-y divide-folio-ink/10 dark:divide-white/[0.07]">
+          <div className="flex items-start justify-between gap-4 py-3 first:pt-0">
+            <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.symbolListingsNse')}</span>
+            <div className="flex max-w-[60%] flex-col items-end gap-1.5">
+              {SYMBOL_MASTER_CONFIG.nse.sources.map((src) => (
+                <a
+                  key={src.key}
+                  href={src.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all text-right font-mono text-[0.6875rem] text-folio-primary underline decoration-folio-primary/30 underline-offset-2 hover:decoration-folio-primary dark:text-folio-accent dark:decoration-folio-accent/30 dark:hover:decoration-folio-accent"
+                >
+                  {src.url}
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+            <span className="text-sm font-medium text-folio-ink/85 dark:text-white/85">{t('settings.about.symbolListingsBse')}</span>
+            <span className="text-sm text-folio-ink/50 dark:text-white/45">—</span>
+          </div>
         </div>
       </div>
       <p className="flex items-center justify-center gap-1.5 pt-1 text-[0.75rem] text-folio-ink/55 dark:text-white/50">

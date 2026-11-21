@@ -9,6 +9,7 @@ type FilterMultiSelectProps = Omit<SelectProps<string[], FilterOption>, 'mode' |
   className?: string;
   options?: FilterOption[];
   children?: ReactNode;
+  popupClassName?: string;
 };
 
 /**
@@ -24,6 +25,7 @@ export default function FilterMultiSelect({
   value,
   popupClassName,
   maxTagPlaceholder,
+  classNames,
   ...props
 }: FilterMultiSelectProps) {
   return (
@@ -39,10 +41,20 @@ export default function FilterMultiSelect({
           </Tooltip>
         ))
       }
-      suffixIcon={suffixIcon}
+      suffix={suffixIcon}
       popupMatchSelectWidth={popupMatchSelectWidth}
       value={value}
-      popupClassName={`folio-multiselect-dropdown ${popupClassName ?? ''}`}
+      classNames={{
+        ...(typeof classNames === 'object' && classNames ? classNames : {}),
+        popup: {
+          ...(typeof classNames === 'object' && classNames?.popup ? classNames.popup : {}),
+          root: [
+            typeof classNames === 'object' ? classNames?.popup?.root : undefined,
+            'folio-multiselect-dropdown',
+            popupClassName,
+          ].filter(Boolean).join(' '),
+        },
+      }}
       menuItemSelectedIcon={null}
       optionRender={
         optionRender ??

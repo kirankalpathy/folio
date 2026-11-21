@@ -7,17 +7,20 @@ import {
   deleteRecord as deleteRecordTauri,
   getDb as getDbTauri,
   getRecord as getRecordTauri,
+  getSymbolMasterStats as getSymbolMasterStatsTauri,
   loadPortfolioSnapshotSqlite as loadPortfolioSnapshotSqliteTauri,
   putRecord as putRecordTauri,
   putRecordSilent as putRecordSilentTauri,
+  replaceSymbolMasterByExchange as replaceSymbolMasterByExchangeTauri,
   resetLocalLedgerData as resetLocalLedgerDataTauri,
   updateAuditActorInAllTables as updateAuditActorInAllTablesTauri,
   withTransaction as withTransactionTauri,
   type SqliteDb,
+  type SymbolMasterStats,
 } from './sqlite.tauri';
 
 type SqlValue = string | number | null;
-export type { SqliteDb };
+export type { SqliteDb, SymbolMasterStats };
 export const FOLIO_SQLITE_NAME = 'folio.db';
 
 function assertTauri(): void {
@@ -81,4 +84,14 @@ export async function resetLocalLedgerData(): Promise<void> {
 export async function updateAuditActorInAllTables(oldIdentifiers: string[], newEmail: string): Promise<void> {
   assertTauri();
   return updateAuditActorInAllTablesTauri(oldIdentifiers, newEmail);
+}
+
+export async function getSymbolMasterStats(exchange: string): Promise<SymbolMasterStats> {
+  assertTauri();
+  return getSymbolMasterStatsTauri(exchange);
+}
+
+export async function replaceSymbolMasterByExchange(exchange: string, rows: unknown[]): Promise<void> {
+  assertTauri();
+  return replaceSymbolMasterByExchangeTauri(exchange, rows);
 }

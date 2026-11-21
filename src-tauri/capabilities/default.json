@@ -34,6 +34,16 @@
     "updater:allow-check",
     "updater:allow-download-and-install",
     "process:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "http:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://archives.nseindia.com/**" },
+        { "url": "https://nsearchives.nseindia.com/**" },
+        { "url": "https://api.bseindia.com/**" },
+        { "url": "https://www.bseindia.com/**" }
+      ]
+    }
   ]
 }

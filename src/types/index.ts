@@ -213,6 +213,40 @@ export const StockBrokerCurrency = {
 } as const;
 export type StockBrokerCurrency = (typeof StockBrokerCurrency)[keyof typeof StockBrokerCurrency];
 
+export const SymbolExchange = {
+  NSE: 'NSE',
+  BSE: 'BSE',
+} as const;
+export type SymbolExchange = (typeof SymbolExchange)[keyof typeof SymbolExchange];
+
+export const NseSeries = {
+  EQ: 'EQ',
+  BE: 'BE',
+  BZ: 'BZ',
+  SM: 'SM',
+  ST: 'ST',
+  SZ: 'SZ',
+} as const;
+export type NseSeries = (typeof NseSeries)[keyof typeof NseSeries];
+
+export const NSE_SERIES_LABELS: Record<NseSeries, string> = {
+  [NseSeries.EQ]: 'Equity',
+  [NseSeries.BE]: 'Book Entry',
+  [NseSeries.BZ]: 'Trade-to-Trade',
+  [NseSeries.SM]: 'Rolling Statement',
+  [NseSeries.ST]: 'Trade-for-trade',
+  [NseSeries.SZ]: 'Trade-for-trade (Z Category)',
+};
+
+export interface SymbolMasterRecord extends BaseRecord {
+  symbol: string;
+  name: string;
+  exchange: SymbolExchange;
+  series?: NseSeries | string;
+  isin?: string;
+  source?: string;
+}
+
 export interface StockBroker extends BaseRecord {
   name: string;
   nickname?: string;

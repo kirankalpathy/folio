@@ -349,9 +349,9 @@ export default function DepositsPage() {
                 onChange={(value) => setBankFilter(value)}
                 placeholder={t('deposit.filter.bank')}
                 options={bankOptions}
-                suffixIcon={multiselectSuffixIcon}
+                suffix={multiselectSuffixIcon}
                 popupMatchSelectWidth={false}
-                popupClassName="folio-multiselect-dropdown"
+                classNames={{ popup: { root: 'folio-multiselect-dropdown' } }}
                 menuItemSelectedIcon={null}
                 optionRender={(option) => (
                   <span className="inline-flex w-full items-center gap-2">
@@ -370,9 +370,9 @@ export default function DepositsPage() {
                 onChange={(value) => setLifecycleFilter(value as DepositLifecycleStatus[])}
                 placeholder={t('deposit.filter.lifecycle')}
                 optionLabelProp="label"
-                suffixIcon={multiselectSuffixIcon}
+                suffix={multiselectSuffixIcon}
                 popupMatchSelectWidth={false}
-                popupClassName="folio-multiselect-dropdown"
+                classNames={{ popup: { root: 'folio-multiselect-dropdown' } }}
                 menuItemSelectedIcon={null}
                 options={lifecycleFilterOptions.map((o) => ({
                   value: o.value,
@@ -396,9 +396,9 @@ export default function DepositsPage() {
                 onChange={(value) => setAccountTypeFilter(value as DepositType[])}
                 placeholder={t('deposit.filter.accountType')}
                 optionLabelProp="label"
-                suffixIcon={multiselectSuffixIcon}
+                suffix={multiselectSuffixIcon}
                 popupMatchSelectWidth={false}
-                popupClassName="folio-multiselect-dropdown"
+                classNames={{ popup: { root: 'folio-multiselect-dropdown' } }}
                 menuItemSelectedIcon={null}
                 options={accountTypeOptions.map((o) => {
                   const label = accountLabel(o.value, t);
@@ -428,9 +428,9 @@ export default function DepositsPage() {
                 value={interestPayoutFilter}
                 onChange={(value) => setInterestPayoutFilter(value as InterestPayoutOption[])}
                 placeholder={t('deposit.filter.interestPayoutFrequency')}
-                suffixIcon={multiselectSuffixIcon}
+                suffix={multiselectSuffixIcon}
                 popupMatchSelectWidth={false}
-                popupClassName="folio-multiselect-dropdown"
+                classNames={{ popup: { root: 'folio-multiselect-dropdown' } }}
                 menuItemSelectedIcon={null}
                 options={interestPayoutOptions.map((o) => ({ value: o.value, label: t(o.label) }))}
                 optionRender={(option) => (
@@ -448,7 +448,7 @@ export default function DepositsPage() {
                   options={MATURITY_DATE_OPS}
                   style={{ width: 44 }}
                   popupMatchSelectWidth={56}
-                  suffixIcon={null}
+                  suffix={null}
                   aria-label={depositTab === 'closed' ? t('deposit.filter.closureDate') : t('deposit.filter.maturityDate')}
                 />
                 <DatePicker
@@ -469,9 +469,9 @@ export default function DepositsPage() {
                 value={operationTypeFilter}
                 onChange={(value) => setOperationTypeFilter(value as DepositOperationType[])}
                 placeholder={t('deposit.filter.operationType')}
-                suffixIcon={multiselectSuffixIcon}
+                suffix={multiselectSuffixIcon}
                 popupMatchSelectWidth={false}
-                popupClassName="folio-multiselect-dropdown"
+                classNames={{ popup: { root: 'folio-multiselect-dropdown' } }}
                 menuItemSelectedIcon={null}
                 options={operationTypeOptions.map((o) => ({ value: o.value, label: t(o.label) }))}
                 optionRender={(option) => (

@@ -378,6 +378,7 @@ export async function deleteEntireLedger(): Promise<void> {
   // Full local reset: all SQLite tables, Dexie residue, and session state.
   await withTransaction(async (db) => {
     for (const table of ALL_TABLES) await clearTableSilent(db, table);
+    try { await clearTableSilent(db, 'symbolMaster'); } catch { /* ignore */ }
     try { await db.execute('DELETE FROM settings'); } catch { /* ignore */ }
   });
   try { sessionStorage.clear(); } catch { /* ignore */ }

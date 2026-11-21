@@ -99,7 +99,7 @@ export default function FinancialInstitutionDetailPage() {
         <Popover
           trigger="click"
           placement="bottomLeft"
-          overlayInnerStyle={{ padding: 12, maxWidth: 280 }}
+          styles={{ container: { padding: 12, maxWidth: 280 } }}
           content={
             <div className="space-y-3">
               <Alert

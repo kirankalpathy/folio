@@ -6,7 +6,8 @@
 - **Brokers tab:** added a Brokers tab in Stocks to help you manage your brokerage/demat accounts in one place, with a clear table showing broker name, account details, symbols, invested value, market value, and unrealized gain/loss.
 - **Add or edit brokers easily:** you can now add and edit brokers using a guided step-by-step form. Select the brokerage/demat Financial Institution, then link a Savings or Current account for transfers and payouts.
 - **Find brokers quickly:** search and filter brokers by name, nickname, account number, Demat Account, or Transfer Account.
-- **Holdings tab:** renamed the holdings tab to **Holdings** for clearer, simpler naming.
+- **Holdings tab:** renamed the holdings tab to **Holdings** and added stat cards for **Symbol Listings**, **Invested Symbols**, **Invested Amount**, and **Holdings Position** (Market Value and Realized Gain/Loss), with placeholder values where holding data is not yet tracked.
+- **NSE symbol master refresh:** Symbol Listings can now be refreshed from NSE EQUITY and SME_EQUITY lists, combining both sources and showing NSE/BSE counts with the last updated time.
 
 ### Search & navigation
 - **Universal search:** added a search bar in the shell bar so you can quickly find Financial Institutions and Deposits by name, deposit number, account type, bank name, or bank nickname, then jump directly to the matching record.
@@ -18,6 +19,8 @@
 - **Demat account numbers:** Financial Institution tables now show the Demat account number in the Account Number column when applicable.
 - **More consistent selection fields:** multi-select fields now look and behave more consistently across the app.
 - **Table customization:** the table customization button is now placed in the table header for a cleaner, more consistent layout.
+- **Settings > About:** added Symbol Listings source links for NSE (EQUITY and SME_EQUITY) and a placeholder for BSE.
+- **Page descriptions:** refreshed Stocks and Deposits page descriptions for clearer context.
 
 ## `v0.1.5`
 

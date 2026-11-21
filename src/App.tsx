@@ -41,8 +41,8 @@ function ThemedApplication() {
     <ConfigProvider
       theme={createFolioTheme(theme)}
       componentSize="middle"
-      select={{ suffixIcon: dropdownArrow }}
-      cascader={{ suffixIcon: dropdownArrow }}
+      select={{ suffix: dropdownArrow }}
+      cascader={{ suffix: dropdownArrow }}
       modal={{ styles: { body: { maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', paddingRight: 8 } } }}
     >
       <AntApp>

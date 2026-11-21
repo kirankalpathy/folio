@@ -149,8 +149,11 @@ async function initSchema(db: SqliteDb): Promise<void> {
   await db.execute(`CREATE TABLE IF NOT EXISTS credentials (id TEXT PRIMARY KEY, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS financialInstitutions (id TEXT PRIMARY KEY, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS settings (id TEXT PRIMARY KEY, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS symbolMaster (id TEXT PRIMARY KEY, source TEXT, updatedAt TEXT, createdAt TEXT, changedAt TEXT, createdBy TEXT, changedBy TEXT, data TEXT NOT NULL)`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_deposits_maturity ON deposits(maturityDate)`);
   await migrateAuditColumns(db);
+  try { await db.execute(`ALTER TABLE symbolMaster ADD COLUMN source TEXT`); } catch { /* column may already exist */ }
+  await migrateScripMasterToSymbolMaster(db);
 }
 
 async function tableCount(db: SqliteDb, table: string): Promise<number> {
@@ -186,6 +189,23 @@ async function putJson(db: SqliteDb, table: string, id: string, data: unknown, e
          createdBy=COALESCE(deposits.createdBy, excluded.createdBy),
          data=excluded.data`,
       [id, maturityDate, a.updatedAt ?? a.changedAt, a.createdAt, a.changedAt, a.createdBy, a.changedBy, json],
+    );
+    return;
+  }
+  if (table === 'symbolMaster') {
+    const source = typeof (data as any)?.source === 'string' ? (data as any).source : (extra?.source ?? null);
+    await db.execute(
+      `INSERT INTO symbolMaster (id, source, updatedAt, createdAt, changedAt, createdBy, changedBy, data)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT(id) DO UPDATE SET
+         source=excluded.source,
+         updatedAt=excluded.updatedAt,
+         changedAt=excluded.changedAt,
+         changedBy=excluded.changedBy,
+         createdAt=COALESCE(symbolMaster.createdAt, excluded.createdAt),
+         createdBy=COALESCE(symbolMaster.createdBy, excluded.createdBy),
+         data=excluded.data`,
+      [id, source, a.updatedAt ?? a.changedAt, a.createdAt, a.changedAt, a.createdBy, a.changedBy, json],
     );
     return;
   }
@@ -359,6 +379,22 @@ export async function bulkPutRecordsSilent(db: SqliteDb, table: string, rows: un
     );
     return;
   }
+  if (table === 'symbolMaster') {
+    await db.execute(
+      `INSERT OR REPLACE INTO symbolMaster (id, source, updatedAt, createdAt, changedAt, createdBy, changedBy, data)
+       SELECT json_extract(value, '$.id'),
+              json_extract(value, '$.source'),
+              COALESCE(json_extract(value, '$.updatedAt'), json_extract(value, '$.changedAt'), json_extract(value, '$.ChangedAt')),
+              COALESCE(json_extract(value, '$.createdAt'), json_extract(value, '$.CreatedAt')),
+              COALESCE(json_extract(value, '$.changedAt'), json_extract(value, '$.ChangedAt'), json_extract(value, '$.updatedAt')),
+              COALESCE(json_extract(value, '$.createdBy'), json_extract(value, '$.CreatedBy')),
+              COALESCE(json_extract(value, '$.changedBy'), json_extract(value, '$.ChangedBy')),
+              value
+       FROM json_each($1)`,
+      [json],
+    );
+    return;
+  }
   if (table === 'profile' || table === 'credentials' || table === 'settings') {
     await db.execute(
       `INSERT OR REPLACE INTO ${table} (id, createdAt, changedAt, createdBy, changedBy, data)
@@ -392,9 +428,71 @@ export async function updateAuditActorInAllTables(oldIdentifiers: string[], newE
   await replaceAuditActorInTables(db, oldIdentifiers, newEmail);
 }
 
+
+async function migrateScripMasterToSymbolMaster(db: SqliteDb): Promise<void> {
+  try {
+    const tables = await db.select<{ name: string }>(`SELECT name FROM sqlite_master WHERE type='table' AND name='scripMaster'`);
+    if (tables.length === 0) return;
+    const rows = await db.select<{ id: string; data: string; updatedAt: string | null; createdAt: string | null; changedAt: string | null; createdBy: string | null; changedBy: string | null }>(
+      `SELECT id, data, updatedAt, createdAt, changedAt, createdBy, changedBy FROM scripMaster`
+    );
+    for (const row of rows) {
+      try {
+        const data = JSON.parse(row.data) as Record<string, unknown>;
+        if (data.scrip && !data.symbol) { data.symbol = data.scrip; delete data.scrip; }
+        await db.execute(
+          `INSERT OR REPLACE INTO symbolMaster (id, updatedAt, createdAt, changedAt, createdBy, changedBy, data) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [row.id, row.updatedAt, row.createdAt, row.changedAt, row.createdBy, row.changedBy, JSON.stringify(data)]
+        );
+      } catch { /* ignore bad row */ }
+    }
+    await db.execute(`DROP TABLE IF EXISTS scripMaster`);
+  } catch {
+    // ignore - reference data can be refreshed
+  }
+}
+export interface SymbolMasterStats {
+  count: number;
+  lastUpdatedAt: string | null;
+}
+
+export async function getSymbolMasterStats(exchange: string): Promise<SymbolMasterStats> {
+  return runSerialized(async () => {
+    const db = await getDb();
+    const rows = await db.select<{ count: number; lastUpdatedAt: string | null }>(
+      `SELECT COUNT(*) as count, MAX(updatedAt) as lastUpdatedAt
+       FROM symbolMaster
+       WHERE json_extract(data, '$.exchange') = $1`,
+      [exchange],
+    );
+    return {
+      count: typeof rows[0]?.count === 'number' ? rows[0].count : 0,
+      lastUpdatedAt: typeof rows[0]?.lastUpdatedAt === 'string' ? rows[0].lastUpdatedAt : null,
+    };
+  });
+}
+
+export async function replaceSymbolMasterByExchange(exchange: string, rows: unknown[]): Promise<void> {
+  return runSerialized(async () => {
+    const db = await getDb();
+    await db.execute('BEGIN IMMEDIATE');
+    try {
+      await db.execute(`DELETE FROM symbolMaster WHERE json_extract(data, '$.exchange') = $1`, [exchange]);
+      if (rows.length > 0) {
+        await bulkPutRecordsSilent(db, 'symbolMaster', rows);
+      }
+      await db.execute('COMMIT');
+    } catch (e) {
+      try { await db.execute('ROLLBACK'); } catch { /* ignore */ }
+      throw e;
+    }
+  });
+}
+
 export async function resetLocalLedgerData(): Promise<void> {
   const db = await getDb();
   for (const t of DATA_TABLES) await db.execute(`DELETE FROM ${t}`);
+  try { await db.execute(`DELETE FROM symbolMaster`); } catch { /* ignore */ }
   try { await db.execute(`DELETE FROM settings`); } catch { /* ignore */ }
   try { sessionStorage.clear(); } catch { /* ignore */ }
   try { await new Promise<void>((resolve) => { const req = indexedDB.deleteDatabase(DEXIE_NAME); req.onsuccess = () => resolve(); req.onerror = () => resolve(); req.onblocked = () => resolve(); }); } catch { /* ignore */ }

@@ -1,21 +1,27 @@
-import { useMemo, useState } from 'react';
-import { Alert, App, Button, Input, Table, Tabs } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, App, Button, Input, Table, Tabs, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { Briefcase, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Briefcase, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import FilterMultiSelect from '../components/common/FilterMultiSelect';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader';
 import EmptyState from '../components/common/EmptyState';
 import ResponsiveTable from '../components/common/ResponsiveTable';
 import TableLayoutControl, { useTableLayout, type TableLayoutColumnDef } from '../components/common/TableLayoutControl';
+import StatCard from '../components/common/StatCard';
 import { useI18n } from '../i18n';
 import { useStockBrokers } from '../hooks/useStockBrokers';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useFinancialInstitutions } from '../hooks/useFinancialInstitutions';
 import { institutionLabel } from '../services/financialInstitutions';
 import { formatINR, formatNumber } from '../utils/finance';
+import { formatDateTime } from '../utils/date';
 import { matchScore } from '../utils/search';
 import { useToast } from '../components/common/toast/ToastProvider';
+import { useBusyIndicator } from '../components/common/BusyIndicator';
+import { refreshNseSymbolMaster } from '../services/symbolMaster';
+import { getSymbolMasterStats, type SymbolMasterStats } from '../services/sqlite';
+import { SymbolExchange } from '../types';
 
 interface BrokerRow {
   key: string;
@@ -46,6 +52,40 @@ export default function StocksPage() {
   const [search, setSearch] = useState('');
   const [dematFilter, setDematFilter] = useState<string[]>([]);
   const [transferFilter, setTransferFilter] = useState<string[]>([]);
+  const { setBusyIndicator } = useBusyIndicator();
+  const [nseSymbolStats, setNseScripStats] = useState<SymbolMasterStats>({ count: 0, lastUpdatedAt: null });
+  const [bseSymbolStats, setBseScripStats] = useState<SymbolMasterStats>({ count: 0, lastUpdatedAt: null });
+  const [refreshingSymbols, setRefreshingScrips] = useState(false);
+
+  const loadSymbolStats = useCallback(async () => {
+    try {
+      const [nse, bse] = await Promise.all([
+        getSymbolMasterStats(SymbolExchange.NSE),
+        getSymbolMasterStats(SymbolExchange.BSE),
+      ]);
+      setNseScripStats(nse);
+      setBseScripStats(bse);
+    } catch {
+      // ignore - stats are informational
+    }
+  }, []);
+
+  useEffect(() => { void loadSymbolStats(); }, [loadSymbolStats]);
+
+  const handleRefreshSymbols = async () => {
+    setRefreshingScrips(true);
+    setBusyIndicator(true);
+    try {
+      const stats = await refreshNseSymbolMaster();
+      setNseScripStats(stats);
+      toast.success(t('stocks.holdings.refreshSymbolsSuccess'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('stocks.holdings.refreshSymbolsError'));
+    } finally {
+      setBusyIndicator(false);
+      setRefreshingScrips(false);
+    }
+  };
 
   const rows = useMemo<BrokerRow[]>(() => {
     return brokers.map((p) => {
@@ -297,10 +337,73 @@ export default function StocksPage() {
     </ResponsiveTable>
   );
 
+  const lastSymbolUpdate = [nseSymbolStats.lastUpdatedAt, bseSymbolStats.lastUpdatedAt].filter(Boolean).sort().at(-1) ?? null;
+
   const holdingsTab = (
-    <section className="folio-card p-5">
-      <p className="text-sm text-folio-ink/60 dark:text-white/55">{t('stocks.holdings.comingSoon')}</p>
-    </section>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard
+        label={t('stocks.holdings.listedSymbols')}
+        value={(
+          <div className="flex flex-wrap gap-2">
+            <Tag className="!m-0 !px-2.5 !py-0.5 font-mono text-[0.8125rem]" color="blue">
+              {SymbolExchange.NSE} • {formatNumber(nseSymbolStats.count, 0)}
+            </Tag>
+            <Tag className="!m-0 !px-2.5 !py-0.5 font-mono text-[0.8125rem]" color="orange">
+              {SymbolExchange.BSE} • {formatNumber(bseSymbolStats.count, 0)}
+            </Tag>
+          </div>
+        )}
+        hint={(
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              {t('stocks.holdings.lastUpdatedOn')} {lastSymbolUpdate ? formatDateTime(lastSymbolUpdate) : t('common.never')}
+            </span>
+            <Button
+              type="link"
+              size="small"
+              className="!h-auto !p-0 !text-[0.6875rem]"
+              icon={<RefreshCw size={12} className={refreshingSymbols ? 'animate-spin' : undefined} />}
+              onClick={() => void handleRefreshSymbols()}
+              loading={refreshingSymbols}
+            >
+              {t('stocks.holdings.refresh')}
+            </Button>
+          </div>
+        )}
+      />
+      <StatCard
+        label={t('stocks.holdings.investedSymbols')}
+        value={(
+          <div className="flex flex-wrap gap-2">
+            <Tag className="!m-0 !px-2.5 !py-0.5 font-mono text-[0.8125rem]" color="blue">
+              {SymbolExchange.NSE} • {formatNumber(0, 0)}
+            </Tag>
+            <Tag className="!m-0 !px-2.5 !py-0.5 font-mono text-[0.8125rem]" color="orange">
+              {SymbolExchange.BSE} • {formatNumber(0, 0)}
+            </Tag>
+          </div>
+        )}
+      />
+      <StatCard
+        label={t('stocks.holdings.investedAmount')}
+        value={formatINR(0)}
+      />
+      <StatCard
+        label={t('stocks.holdings.holdingsPosition')}
+        value={(
+          <div className="space-y-1.5 text-[0.8125rem]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-folio-ink/60 dark:text-white/55">{t('stocks.holdings.marketValue')}</span>
+              <span className="font-mono font-semibold text-folio-ink dark:text-folio-cream">{formatINR(0)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-folio-ink/60 dark:text-white/55">{t('stocks.holdings.realizedGainLoss')}</span>
+              <span className="font-mono font-semibold text-folio-ink dark:text-folio-cream">{formatINR(0)}</span>
+            </div>
+          </div>
+        )}
+      />
+    </div>
   );
 
   return (
