@@ -165,13 +165,13 @@ export default function DepositStats({
         icon={<TrendingUp size={16} />}
         value={(
           <div className="space-y-1 text-[0.8125rem] leading-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-folio-ink/55 dark:text-white/45">{t('deposit.stats.realizedGain')}</span>
-              <span className="folio-value text-[0.95rem] font-semibold text-folio-info-accent">{formatINR(summary.realizedGain)}</span>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <span className="min-w-0 text-folio-ink/55 dark:text-white/45">{t('deposit.stats.realizedGain')}</span>
+              <span className="folio-value ml-auto text-right text-[0.95rem] font-semibold text-folio-info-accent">{formatINR(summary.realizedGain)}</span>
             </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-folio-ink/55 dark:text-white/45">{t('deposit.stats.unrealizedGain')}</span>
-              <span className="folio-value text-[0.95rem] font-semibold text-folio-success-accent">{formatINR(summary.unrealizedGain)}</span>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <span className="min-w-0 text-folio-ink/55 dark:text-white/45">{t('deposit.stats.unrealizedGain')}</span>
+              <span className="folio-value ml-auto text-right text-[0.95rem] font-semibold text-folio-success-accent">{formatINR(summary.unrealizedGain)}</span>
             </div>
           </div>
         )}

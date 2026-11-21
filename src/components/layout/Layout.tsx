@@ -16,6 +16,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import UserMenu from './UserMenu';
 import { FOLIO_TITLEBAR_HEIGHT, FOLIO_TITLEBAR_SLOT_ID } from './TitleBar';
+import UniversalSearch from '../common/UniversalSearch';
 
 const SIDEBAR_KEY = 'folio:sidebar';
 
@@ -129,7 +130,7 @@ export default function Layout() {
   });
 
   const titleBarControls = isIntegratedHeader && titleBarSlot ? createPortal(
-    <div data-tauri-drag-region="deep" className="grid h-full w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
+    <div data-tauri-drag-region="deep" className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(0,38rem)_minmax(0,1fr)] items-center gap-1">
       <div className="flex min-w-0 items-center justify-start gap-1 overflow-hidden">
         <Button
           type="text"
@@ -162,24 +163,8 @@ export default function Layout() {
         </Tooltip>
       </div>
 
-      <div className="pointer-events-none flex min-w-0 max-w-[45vw] items-center justify-center gap-2 overflow-hidden px-2">
-        <img
-          src="/folio-icon-color.svg"
-          alt=""
-          aria-hidden="true"
-          className="h-4 w-4 shrink-0 dark:hidden"
-          draggable={false}
-        />
-        <img
-          src="/folio-icon-inverse.svg"
-          alt=""
-          aria-hidden="true"
-          className="hidden h-4 w-4 shrink-0 dark:block"
-          draggable={false}
-        />
-        <span className="truncate font-mono text-[0.6875rem] font-medium tracking-wide text-folio-ink/70 dark:text-white/70">
-          {t('titlebar.brand')}
-        </span>
+      <div className="flex min-w-0 flex-1 items-center justify-center px-2">
+        <UniversalSearch className="max-w-[38rem]" />
       </div>
 
       <div className="flex min-w-0 items-center justify-end gap-1 overflow-hidden">

@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n';
 import { cn } from '../../utils/cn';
 import { formatINRCompact } from '../../utils/finance';
 import UserMenu from './UserMenu';
+import UniversalSearch from '../common/UniversalSearch';
 
 interface HeaderProps {
   summary: NetWorthSummary;
@@ -58,13 +59,8 @@ export default function Header({ summary, isLoading, onOpenSidebar, onBack, canG
           </Tooltip>
         ) : null}
 
-        <div className="flex min-w-0 flex-1 items-center">
-          <img
-            src={theme === 'dark' ? '/folio-icon-inverse.svg' : '/folio-icon-color.svg'}
-            alt="Folio"
-            className="h-14 w-14 shrink-0"
-            decoding="async"
-          />
+        <div className="flex min-w-0 flex-1 items-center justify-center px-2">
+          <UniversalSearch />
         </div>
 
         {settings.showHeaderTicker && (

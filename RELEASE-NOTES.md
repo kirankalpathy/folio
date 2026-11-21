@@ -1,5 +1,15 @@
 # RELEASE NOTES
 
+## `v0.1.6`
+
+### Search & navigation
+- **Universal search:** added a search bar in the shell bar so you can quickly find Financial Institutions and Deposits by name, deposit number, account type, bank name, or bank nickname, then jump directly to the matching record.
+- **Smarter search results:** search now handles close matches and shows the best match first when there’s an exact match.
+
+### Clarity & polish
+- **Title bar date:** the app title now shows **Folio - [Current Date]** using your selected date format from Regional Formatting settings.
+- **Net Worth banner:** Unrealized Gain in the Net Worth banner now uses the same green shade as Total Gain for clearer, more consistent gain colors.
+
 ## `v0.1.5`
 
 ### Accuracy & consistency

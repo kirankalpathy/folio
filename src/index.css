@@ -207,6 +207,15 @@
     background: rgb(var(--folio-primary-rgb) / 0.45);
     background-clip: content-box;
   }
+
+  .rc-virtual-list-scrollbar-thumb {
+    background: rgb(var(--folio-primary-rgb) / 0.28) !important;
+  }
+
+  .rc-virtual-list-scrollbar-thumb:hover,
+  .rc-virtual-list-scrollbar-thumb-active {
+    background: rgb(var(--folio-primary-rgb) / 0.45) !important;
+  }
 }
 
 /* Lucide adds `.lucide` to every icon, so this is the single global weight/scale control. */

@@ -59,7 +59,7 @@ export const ASSET_CLASS_META: Record<AssetClassKey, AssetClassMeta> = {
     key: 'pf',
     label: 'asset.pf.label',
     shortLabel: 'asset.pf.shortLabel',
-    path: '/pf',
+    path: '/provident-funds',
     description: 'asset.pf.description',
     icon: ShieldCheck,
     color: palette.asset.pf,
@@ -115,9 +115,9 @@ export const ASSET_CLASS_META: Record<AssetClassKey, AssetClassMeta> = {
 
 export const ASSET_CLASS_ORDER: AssetClassKey[] = [
   'deposits',
+  'pf',
   'stocks',
   'bonds',
-  'pf',
   'commodities',
   'debts',
 ];

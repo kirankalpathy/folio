@@ -17,6 +17,7 @@ import DepositFormPage from '../../pages/DepositFormPage';
 import FinancialInstitutionsPage from '../../pages/FinancialInstitutionsPage';
 import FinancialInstitutionFormPage from '../../pages/FinancialInstitutionFormPage';
 import FinancialInstitutionDetailPage from '../../pages/FinancialInstitutionDetailPage';
+import ProvidentFundsPage from '../../pages/ProvidentFundsPage';
 // Planned feature: Transact / UPI QR Generator
 // import UpiTransactionPage from '../../pages/UpiTransactionPage';
 import ProfilePage from '../../pages/ProfilePage';
@@ -97,6 +98,7 @@ export default function AuthGate() {
               <Route path="stocks" element={<LedgerPage assetClass="stocks" />} />
               <Route path="bonds" element={<LedgerPage assetClass="bonds" />} />
               <Route path="pf" element={<LedgerPage assetClass="pf" />} />
+              <Route path="provident-funds" element={<ProvidentFundsPage />} />
               <Route path="deposits" element={<DepositsPage />} />
               <Route path="deposits/new" element={<DepositFormPage />} />
               <Route path="deposits/:id/edit" element={<DepositFormPage />} />

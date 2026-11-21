@@ -5,6 +5,8 @@ export const DATE_FORMAT_OPTIONS: Array<{ id: DateFormatId; label: string }> = [
   { id: 'MMM DD YYYY', label: 'Jan 01 2026' },
 ];
 
+export const DATE_FORMAT_CHANGED_EVENT = 'folio:date-format-changed';
+
 let activeDateFormatId: DateFormatId = 'DD MMM YYYY';
 
 export function getDateFormatId(): DateFormatId {
@@ -12,7 +14,10 @@ export function getDateFormatId(): DateFormatId {
 }
 
 export function setDateFormat(id: DateFormatId): void {
-  activeDateFormatId = id === 'MMM DD YYYY' ? 'MMM DD YYYY' : 'DD MMM YYYY';
+  const next = id === 'MMM DD YYYY' ? 'MMM DD YYYY' : 'DD MMM YYYY';
+  if (activeDateFormatId === next) return;
+  activeDateFormatId = next;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(DATE_FORMAT_CHANGED_EVENT));
 }
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -32,10 +37,19 @@ export function toDateInputValue(value: string): string {
   return value.slice(0, 10);
 }
 
+export function getTodayIsoDate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function formatDate(value: string): string {
   if (!value) return '—';
   const date = parseLocalDate(value);
   return Number.isNaN(date.getTime()) ? '—' : formatShortDate(date);
+}
+
+export function formatToday(): string {
+  return formatDate(getTodayIsoDate());
 }
 
 export function formatDateTime(value?: string | null): string {

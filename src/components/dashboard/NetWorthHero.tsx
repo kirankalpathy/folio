@@ -88,7 +88,9 @@ export default function NetWorthHero({ summary, isLoading }: NetWorthHeroProps) 
                       : tile.key === 'realizedGain'
                         ? 'text-folio-info-accent'
                         : tile.key === 'unrealisedGain'
-                          ? 'text-folio-success-accent'
+                          ? summary.unrealisedGain >= 0
+                            ? 'text-emerald-300 dark:text-emerald-700'
+                            : 'text-rose-300 dark:text-rose-700'
                           : 'text-folio-cream dark:text-folio-ink',
                   )}
                 >

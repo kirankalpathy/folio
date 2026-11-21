@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { DATE_FORMAT_CHANGED_EVENT, formatToday } from '../utils/date';
 import {
   setActiveLocale,
   translateFor,
@@ -29,7 +30,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setActiveLocale(locale);
     document.documentElement.lang = locale;
-    document.title = translateFor(locale, 'app.documentTitle');
+
+    let midnightTimer: number | undefined;
+    const syncTitle = () => {
+      document.title = `Folio - ${formatToday()}`;
+      if (midnightTimer) window.clearTimeout(midnightTimer);
+      const now = new Date();
+      const ms = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime() + 1000;
+      midnightTimer = window.setTimeout(syncTitle, ms);
+    };
+    syncTitle();
+    window.addEventListener(DATE_FORMAT_CHANGED_EVENT, syncTitle);
+
+    return () => {
+      window.removeEventListener(DATE_FORMAT_CHANGED_EVENT, syncTitle);
+      if (midnightTimer) window.clearTimeout(midnightTimer);
+    };
   }, [locale]);
 
   const t = useCallback<Translator>(

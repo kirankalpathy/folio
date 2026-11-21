@@ -6,6 +6,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 import { useTheme } from '../../theme/ThemeProvider';
+import { DATE_FORMAT_CHANGED_EVENT, formatToday } from '../../utils/date';
 
 const TITLEBAR_HEIGHT = 36;
 
@@ -59,6 +60,7 @@ export default function TitleBar() {
   const [headerBarPosition, setHeaderBarPosition] = useState<'integrated' | 'standalone'>(readHeaderBarPosition);
   const [customTitleBar, setCustomTitleBar] = useState(readCustomTitleBarEnabled);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [currentDateLabel, setCurrentDateLabel] = useState(formatToday);
   const mac = isMacPlatform();
 
   useEffect(() => {
@@ -144,6 +146,26 @@ export default function TitleBar() {
     };
   }, [tauri, customTitleBar]);
 
+  useEffect(() => {
+    const sync = () => setCurrentDateLabel(formatToday());
+    sync();
+    window.addEventListener(DATE_FORMAT_CHANGED_EVENT, sync);
+    const now = new Date();
+    const ms = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime() + 1000;
+    const timer = window.setTimeout(sync, ms);
+    return () => {
+      window.removeEventListener(DATE_FORMAT_CHANGED_EVENT, sync);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tauri) return;
+    void getCurrentWindow().setTitle(`Folio - ${currentDateLabel}`).catch((error) => {
+      console.error('Failed to set window title', error);
+    });
+  }, [tauri, currentDateLabel]);
+
   if (!tauri || !customTitleBar) return null;
 
   const isUnlocked = status === 'unlocked';
@@ -216,7 +238,7 @@ export default function TitleBar() {
               draggable={false}
             />
             <span className="truncate font-mono text-[0.6875rem] font-medium tracking-wide text-folio-ink/70 dark:text-white/70">
-              {t('titlebar.brand')}
+              Folio - {currentDateLabel}
             </span>
           </div>
           {!isUnlocked && (
